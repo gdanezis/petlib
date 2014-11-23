@@ -2,6 +2,7 @@
 import cffi
 from copy import copy
 from binascii import hexlify
+from functools import wraps
 
 _FFI = cffi.FFI()
 
@@ -27,6 +28,7 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 void EC_GROUP_free(EC_GROUP* x);
 void EC_GROUP_clear_free(EC_GROUP *);
 
+int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ctx);
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *);
 int EC_GROUP_get_order(const EC_GROUP *, BIGNUM *order, BN_CTX *);
 int EC_GROUP_get_cofactor(const EC_GROUP *, BIGNUM *cofactor, BN_CTX *);
@@ -103,6 +105,7 @@ typedef struct {
  * are filled with the data of the first nitems internal groups */
 size_t EC_get_builtin_curves(EC_builtin_curve *r, size_t nitems);
 
+
 typedef unsigned int BN_ULONG;
 
 BN_CTX *BN_CTX_new(void);
@@ -129,7 +132,13 @@ int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,BN_CTX *ctx);
 int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,BN_CTX *ctx);
 BIGNUM *BN_mod_inverse(BIGNUM *ret, const BIGNUM *a, const BIGNUM *n,BN_CTX *ctx);
 
-int     BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m, BN_CTX *ctx);
+ int BN_nnmod(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx);
+ int BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+         BN_CTX *ctx);
+ int BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+         BN_CTX *ctx);
+ int BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+         BN_CTX *ctx);
 
 int _bn_num_bytes(BIGNUM * a);
 int BN_num_bits(const BIGNUM *a);
@@ -177,11 +186,191 @@ int _bn_num_bytes(BIGNUM * a){
 # # NIST/X9.62/SECG curve over a 192 bit prime field
 # curveID = 409
 
-class BnCtx(object):
-  pass
+# const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *);
+
+class EcGroup(object):
+
+  @staticmethod
+  def list_curves():
+    """Return a dictionary of nid -> curve names"""
+    size_t = int(_C.EC_get_builtin_curves(_FFI.NULL, 0))
+    assert 0 < size_t 
+    names = _FFI.new("EC_builtin_curve[]", size_t)
+    _C.EC_get_builtin_curves(names, size_t)
+
+    all_curves = []
+    for i in range(size_t):
+      all_curves +=  [(int(names[i].nid), str(_FFI.string(names[i].comment)))]
+    return dict(all_curves)
+  
+  def __init__(self, nid, optimize_mult=True):
+    """Build an EC group from the Open SSL nid"""
+    self.ecg = _C.EC_GROUP_new_by_curve_name(nid)
+    if optimize_mult:
+      assert _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL)
+
+  def generator(self):
+    """Returns the generator of the EC group"""
+    g = EcPt(self)
+    internal_g = _C.EC_GROUP_get0_generator(self.ecg)
+    assert _C.EC_POINT_copy(g.pt, internal_g)
+    return g
+
+  def infinite(self):
+    """Returns a point at infinity"""
+    zero = EcPt(self)
+    assert _C.EC_POINT_set_to_infinity(self.ecg, zero.pt)
+    return zero
+
+  def order(self):
+    """Returns the order of the group as a Big Number"""
+    o = Bn()
+    assert _C.EC_GROUP_get_order(self.ecg, o.bn, _FFI.NULL)
+    return o
+
+  def __eq__(self, other):
+    res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _FFI.NULL);
+    return res == 0
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def nid(self):
+    """Returns the Open SSL group ID"""
+    return int(_C.EC_GROUP_get_curve_name(self.ecg))
+
+  def __del__(self):
+    _C.EC_GROUP_free(self.ecg);
+
+  def check_point(self, pt):
+    """Ensures the point is on the curve"""
+    res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _FFI.NULL))
+    return res == 1
+
+
+# int EC_POINT_is_at_infinity(const EC_GROUP *, const EC_POINT *);
+# int EC_POINT_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
+
+# int EC_POINT_make_affine(const EC_GROUP *, EC_POINT *, BN_CTX *);
+# int EC_POINTs_make_affine(const EC_GROUP *, size_t num, EC_POINT *[], BN_CTX *);
+
+
+# int EC_POINTs_mul(const EC_GROUP *, EC_POINT *r, const BIGNUM *, size_t num, const EC_POINT *[], const BIGNUM *[], BN_CTX *);
+
+
+
+class EcPt(object):
+  __slots__ = ["pt", "group"]
+  
+  @staticmethod
+  def from_binary(sbin, group):
+    new_pt = EcPt(group)
+    assert _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _FFI.NULL)
+    return new_pt
+
+  def __init__(self, group):
+    self.group = group
+    self.pt = _C.EC_POINT_new(group.ecg)
+
+  def __copy__(self):
+    new_point = EcPt(self.group)
+    assert _C.EC_POINT_copy(new_point.pt, self.pt)
+    return new_point
+
+  def __add__(self, other):
+    assert type(other) == EcPt
+    assert other.group == self.group
+    result = EcPt(self.group)
+    assert _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _FFI.NULL)
+    return result
+
+  def double(self):
+    result = EcPt(self.group)
+    assert _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL)
+    return result
+
+  def __neg__(self):
+    result = copy(self)
+    assert _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL)
+    return result
+
+  def __rmul__(self, other):
+    assert type(other) == Bn
+    result = EcPt(self.group)
+    assert _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
+    return result
+
+  def __eq__(self, other):
+    assert type(other) == EcPt
+    assert other.group == self.group
+    r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _FFI.NULL))
+    return r == 0
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def __del__(self):
+    _C.EC_POINT_clear_free(self.pt)
+
+  def export(self):
+    # size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_form_t form,
+    #         unsigned char *buf, size_t len, BN_CTX *);
+    size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED, 
+               _FFI.NULL, 0, _FFI.NULL)
+    buf = _FFI.new("unsigned char[]", size)
+    _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED,
+               buf, size, _FFI.NULL)
+    output = str(_FFI.buffer(buf)[:])
+    return output
+   
+
+
+def test_ec_list_group():
+  c = EcGroup.list_curves()
+  assert len(c) > 0 
+  assert 409 in c
+  assert 410 in c
+
+def test_ec_build_group():
+  G = EcGroup(409)
+  H = EcGroup(410)
+  assert G.check_point(G.generator())
+  assert not H.check_point(G.generator())
+  order = G.order()
+  assert str(order) == "6277101735386680763835789423176059013767194773182842284081"
+  assert G == G
+  assert not (G == H)
+  assert G != H
+  assert not (G != G)
+
+def test_ec_arithmetic():
+  G = EcGroup(409)
+  g = G.generator()
+  assert g + g == g + g  
+  assert g + g == g.double()
+  assert g + g == Bn(2) * g  
+   
+  assert g + g != g + g + g 
+  assert g + (-g) == G.infinite()
+
+def test_ec_io():
+  G = EcGroup(409)
+  g = G.generator()
+  assert len(g.export()) == 25
+  i = G.infinite()
+  assert len(i.export()) == 1
+  assert EcPt.from_binary(g.export(), G) == g
+  assert EcPt.from_binary(i.export(), G) == i
+
+## ----------- Start Bn stuff -----------------
 
 def force_Bn(n):
+  """
+  A decorator that coerces the nth input to be a Big Number
+  """
+
   def convert_nth(f):
+    @wraps(f)
     def new_f(*args, **kwargs):
       if not n < len(args):
         return f(*args, **kwargs)
@@ -195,18 +384,33 @@ def force_Bn(n):
         new_args[n] = r
         return f(*tuple(new_args), **kwargs)
 
-      raise Exception("Cannot apply type %s", type(args[n]))
+      return NotImplemented
     return new_f
   return convert_nth
 
 
 class Bn(object):
+  """The core Big Number class. 
+
+  It supports all comparisons (<, <=, ==, !=, >=, >),
+  arithemtic operations (+, -, %, /, divmod, **, pow) 
+  and copy operations (copy and deep copy). The right-hand 
+  side operand may be a small native python integer (< 2**64).
+  """
+
   # We know this class will keep minimal state
   __slots__ = ['bn']
 
   ## -- static methods  
   @staticmethod
   def from_decimal(sdec):
+    """
+    Creates a Big Number from a decimal string.
+    
+    Args:
+      sdec (string) -- numeric string possibly starting with minus.
+    """
+
     ptr = _FFI.new("BIGNUM **")
     assert (_C.BN_dec2bn(ptr, sdec))
 
@@ -217,6 +421,14 @@ class Bn(object):
 
   @staticmethod
   def from_hex(shex):
+    """
+    Creates a Big Number from a hexadecimal string.
+    
+    Args:
+      shex (string) -- hex (0-F) string possibly starting with minus.
+    """
+
+
     ptr = _FFI.new("BIGNUM **")
     assert (_C.BN_hex2bn(ptr, shex))
 
@@ -227,12 +439,25 @@ class Bn(object):
 
   @staticmethod
   def from_binary(sbin):
+    """Creates a Big Number from a binary string. Only positive values are read.
+    
+    Args:
+      sbin (string) -- binary (00-FF) string. 
+    """
     ret = Bn()
     _C.BN_bin2bn(sbin, len(sbin), ret.bn)
     return ret
 
   @staticmethod
   def get_prime(bits, safe=1):
+    """
+    Builds a prime Big Number of length bits.
+
+    Args:
+        bits (int) -- the number of bits.
+        safe (int) -- 1 for a safe prime, otherwise 0.
+    
+    """
     assert 0 < bits < 10000
     assert safe in [0,1]
     # BN_generate_prime_ex(r, 512, 0, NULL, NULL, NULL);
@@ -244,7 +469,7 @@ class Bn(object):
   ## -- methods
 
   def __init__(self, num=0):
-    'Allocate a big number'
+    'Allocate a Big Number structure, initialized with num or zero'
     assert 0 <= abs(num) <= 2**(64-1)  
     self.bn = _C.BN_new()
 
@@ -256,10 +481,12 @@ class Bn(object):
       self._set_neg(1)
 
   def _set_neg(self, sign=1):
+    """Sets the sign to "-" (1) or "+" (0)"""
     assert sign == 0 or sign == 1
     _C.BN_set_negative(self.bn, sign)
 
   def _check(self, return_val):
+    """Checks the return code of the C calls"""
     assert return_val 
 
   def __copy__(self):
@@ -311,6 +538,8 @@ class Bn(object):
     return s
 
   def binary(self):
+    """Returns the binary representation of the absolute value of the Big 
+    Number. You need to extact the sign separately."""
     size = _C._bn_num_bytes(self.bn);
     bin_string = _FFI.new("unsigned char[]", size)
     assert _C.BN_bn2bin(self.bn, bin_string);
@@ -341,6 +570,51 @@ class Bn(object):
       _C.BN_CTX_free(bnctx)
     return r
 
+# int BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+#         BN_CTX *ctx);
+#
+# int BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+#         BN_CTX *ctx);
+#
+# int BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+#         BN_CTX *ctx);
+
+  @force_Bn(1)
+  @force_Bn(2)
+  def mod_add(self, other, m):
+    """Return the sum of self and other modulo m."""
+    try:
+      bnctx = _C.BN_CTX_new()
+      r = Bn()
+      self._check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
+    finally:
+      _C.BN_CTX_free(bnctx)
+    return r
+
+  @force_Bn(1)
+  @force_Bn(2)
+  def mod_sub(self, other, m):
+    """Return the difference of self and other modulo m."""
+    try:
+      bnctx = _C.BN_CTX_new()
+      r = Bn()
+      self._check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
+    finally:
+      _C.BN_CTX_free(bnctx)
+    return r
+
+  @force_Bn(1)
+  @force_Bn(2)
+  def mod_mul(self, other, m):
+    """Return the product of self and other modulo m."""
+    try:
+      bnctx = _C.BN_CTX_new()
+      r = Bn()
+      self._check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
+    finally:
+      _C.BN_CTX_free(bnctx)
+    return r
+
   @force_Bn(1)
   def __divmod__(self, other):
     # int     BN_div(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx);
@@ -360,8 +634,13 @@ class Bn(object):
 
   @force_Bn(1)
   def __mod__(self, other):
-    _, m = divmod(self, other)
-    return m
+    try:
+      bnctx = _C.BN_CTX_new()
+      rem = Bn()
+      self._check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
+    finally:
+      _C.BN_CTX_free(bnctx)
+    return rem
 
   @force_Bn(1)
   def __truediv__(self, other):
@@ -387,7 +666,8 @@ class Bn(object):
 
   @force_Bn(1)
   def mod_inverse(self, m):
-    'Compute the inverse mod m, such that self * res == 1 mod m.'
+    """Compute the inverse mod m, such that self * res == 1 mod m."""
+
     try:
       bnctx = _C.BN_CTX_new()
       res = Bn()
@@ -399,8 +679,8 @@ class Bn(object):
     return res
 
   def is_prime(self):
-    'Returns True if the number is prime, with negligible prob. of error.'
-    # int BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
+    """Returns True if the number is prime, with negligible prob. of error."""
+    
     res = int(_C.BN_is_prime_ex(self.bn, 0, _FFI.NULL, _FFI.NULL))
     if res == 0:
       return False
@@ -409,6 +689,7 @@ class Bn(object):
     raise Exception("Primality test failure %s" % int(res) )
 
   def num_bits(self):
+    """Returns the number of bits representing this Big Number"""
     return int(_C.BN_num_bits(self.bn))
 
   # Implement negative 
@@ -432,18 +713,18 @@ class Bn(object):
 # ---------- Tests ------------
 
 def test_bn_constructors():
-  assert Bn.from_decimal("100") == Bn(100)
-  assert Bn.from_decimal("-100") == Bn(-100)
+  assert Bn.from_decimal("100") == 100
+  assert Bn.from_decimal("-100") == -100
 
-  assert Bn.from_hex(hex(Bn(-100))) == Bn(-100)
+  assert Bn.from_hex(hex(Bn(-100))) == -100
 
-  assert Bn.from_binary(Bn(-100).binary()) == Bn(100)
+  assert Bn.from_binary(Bn(-100).binary()) == 100
   assert Bn.from_binary(Bn(100).binary()) == Bn(100)
-  assert Bn.from_binary(Bn(100).binary()) == Bn(100)
+  assert Bn.from_binary(Bn(100).binary()) == 100
   assert Bn.from_binary(Bn(-100).binary()) != Bn(50)
   assert int(Bn(-100)) == -100
 
-def test_prime():
+def test_bn_prime():
   p = Bn.get_prime(512)
   assert p > Bn(0)
   assert p.is_prime()
@@ -476,7 +757,12 @@ def test_bn_arithmetic():
 
   assert pow(Bn(2), 8, 27) == 2 ** 8 % 27
 
-  assert Bn(3).mod_inverse(Bn(16)) == Bn(11)
+  assert Bn(3).mod_inverse(16) == 11
+
+  assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
+  assert Bn(10).mod_sub(100, 15) == (10 - 100) % 15
+  assert Bn(10).mod_mul(10, 15) == (10 * 10) % 15
+
 
 def test_bn_allocate():
   # Test allocation
@@ -505,8 +791,6 @@ def test_bn_allocate():
   assert Bn(1)
   assert Bn(100)
 
-
-
 def test_bn_cmp():
   assert Bn(1) < Bn(2)
   assert Bn(1) <= Bn(2)
@@ -514,9 +798,3 @@ def test_bn_cmp():
   assert Bn(2) == Bn(2)
   assert Bn(2) <= Bn(3)
   assert Bn(2) < Bn(3)
-
-class EcGroup(object):
-  pass
-
-class EcPoint(object):
-  pass
