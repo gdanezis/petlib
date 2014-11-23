@@ -8,9 +8,10 @@ setup(name='petlib',
       author='George Danezis',
       author_email='g.danezis@ucl.ac.uk',
       url=r'https://pypi.python.org/pypi/petlib/',
+
       packages=['petlib'],
       license="LICENSE.txt",
-      long_description=open("README").read(),
+      long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
       install_requires=[
       			"cffi >= 0.8.2"
       ],
