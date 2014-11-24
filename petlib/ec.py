@@ -2,7 +2,7 @@ from bindings import _FFI, _C
 from functools import wraps
 from copy import copy
 from binascii import hexlify
-from bn import Bn
+from bn import Bn, force_Bn
 
 class EcGroup(object):
 
@@ -116,8 +116,8 @@ class EcPt(object):
     assert _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL)
     return result
 
+  @force_Bn(1)
   def __rmul__(self, other):
-    assert type(other) == Bn
     result = EcPt(self.group)
     assert _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
     return result
@@ -170,6 +170,7 @@ def test_ec_arithmetic():
   assert g + g == g + g  
   assert g + g == g.double()
   assert g + g == Bn(2) * g  
+  assert g + g == 2 * g  
    
   assert g + g != g + g + g 
   assert g + (-g) == G.infinite()

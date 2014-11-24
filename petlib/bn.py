@@ -162,14 +162,15 @@ class Bn(object):
     return s
 
   def __int__(self):
+    """A native python integer representation of the Big Number"""
     return int(self.__repr__())
 
   def __index__(self):
+    """A native python integer representation of the Big Number"""
     return int(self.__repr__())
 
-
   def __hex__(self):
-    'The representation of the string in hexadecimal'
+    """The representation of the string in hexadecimal"""
     buf =  _C.BN_bn2hex(self.bn);
     s = str(_FFI.string(buf))
     _C.OPENSSL_free(buf)
