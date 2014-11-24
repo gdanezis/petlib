@@ -149,6 +149,9 @@ class EcPt(object):
     output = str(_FFI.buffer(buf)[:])
     return output
 
+  def __str__(self):
+    return hexlify(self.export())
+
 def test_ec_list_group():
   c = EcGroup.list_curves()
   assert len(c) > 0 
