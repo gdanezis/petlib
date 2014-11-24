@@ -27,6 +27,8 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 void EC_GROUP_free(EC_GROUP* x);
 void EC_GROUP_clear_free(EC_GROUP *);
 
+int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *p, BIGNUM *a, BIGNUM *b, BN_CTX *ctx);
+
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ctx);
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *);
 int EC_GROUP_get_order(const EC_GROUP *, BIGNUM *order, BN_CTX *);

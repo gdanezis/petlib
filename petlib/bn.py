@@ -98,7 +98,7 @@ class Bn(object):
     """
     assert 0 < bits < 10000
     assert safe in [0,1]
-    # BN_generate_prime_ex(r, 512, 0, NULL, NULL, NULL);
+    
     ret = Bn()
     assert _C.BN_generate_prime_ex(ret.bn, bits, safe, _FFI.NULL, _FFI.NULL, _FFI.NULL)
     return ret
@@ -108,7 +108,7 @@ class Bn(object):
 
   def __init__(self, num=0):
     'Allocate a Big Number structure, initialized with num or zero'
-    assert 0 <= abs(num) <= 2**(64-1)  
+    assert 0 <= abs(num) <= 2**(64-1)
     self.bn = _C.BN_new()
 
     # Assign
@@ -253,7 +253,6 @@ class Bn(object):
 
   @force_Bn(1)
   def __divmod__(self, other):
-    # int     BN_div(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx);
     try:
       bnctx = _C.BN_CTX_new()
       dv = Bn()

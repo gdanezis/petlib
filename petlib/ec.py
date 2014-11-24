@@ -25,6 +25,11 @@ class EcGroup(object):
     if optimize_mult:
       assert _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL)
 
+  def parameters(self):
+    p, a, b = Bn(), Bn(), Bn()
+    assert _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL)
+    return {"p":p, "a":a, "b":b}
+
   def generator(self):
     """Returns the generator of the EC group"""
     g = EcPt(self)
@@ -62,17 +67,6 @@ class EcGroup(object):
     """Ensures the point is on the curve"""
     res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _FFI.NULL))
     return res == 1
-
-
-# int EC_POINT_is_at_infinity(const EC_GROUP *, const EC_POINT *);
-# int EC_POINT_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
-
-# int EC_POINT_make_affine(const EC_GROUP *, EC_POINT *, BN_CTX *);
-# int EC_POINTs_make_affine(const EC_GROUP *, size_t num, EC_POINT *[], BN_CTX *);
-
-
-# int EC_POINTs_mul(const EC_GROUP *, EC_POINT *r, const BIGNUM *, size_t num, const EC_POINT *[], const BIGNUM *[], BN_CTX *);
-
 
 
 class EcPt(object):
@@ -139,8 +133,6 @@ class EcPt(object):
 
   def export(self):
     """Returns a string binary representation of the point"""
-    # size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_form_t form,
-    #         unsigned char *buf, size_t len, BN_CTX *);
     size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED, 
                _FFI.NULL, 0, _FFI.NULL)
     buf = _FFI.new("unsigned char[]", size)
@@ -169,6 +161,7 @@ def test_ec_build_group():
   assert not (G == H)
   assert G != H
   assert not (G != G)
+  assert "a" in G.parameters()
 
 def test_ec_arithmetic():
   G = EcGroup(409)
