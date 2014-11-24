@@ -184,6 +184,12 @@ class Bn(object):
     assert _C.BN_bn2bin(self.bn, bin_string);
     return str(_FFI.buffer(bin_string)[:])
 
+  def random(self):
+  	"""Returns a random number 0 <= rnd < self"""
+  	rnd = Bn()
+  	assert _C.BN_rand_range(rnd.bn, self.bn)
+  	return rnd
+
 
   ## ---------- Arithmetic --------------
 
@@ -406,6 +412,8 @@ def test_bn_allocate():
 
   assert hex(Bn(15)) == "0F"
   assert hex(Bn(-15)) == "-0F"
+
+  assert 0 <= Bn(15).random() < 15
 
   # Test copy
   import copy

@@ -134,6 +134,9 @@ class EcPt(object):
   def __del__(self):
     _C.EC_POINT_clear_free(self.pt)
 
+  def __hash__(self):
+    return self.export().__hash__()
+
   def export(self):
     """Returns a string binary representation of the point"""
     # size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_form_t form,
@@ -174,6 +177,10 @@ def test_ec_arithmetic():
    
   assert g + g != g + g + g 
   assert g + (-g) == G.infinite()
+  d = {}
+  d[2*g] = 2
+  assert d[2*g] == 2
+
 
 def test_ec_io():
   G = EcGroup(409)

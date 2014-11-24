@@ -148,6 +148,9 @@ int BN_generate_prime_ex(BIGNUM *ret,int bits,int safe, const BIGNUM *add,
     const BIGNUM *rem, BN_GENCB *cb);
 int BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 
+int BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
+
+
 typedef unsigned int SHA_LONG;
 #define SHA_LBLOCK ...
 
