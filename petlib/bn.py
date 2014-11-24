@@ -208,15 +208,6 @@ class Bn(object):
       _C.BN_CTX_free(bnctx)
     return r
 
-# int BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-#         BN_CTX *ctx);
-#
-# int BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-#         BN_CTX *ctx);
-#
-# int BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-#         BN_CTX *ctx);
-
   @force_Bn(1)
   @force_Bn(2)
   def mod_add(self, other, m):
