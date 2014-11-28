@@ -3,6 +3,8 @@ from functools import wraps
 from copy import copy
 from binascii import hexlify
 
+import pytest
+
 def force_Bn(n):
   """A decorator that coerces the nth input to be a Big Number
   """
@@ -26,6 +28,10 @@ def force_Bn(n):
     return new_f
   return convert_nth
 
+def _check(return_val):
+    """Checks the return code of the C calls"""
+    if not (return_val):
+    	raise Exception("BN exception") 
 
 class Bn(object):
   """The core Big Number class. 
@@ -50,7 +56,7 @@ class Bn(object):
     """
 
     ptr = _FFI.new("BIGNUM **")
-    assert (_C.BN_dec2bn(ptr, sdec))
+    _check( (_C.BN_dec2bn(ptr, sdec)) )
 
     ret = Bn()
     _C.BN_copy(ret.bn, ptr[0])
@@ -68,7 +74,7 @@ class Bn(object):
 
 
     ptr = _FFI.new("BIGNUM **")
-    assert (_C.BN_hex2bn(ptr, shex))
+    _check( (_C.BN_hex2bn(ptr, shex)) )
 
     ret = Bn()
     _C.BN_copy(ret.bn, ptr[0])
@@ -96,11 +102,11 @@ class Bn(object):
         safe (int) -- 1 for a safe prime, otherwise 0.
     
     """
-    assert 0 < bits < 10000
-    assert safe in [0,1]
+    _check( 0 < bits < 10000 )
+    _check( safe in [0,1] )
     
     ret = Bn()
-    assert _C.BN_generate_prime_ex(ret.bn, bits, safe, _FFI.NULL, _FFI.NULL, _FFI.NULL)
+    _check( _C.BN_generate_prime_ex(ret.bn, bits, safe, _FFI.NULL, _FFI.NULL, _FFI.NULL) )
     return ret
 
 
@@ -108,24 +114,20 @@ class Bn(object):
 
   def __init__(self, num=0):
     'Allocate a Big Number structure, initialized with num or zero'
-    assert 0 <= abs(num) <= 2**(64-1)
+    _check( 0 <= abs(num) <= 2**(64-1) )
     self.bn = _C.BN_new()
 
     # Assign
     if num != 0:
-      self._check(_C.BN_set_word(self.bn, abs(num)))
+      _check(_C.BN_set_word(self.bn, abs(num)))
 
     if num < 0:
       self._set_neg(1)
 
   def _set_neg(self, sign=1):
     """Sets the sign to "-" (1) or "+" (0)"""
-    assert sign == 0 or sign == 1
+    _check( sign == 0 or sign == 1 )
     _C.BN_set_negative(self.bn, sign)
-
-  def _check(self, return_val):
-    """Checks the return code of the C calls"""
-    assert return_val 
 
   def __copy__(self):
     'Copies the big number. Support for copy module'
@@ -144,7 +146,7 @@ class Bn(object):
   @force_Bn(1)
   def __cmp__(self, other):
     'Internal comparison function' 
-    assert type(other) == Bn
+    _check( type(other) == Bn )
     sig = int(_C.BN_cmp(self.bn, other.bn))
     return sig
 
@@ -181,13 +183,13 @@ class Bn(object):
     Number. You need to extact the sign separately."""
     size = _C._bn_num_bytes(self.bn);
     bin_string = _FFI.new("unsigned char[]", size)
-    assert _C.BN_bn2bin(self.bn, bin_string);
+    _check( _C.BN_bn2bin(self.bn, bin_string) )
     return str(_FFI.buffer(bin_string)[:])
 
   def random(self):
   	"""Returns a random number 0 <= rnd < self"""
   	rnd = Bn()
-  	assert _C.BN_rand_range(rnd.bn, self.bn)
+  	_check( _C.BN_rand_range(rnd.bn, self.bn) )
   	return rnd
 
 
@@ -196,13 +198,13 @@ class Bn(object):
   @force_Bn(1)
   def __add__(self, other):
     r = Bn()
-    self._check(_C.BN_add(r.bn, self.bn, other.bn))
+    _check(_C.BN_add(r.bn, self.bn, other.bn))
     return r
 
   @force_Bn(1)
   def __sub__(self, other):
     r = Bn()
-    self._check(_C.BN_sub(r.bn, self.bn, other.bn))
+    _check(_C.BN_sub(r.bn, self.bn, other.bn))
     return r
 
   @force_Bn(1)
@@ -210,7 +212,7 @@ class Bn(object):
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
-      self._check(_C.BN_mul(r.bn, self.bn, other.bn, bnctx))
+      _check(_C.BN_mul(r.bn, self.bn, other.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return r
@@ -222,7 +224,7 @@ class Bn(object):
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
-      self._check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
+      _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return r
@@ -234,7 +236,7 @@ class Bn(object):
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
-      self._check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
+      _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return r
@@ -246,7 +248,7 @@ class Bn(object):
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
-      self._check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
+      _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return r
@@ -257,7 +259,7 @@ class Bn(object):
       bnctx = _C.BN_CTX_new()
       dv = Bn()
       rem = Bn()
-      self._check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, bnctx))
+      _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return (dv, rem)
@@ -272,7 +274,7 @@ class Bn(object):
     try:
       bnctx = _C.BN_CTX_new()
       rem = Bn()
-      self._check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
+      _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return rem
@@ -292,9 +294,9 @@ class Bn(object):
       bnctx = _C.BN_CTX_new()
       res = Bn()
       if modulo is None:
-        self._check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
+        _check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
       else:
-        self._check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
+        _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
     finally:
       _C.BN_CTX_free(bnctx)
     return res

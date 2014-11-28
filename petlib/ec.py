@@ -4,13 +4,19 @@ from copy import copy
 from binascii import hexlify
 from bn import Bn, force_Bn
 
+def _check(return_val):
+    """Checks the return code of the C calls"""
+    if not (return_val):
+      raise Exception("EC exception") 
+
+
 class EcGroup(object):
 
   @staticmethod
   def list_curves():
     """Return a dictionary of nid -> curve names"""
     size_t = int(_C.EC_get_builtin_curves(_FFI.NULL, 0))
-    assert 0 < size_t 
+    _check( 0 < size_t ) 
     names = _FFI.new("EC_builtin_curve[]", size_t)
     _C.EC_get_builtin_curves(names, size_t)
 
@@ -23,30 +29,30 @@ class EcGroup(object):
     """Build an EC group from the Open SSL nid"""
     self.ecg = _C.EC_GROUP_new_by_curve_name(nid)
     if optimize_mult:
-      assert _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL)
+      _check( _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL) )
 
   def parameters(self):
     p, a, b = Bn(), Bn(), Bn()
-    assert _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL)
+    _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL) )
     return {"p":p, "a":a, "b":b}
 
   def generator(self):
     """Returns the generator of the EC group"""
     g = EcPt(self)
     internal_g = _C.EC_GROUP_get0_generator(self.ecg)
-    assert _C.EC_POINT_copy(g.pt, internal_g)
+    _check( _C.EC_POINT_copy(g.pt, internal_g) )
     return g
 
   def infinite(self):
     """Returns a point at infinity"""
     zero = EcPt(self)
-    assert _C.EC_POINT_set_to_infinity(self.ecg, zero.pt)
+    _check( _C.EC_POINT_set_to_infinity(self.ecg, zero.pt) )
     return zero
 
   def order(self):
     """Returns the order of the group as a Big Number"""
     o = Bn()
-    assert _C.EC_GROUP_get_order(self.ecg, o.bn, _FFI.NULL)
+    _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _FFI.NULL) )
     return o
 
   def __eq__(self, other):
@@ -79,7 +85,7 @@ class EcPt(object):
   def from_binary(sbin, group):
     "Create a point from a string binary sequence"
     new_pt = EcPt(group)
-    assert _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _FFI.NULL)
+    _check( _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _FFI.NULL) )
     return new_pt
 
   def __init__(self, group):
@@ -88,37 +94,37 @@ class EcPt(object):
 
   def __copy__(self):
     new_point = EcPt(self.group)
-    assert _C.EC_POINT_copy(new_point.pt, self.pt)
+    _check( _C.EC_POINT_copy(new_point.pt, self.pt) )
     return new_point
 
   def __add__(self, other):
-    assert type(other) == EcPt
-    assert other.group == self.group
+    _check( type(other) == EcPt )
+    _check( other.group == self.group )
     result = EcPt(self.group)
-    assert _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _FFI.NULL)
+    _check( _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _FFI.NULL) )
     return result
 
   def double(self):
     """Doubles the point. equivalent to "self + self".
     """
     result = EcPt(self.group)
-    assert _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL)
+    _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL) )
     return result
 
   def __neg__(self):
     result = copy(self)
-    assert _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL)
+    _check( _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL) )
     return result
 
   @force_Bn(1)
   def __rmul__(self, other):
     result = EcPt(self.group)
-    assert _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
+    _check( _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL) )
     return result
 
   def __eq__(self, other):
-    assert type(other) == EcPt
-    assert other.group == self.group
+    _check( type(other) == EcPt )
+    _check( other.group == self.group )
     r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _FFI.NULL))
     return r == 0
 
