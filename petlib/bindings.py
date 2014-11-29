@@ -7,7 +7,15 @@ _FFI = cffi.FFI()
 
 _FFI.cdef("""
 
+/* 
+  Generic OpenSSL functions.
+*/ 
+
 void OPENSSL_free(void*);
+
+/* 
+  ECC OpenSSL functions.
+*/
 
 typedef enum {
   /* values as defined in X9.62 (ECDSA) and elsewhere */
@@ -68,33 +76,6 @@ size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_f
 int EC_POINT_oct2point(const EC_GROUP *, EC_POINT *,
         const unsigned char *buf, size_t len, BN_CTX *);
 
-
-typedef ... EC_KEY;
-
-EC_KEY *EC_KEY_new(void);
-EC_KEY *EC_KEY_new_by_curve_name(int nid);
-void EC_KEY_free(EC_KEY *);
-EC_KEY *EC_KEY_copy(EC_KEY *, const EC_KEY *);
-EC_KEY *EC_KEY_dup(const EC_KEY *);
-
-int EC_KEY_up_ref(EC_KEY *);
-
-const EC_GROUP *EC_KEY_get0_group(const EC_KEY *);
-int EC_KEY_set_group(EC_KEY *, const EC_GROUP *);
-const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *);
-int EC_KEY_set_private_key(EC_KEY *, const BIGNUM *);
-const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *);
-int EC_KEY_set_public_key(EC_KEY *, const EC_POINT *);
-
-unsigned EC_KEY_get_enc_flags(const EC_KEY *);
-void EC_KEY_set_enc_flags(EC_KEY *, unsigned int);
-
-/* EC_KEY_generate_key() creates a ec private (public) key */
-int EC_KEY_generate_key(EC_KEY *);
-/* EC_KEY_check_key() */
-int EC_KEY_check_key(const EC_KEY *);
-
-
 typedef struct { 
   int nid;
   const char *comment;
@@ -102,17 +83,20 @@ typedef struct {
 
 size_t EC_get_builtin_curves(EC_builtin_curve *r, size_t nitems);
 
+/*
+  Big Number (BN) OpenSSL functions.
+*/
 
 typedef unsigned int BN_ULONG;
 
 BN_CTX *BN_CTX_new(void);
 void    BN_CTX_free(BN_CTX *c);
 
-BIGNUM *BN_new(void);
-void  BN_init(BIGNUM *);
-void  BN_clear_free(BIGNUM *a);
-BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b);
-void  BN_swap(BIGNUM *a, BIGNUM *b);
+BIGNUM* BN_new(void);
+void    BN_init(BIGNUM *);
+void    BN_clear_free(BIGNUM *a);
+BIGNUM* BN_copy(BIGNUM *a, const BIGNUM *b);
+void    BN_swap(BIGNUM *a, BIGNUM *b);
 
 int     BN_cmp(const BIGNUM *a, const BIGNUM *b);
 int     BN_set_word(BIGNUM *a, BN_ULONG w);
@@ -125,55 +109,95 @@ int     BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 int     BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 int     BN_div(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx);
 
-int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,BN_CTX *ctx);
-int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,BN_CTX *ctx);
-BIGNUM *BN_mod_inverse(BIGNUM *ret, const BIGNUM *a, const BIGNUM *n,BN_CTX *ctx);
+int     BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,BN_CTX *ctx);
+int     BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,BN_CTX *ctx);
+BIGNUM* BN_mod_inverse(BIGNUM *ret, const BIGNUM *a, const BIGNUM *n,BN_CTX *ctx);
 
- int BN_nnmod(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx);
- int BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-         BN_CTX *ctx);
- int BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-         BN_CTX *ctx);
- int BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-         BN_CTX *ctx);
+ int    BN_nnmod(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx);
+ int    BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+            BN_CTX *ctx);
+ int    BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+            BN_CTX *ctx);
+ int    BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
+            BN_CTX *ctx);
 
-int _bn_num_bytes(BIGNUM * a);
-int BN_num_bits(const BIGNUM *a);
+int     _bn_num_bytes(BIGNUM * a);
+int     BN_num_bits(const BIGNUM *a);
 char *  BN_bn2dec(const BIGNUM *a);
 char *  BN_bn2hex(const BIGNUM *a);
 int     BN_hex2bn(BIGNUM **a, const char *str);
 int     BN_dec2bn(BIGNUM **a, const char *str);
-BIGNUM *BN_bin2bn(const unsigned char *s,int len,BIGNUM *ret);
+BIGNUM* BN_bin2bn(const unsigned char *s,int len,BIGNUM *ret);
 int     BN_bn2bin(const BIGNUM *a, unsigned char *to);
 
-int BN_generate_prime_ex(BIGNUM *ret,int bits,int safe, const BIGNUM *add, 
-    const BIGNUM *rem, BN_GENCB *cb);
-int BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
+int     BN_generate_prime_ex(BIGNUM *ret,int bits,int safe, const BIGNUM *add, 
+            const BIGNUM *rem, BN_GENCB *cb);
+int     BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 
-int BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
+int     BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
+/* 
 
-typedef unsigned int SHA_LONG;
-#define SHA_LBLOCK ...
+  EVP Ciphers 
 
-typedef struct SHA256state_st
-        {
-        SHA_LONG h[8];
-        SHA_LONG Nl,Nh;
-        SHA_LONG data[16];
-        unsigned int num,md_len;
-        } SHA256_CTX;
+*/
 
-int SHA256_Init(SHA256_CTX *c);
-int SHA256_Update(SHA256_CTX *c, const void *data, size_t len);
-int SHA256_Final(unsigned char *md, SHA256_CTX *c);
-unsigned char *SHA256(const unsigned char *d, size_t n,unsigned char *md);
+typedef struct evp_cipher_st
+{
+  int nid;
+  int block_size;
+  int key_len; /* Default value for variable length ciphers */
+  int iv_len;
+  unsigned long flags; /* Various flags */
+  ...;
+} EVP_CIPHER;
+
+typedef struct evp_cipher_ctx_st
+{
+  const EVP_CIPHER *cipher;
+  int encrypt; /* encrypt or decrypt */
+  int buf_len; /* number we have left */
+  int num; /* used by cfb/ofb/ctr mode */
+  int key_len; /* May change for variable length cipher */
+  unsigned long flags; /* Various flags */
+  int final_used;
+  int block_mask;
+  ...;
+} EVP_CIPHER_CTX;
+
+typedef ... ENGINE; // Ignore details of the engine.
+
+// Cipher context operations
+
+void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *a);
+int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *a);
+EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
+void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *a);
+int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *x, int keylen);
+int EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *c, int pad);
+int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr);
+int EVP_CIPHER_CTX_rand_key(EVP_CIPHER_CTX *ctx, unsigned char *key);
+
+// Cipher operations
+
+const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
+
+int  EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx,const EVP_CIPHER *cipher, ENGINE *impl,
+const unsigned char *key,const unsigned char *iv,
+int enc);
+int  EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+int *outl, const unsigned char *in, int inl);
+int  EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
+
+void init_ciphers();
+void cleanup_ciphers();
 
 """)
 
 _C = _FFI.verify("""
 #include <openssl/ec.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
+
 
 #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
@@ -181,6 +205,45 @@ int _bn_num_bytes(BIGNUM * a){
   return BN_num_bytes(a);
 }
 
+void init_ciphers(){
+  /* Load the human readable error strings for libcrypto */
+  ERR_load_crypto_strings();
+
+  /* Load all digest and cipher algorithms */
+  OpenSSL_add_all_algorithms();
+
+  /* Load config file, and other important initialisation */
+  OPENSSL_config(NULL);
+}
+
+void cleanup_ciphers(){
+  /* Removes all digests and ciphers */
+  EVP_cleanup();
+
+  /* if you omit the next, a small leak may be left when you make use of the BIO (low level API) for e.g. base64 transformations */
+  CRYPTO_cleanup_all_ex_data();
+
+  /* Remove error strings */
+  ERR_free_strings();
+
+}
+
 """, libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations'])
 
+_inited = False
 
+class InitCicphers(object):
+
+  def __init__(self):
+    global _inited
+    if not _inited:
+      _C.init_ciphers()
+      _inited = True
+
+  def __del__(self):
+    global _inited
+    if _inited:
+      _inited = False
+      _C.cleanup_ciphers()
+
+_ciphers = InitCicphers()
