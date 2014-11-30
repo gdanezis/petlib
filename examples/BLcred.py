@@ -14,7 +14,7 @@ from binascii import hexlify
 import pytest
 
 def test_protocol():
-	# Parameters of the PL schemes
+	# Parameters of the BL schemes
 	G = EcGroup(409)
 	q = G.order()
 
