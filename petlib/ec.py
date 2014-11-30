@@ -3,6 +3,7 @@ from functools import wraps
 from copy import copy
 from binascii import hexlify
 from bn import Bn, force_Bn
+from hashlib import sha512
 
 def _check(return_val):
     """Checks the return code of the C calls"""
@@ -73,6 +74,23 @@ class EcGroup(object):
     """Ensures the point is on the curve"""
     res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _FFI.NULL))
     return res == 1
+
+  def hash_to_point(self, hinput):
+    p = self.parameters()["p"]
+    
+    pt = EcPt(self)
+    xhash = hinput
+    y = 1    
+    ret = 0
+
+    while ret == 0:
+      xhash = sha512(xhash).digest()
+      x = Bn.from_binary(xhash) % p
+      ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, _FFI.NULL)
+
+    assert self.check_point(pt)
+    _check( ret )
+    return pt
 
 
 class EcPt(object):
@@ -147,6 +165,13 @@ class EcPt(object):
     output = str(_FFI.buffer(buf)[:])
     return output
 
+  def get_affine(self):
+    x = Bn()
+    y = Bn()
+    _check( _C.EC_POINT_get_affine_coordinates_GFp(self.group.ecg,
+self.pt, x.bn, y.bn, _FFI.NULL))
+    return (x,y)
+
   def __str__(self):
     return hexlify(self.export())
 
@@ -169,6 +194,8 @@ def test_ec_build_group():
   assert not (G != G)
   assert "a" in G.parameters()
 
+  h1 = G.hash_to_point("Hello2")
+
 def test_ec_arithmetic():
   G = EcGroup(409)
   g = G.generator()
@@ -187,6 +214,8 @@ def test_ec_arithmetic():
 def test_ec_io():
   G = EcGroup(409)
   g = G.generator()
+
+  x,y = g.get_affine()
   assert len(g.export()) == 25
   i = G.infinite()
   assert len(i.export()) == 1

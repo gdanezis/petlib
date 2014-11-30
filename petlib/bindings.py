@@ -71,6 +71,11 @@ int EC_GROUP_precompute_mult(EC_GROUP *, BN_CTX *);
 /* EC_GROUP_have_precompute_mult() reports whether such precomputation has been done */
 int EC_GROUP_have_precompute_mult(const EC_GROUP *);
 
+int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
+const EC_POINT *p, BIGNUM *x, BIGNUM *y, BN_CTX *ctx);
+int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group, EC_POINT *p,
+const BIGNUM *x, int y_bit, BN_CTX *ctx);
+
 size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_form_t form,
         unsigned char *buf, size_t len, BN_CTX *);
 int EC_POINT_oct2point(const EC_GROUP *, EC_POINT *,
