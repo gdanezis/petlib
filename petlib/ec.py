@@ -115,6 +115,9 @@ class EcPt(object):
     _check( _C.EC_POINT_copy(new_point.pt, self.pt) )
     return new_point
 
+  def pt_add(self, other):
+    """Adds two points together. Synonym with self + other."""
+
   def __add__(self, other):
     _check( type(other) == EcPt )
     _check( other.group == self.group )
@@ -122,23 +125,36 @@ class EcPt(object):
     _check( _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _FFI.NULL) )
     return result
 
-  def double(self):
+  def pt_double(self):
     """Doubles the point. equivalent to "self + self".
     """
     result = EcPt(self.group)
     _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL) )
     return result
 
+  def pt_neg(self):
+    """Returns the negative of the point. Synonym with -self"""
+    return sefl.__neg__()
+
   def __neg__(self):
     result = copy(self)
     _check( _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL) )
     return result
+
+  def pt_mul(self, scalar):
+    """Returns the product of the point with a scalar (not communtative). Synonym with scalar * self."""
+    return self.__rmul__(scalar)
+
 
   @force_Bn(1)
   def __rmul__(self, other):
     result = EcPt(self.group)
     _check( _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL) )
     return result
+
+  def pt_eq(self, other):
+    """Returns a boolean denoting whether the points are equal. Synonym with self == other."""
+    return self.__eq__(other)
 
   def __eq__(self, other):
     _check( type(other) == EcPt )
@@ -200,7 +216,7 @@ def test_ec_arithmetic():
   G = EcGroup(409)
   g = G.generator()
   assert g + g == g + g  
-  assert g + g == g.double()
+  assert g + g == g.pt_double()
   assert g + g == Bn(2) * g  
   assert g + g == 2 * g  
    

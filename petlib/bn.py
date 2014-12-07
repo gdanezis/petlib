@@ -31,7 +31,7 @@ def force_Bn(n):
 def _check(return_val):
     """Checks the return code of the C calls"""
     if not (return_val):
-    	raise Exception("BN exception") 
+        raise Exception("BN exception") 
 
 class Bn(object):
   """The core Big Number class. 
@@ -150,18 +150,32 @@ class Bn(object):
     sig = int(_C.BN_cmp(self.bn, other.bn))
     return sig
 
+  def nonzero(self):
+    'Turn bn into boolean. False if zero, True otherwise.' 
+    self.__nonzero__()
+
   def __nonzero__(self):
     'Turn into boolean' 
     return not (self == Bn(0))
 
   ## Export in different representations
 
+  def repr(self):
+    'The representation of the number as a decimal string'
+    self.__repr__()
+
   def __repr__(self):
-    'The representation of the string in decimal'
+    'The representation of the number as a decimal string'
     buf =  _C.BN_bn2dec(self.bn);
     s = str(_FFI.string(buf))
     _C.OPENSSL_free(buf)
     return s
+
+  def int():
+    """A native python integer representation of the Big Number.
+       Synonym for int(bn).
+    """
+    self.__init__()
 
   def __int__(self):
     """A native python integer representation of the Big Number"""
@@ -170,6 +184,11 @@ class Bn(object):
   def __index__(self):
     """A native python integer representation of the Big Number"""
     return int(self.__repr__())
+
+  def hex(self):
+    """The representation of the string in hexadecimal. 
+    Synonym for hex(n)."""
+    self.__hex__()
 
   def __hex__(self):
     """The representation of the string in hexadecimal"""
@@ -181,19 +200,25 @@ class Bn(object):
   def binary(self):
     """Returns the binary representation of the absolute value of the Big 
     Number. You need to extact the sign separately."""
+    if self < 0:
+        raise Exception("Cannot represent negative numbers")
     size = _C._bn_num_bytes(self.bn);
     bin_string = _FFI.new("unsigned char[]", size)
     _check( _C.BN_bn2bin(self.bn, bin_string) )
     return str(_FFI.buffer(bin_string)[:])
 
   def random(self):
-  	"""Returns a random number 0 <= rnd < self"""
-  	rnd = Bn()
-  	_check( _C.BN_rand_range(rnd.bn, self.bn) )
-  	return rnd
+    """Returns a random number 0 <= rnd < self"""
+    rnd = Bn()
+    _check( _C.BN_rand_range(rnd.bn, self.bn) )
+    return rnd
 
 
   ## ---------- Arithmetic --------------
+
+  def int_add(self, other):
+    """Returns the sum of this number with another. Synonym for self + other."""
+    return self.__add__(other)
 
   @force_Bn(1)
   def __add__(self, other):
@@ -201,11 +226,20 @@ class Bn(object):
     _check(_C.BN_add(r.bn, self.bn, other.bn))
     return r
 
+  def int_sub(self, other):
+    """Returns the difference between this number and another. 
+    Synonym for self - other."""
+
   @force_Bn(1)
   def __sub__(self, other):
     r = Bn()
     _check(_C.BN_sub(r.bn, self.bn, other.bn))
     return r
+
+  def int_mul(self, other):
+    """Returns the product of this number with another.
+    Synonym for self * other."""
+    return self.__mul__(self, other)
 
   @force_Bn(1)
   def __mul__(self, other):
@@ -220,7 +254,7 @@ class Bn(object):
   @force_Bn(1)
   @force_Bn(2)
   def mod_add(self, other, m):
-    """Return the sum of self and other modulo m."""
+    """Returns the sum of self and other modulo m."""
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
@@ -232,7 +266,7 @@ class Bn(object):
   @force_Bn(1)
   @force_Bn(2)
   def mod_sub(self, other, m):
-    """Return the difference of self and other modulo m."""
+    """Returns the difference of self and other modulo m."""
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
@@ -253,6 +287,11 @@ class Bn(object):
       _C.BN_CTX_free(bnctx)
     return r
 
+  def divmod(self, other):
+    """Returns the integer division and remaider of this number by another.
+    Synonym for (div, mod) = divmod(self, other)"""
+    return self.__divmod__(other)
+
   @force_Bn(1)
   def __divmod__(self, other):
     try:
@@ -264,10 +303,20 @@ class Bn(object):
       _C.BN_CTX_free(bnctx)
     return (dv, rem)
 
+  def int_div(self, other):
+    """Returns the integer division of this number by another. 
+    Synonym of self / other"""
+    return self.__div__(other)
+
   @force_Bn(1)
   def __div__(self, other):
     dv, _ = divmod(self, other)
     return dv
+
+  def mod(self, other):
+    """Returns the remainder of this number modulo another.
+    Synonym for self % other"""
+    return self.__mod__(other)
 
   @force_Bn(1)
   def __mod__(self, other):
@@ -286,6 +335,10 @@ class Bn(object):
   @force_Bn(1)
   def __floordiv__(self, other):
     return self.__div__(other)
+
+  def pow(self, other, modulo=None):
+    """Returns the number raised to the power other optionally modulo a third number. 
+    Synonym with powe(self, other, modulo)"""
 
   @force_Bn(1)
   @force_Bn(2)
@@ -329,6 +382,10 @@ class Bn(object):
     """Returns the number of bits representing this Big Number"""
     return int(_C.BN_num_bits(self.bn))
 
+  def int_neg(self):
+    """Returns the negative of this number. Synonym with -self"""
+    return self.__neg__()
+
   # Implement negative 
   def __neg__(self):
     zero = Bn(0)
@@ -355,10 +412,10 @@ def test_bn_constructors():
 
   assert Bn.from_hex(hex(Bn(-100))) == -100
 
-  assert Bn.from_binary(Bn(-100).binary()) == 100
+  #assert Bn.from_binary(Bn(-100).binary()) == 100
   assert Bn.from_binary(Bn(100).binary()) == Bn(100)
   assert Bn.from_binary(Bn(100).binary()) == 100
-  assert Bn.from_binary(Bn(-100).binary()) != Bn(50)
+  #assert Bn.from_binary(Bn(-100).binary()) != Bn(50)
   assert int(Bn(-100)) == -100
 
 def test_bn_prime():

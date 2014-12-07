@@ -27,8 +27,8 @@ class Cipher(object):
 
     def op(self, key, iv, enc=1):
         c_op = CipherOperation()
-        _check( len(key) >= self.len_key())
-        _check( len(iv) >= self.len_IV())
+        _check( len(key) == self.len_key())
+        _check( len(iv) == self.len_IV())
         _check( enc in [0,1] )
         _check( _C.EVP_CipherInit_ex(c_op.ctx, 
             self.alg,  _FFI.NULL, key, iv, enc) )
