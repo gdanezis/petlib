@@ -5,10 +5,15 @@ from binascii import hexlify
 
 import pytest
 
+
 def _check(return_val):
     """Checks the return code of the C calls"""
-    if not (return_val):
-        raise Exception("Cipher exception") 
+    if type(return_val) is int and return_val == 1:
+      return
+    if type(return_val) is bool and return_val == True:
+      return
+
+    raise Exception("Cipher exception") 
 
 class Cipher(object):
     def __init__(self, name):
@@ -89,6 +94,12 @@ def test_aes_init():
     assert aes.get_nid() == 419
     del aes
 
+
+def test_errors():
+    with pytest.raises(Exception) as excinfo:
+        aes = Cipher("AES-128-XXF")
+    assert 'Unknown' in str(excinfo.value)
+
 def test_aes_enc():
     aes = Cipher("AES-128-CBC")
     enc = aes.op(key="A"*16, iv="A"*16)
@@ -99,6 +110,34 @@ def test_aes_enc():
     ciphertext += enc.finalize()
 
     dec = aes.op(key="A"*16, iv="A"*16, enc=0)
+    plaintext = dec.update(ciphertext)
+    plaintext += dec.finalize()
+    assert plaintext == ref
+
+def test_aes_ctr():
+    aes = Cipher("AES-128-CTR")
+    enc = aes.op(key="A"*16, iv="A"*16)
+
+    ref = "Hello World" * 10000
+
+    ciphertext = enc.update(ref)
+    ciphertext += enc.finalize()
+
+    dec = aes.op(key="A"*16, iv="A"*16, enc=0)
+    plaintext = dec.update(ciphertext)
+    plaintext += dec.finalize()
+    assert plaintext == ref
+
+def test_aes_ops():
+    aes = Cipher("AES-128-CTR")
+    enc = aes.enc(key="A"*16, iv="A"*16)
+
+    ref = "Hello World" * 10000
+
+    ciphertext = enc.update(ref)
+    ciphertext += enc.finalize()
+
+    dec = aes.dec(key="A"*16, iv="A"*16)
     plaintext = dec.update(ciphertext)
     plaintext += dec.finalize()
     assert plaintext == ref

@@ -221,13 +221,35 @@ int  EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
 void init_ciphers();
 void cleanup_ciphers();
 
+// The HMAC interface
+
+
+typedef ... HMAC_CTX;
+typedef ... EVP_MD;
+
+int EVP_MD_size(const EVP_MD *md);
+int EVP_MD_block_size(const EVP_MD *md);
+const EVP_MD *EVP_get_digestbyname(const char *name);
+
+
+ void HMAC_CTX_init(HMAC_CTX *ctx);
+
+ int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
+               const EVP_MD *md);
+ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int key_len,
+                   const EVP_MD *md, ENGINE *impl);
+ int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, int len);
+ int HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
+
+ void HMAC_CTX_cleanup(HMAC_CTX *ctx);
+ void HMAC_cleanup(HMAC_CTX *ctx);
 
 """)
 
 _C = _FFI.verify("""
 #include <openssl/ec.h>
 #include <openssl/evp.h>
-
+#include <openssl/hmac.h>
 
 #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
@@ -266,14 +288,21 @@ class InitCicphers(object):
 
   def __init__(self):
     global _inited
+    self.on = False
     if not _inited:
       _C.init_ciphers()
       _inited = True
+      self.on = True
 
   def __del__(self):
     global _inited
-    if _inited:
+    if _inited and self.on:
       _inited = False
       _C.cleanup_ciphers()
 
 _ciphers = InitCicphers()
+
+def test_double_load():
+  _c2 = InitCicphers()
+  del _c2
+  ## Nothing bad should happen

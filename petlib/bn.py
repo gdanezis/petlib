@@ -30,8 +30,12 @@ def force_Bn(n):
 
 def _check(return_val):
     """Checks the return code of the C calls"""
-    if not (return_val):
-        raise Exception("BN exception") 
+    if type(return_val) is int and return_val == 1:
+      return
+    if type(return_val) is bool and return_val == True:
+      return
+
+    raise Exception("BN exception") 
 
 class Bn(object):
   """The core Big Number class. 
@@ -56,7 +60,9 @@ class Bn(object):
     """
 
     ptr = _FFI.new("BIGNUM **")
-    _check( (_C.BN_dec2bn(ptr, sdec)) )
+    read_bytes = _C.BN_dec2bn(ptr, sdec)
+    if read_bytes != len(sdec):
+      raise Exception("BN Error")
 
     ret = Bn()
     _C.BN_copy(ret.bn, ptr[0])
@@ -72,9 +78,10 @@ class Bn(object):
       shex (string) -- hex (0-F) string possibly starting with minus.
     """
 
-
     ptr = _FFI.new("BIGNUM **")
-    _check( (_C.BN_hex2bn(ptr, shex)) )
+    read_bytes = _C.BN_hex2bn(ptr, shex)
+    if read_bytes != len(shex):
+      raise Exception("BN Error")
 
     ret = Bn()
     _C.BN_copy(ret.bn, ptr[0])
@@ -152,7 +159,7 @@ class Bn(object):
 
   def nonzero(self):
     'Turn bn into boolean. False if zero, True otherwise.' 
-    self.__nonzero__()
+    return self.__nonzero__()
 
   def __nonzero__(self):
     'Turn into boolean' 
@@ -162,7 +169,7 @@ class Bn(object):
 
   def repr(self):
     'The representation of the number as a decimal string'
-    self.__repr__()
+    return self.__repr__()
 
   def __repr__(self):
     'The representation of the number as a decimal string'
@@ -171,11 +178,11 @@ class Bn(object):
     _C.OPENSSL_free(buf)
     return s
 
-  def int():
+  def int(self):
     """A native python integer representation of the Big Number.
        Synonym for int(bn).
     """
-    self.__init__()
+    return self.__int__()
 
   def __int__(self):
     """A native python integer representation of the Big Number"""
@@ -188,7 +195,7 @@ class Bn(object):
   def hex(self):
     """The representation of the string in hexadecimal. 
     Synonym for hex(n)."""
-    self.__hex__()
+    return self.__hex__()
 
   def __hex__(self):
     """The representation of the string in hexadecimal"""
@@ -239,7 +246,7 @@ class Bn(object):
   def int_mul(self, other):
     """Returns the product of this number with another.
     Synonym for self * other."""
-    return self.__mul__(self, other)
+    return self.__mul__(other)
 
   @force_Bn(1)
   def __mul__(self, other):
@@ -410,13 +417,38 @@ def test_bn_constructors():
   assert Bn.from_decimal("100") == 100
   assert Bn.from_decimal("-100") == -100
 
+  with pytest.raises(Exception) as excinfo:
+    Bn.from_decimal("100ABC")
+  assert 'BN Error' in str(excinfo.value)
+
+  with pytest.raises(Exception) as excinfo:
+    Bn.from_hex("100ABCZ")
+  assert 'BN Error' in str(excinfo.value)
+
   assert Bn.from_hex(hex(Bn(-100))) == -100
+  assert Bn(15).hex() == hex(Bn(15))
+
+  with pytest.raises(Exception) as excinfo:
+    Bn(-100).binary()
+  assert 'negative' in str(excinfo.value)
 
   #assert Bn.from_binary(Bn(-100).binary()) == 100
   assert Bn.from_binary(Bn(100).binary()) == Bn(100)
   assert Bn.from_binary(Bn(100).binary()) == 100
+
+  with pytest.raises(Exception) as excinfo:
+    _check(False)
+  assert 'BN' in str(excinfo.value)
+
+
   #assert Bn.from_binary(Bn(-100).binary()) != Bn(50)
   assert int(Bn(-100)) == -100
+
+  assert repr(Bn(5)) == Bn(5).repr() == "5"
+  assert range(10)[Bn(4)] == 4
+
+  d = {Bn(5): 5, Bn(6):6}
+
 
 def test_bn_prime():
   p = Bn.get_prime(512)
@@ -427,12 +459,15 @@ def test_bn_prime():
 
 def test_bn_arithmetic():
   assert (Bn(1) + Bn(1) == Bn(2))
+  assert (Bn(1).int_add(Bn(1)) == Bn(2))
+
   assert (Bn(1) + 1 == Bn(2))
   # assert (1 + Bn(1) == Bn(2))
   
   assert (Bn(1) + Bn(-1) == Bn(0))
   assert (Bn(10) + Bn(10) == Bn(20))
   assert (Bn(-1) * Bn(-1) == Bn(1))
+  assert (Bn(-1).int_mul(Bn(-1)) == Bn(1))
 
   assert (Bn(10) * Bn(10) == Bn(100))
   assert (Bn(10) - Bn(10) == Bn(0))
@@ -441,10 +476,19 @@ def test_bn_arithmetic():
   s = -Bn(100)
   assert (Bn(10) + s == Bn(-90))
   assert (Bn(10) - (-Bn(10)) == Bn(20))
+  assert -Bn(-10) == 10
+  assert Bn(-10).int_neg() == 10
 
   assert divmod(Bn(10), Bn(3)) == (Bn(3), Bn(1))
+  assert Bn(10).divmod(Bn(3)) == (Bn(3), Bn(1))
+
+  assert Bn(10) / Bn(3) == Bn(3)
   assert Bn(10) // Bn(3) == Bn(3)
+  assert Bn(10).int_div(Bn(3)) == Bn(3)
+
   assert Bn(10) % Bn(3) == Bn(1)
+  assert Bn(10).mod(Bn(3)) == Bn(1)
+
   
   assert Bn(2) ** Bn(8) == Bn(2 ** 8)
   assert pow(Bn(2), Bn(8), Bn(27)) == Bn(2 ** 8 % 27)
@@ -452,10 +496,17 @@ def test_bn_arithmetic():
   assert pow(Bn(2), 8, 27) == 2 ** 8 % 27
 
   assert Bn(3).mod_inverse(16) == 11
+  
+
+  with pytest.raises(Exception) as excinfo:
+    Bn(3).mod_inverse(0)
+  assert 'No inverse' in str(excinfo.value)
+
 
   assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
   assert Bn(10).mod_sub(100, 15) == (10 - 100) % 15
   assert Bn(10).mod_mul(10, 15) == (10 * 10) % 15
+  assert Bn(-1).nonzero()
 
 
 def test_bn_allocate():
@@ -470,6 +521,10 @@ def test_bn_allocate():
 
   assert hex(Bn(15)) == "0F"
   assert hex(Bn(-15)) == "-0F"
+
+  assert int(Bn(5)) == 5
+  assert Bn(5).int() == 5
+
 
   assert 0 <= Bn(15).random() < 15
 
@@ -494,3 +549,16 @@ def test_bn_cmp():
   assert Bn(2) == Bn(2)
   assert Bn(2) <= Bn(3)
   assert Bn(2) < Bn(3)
+
+def test_check():
+  with pytest.raises(Exception) as excinfo:
+    _check(False)
+  assert 'BN' in str(excinfo.value)
+
+  with pytest.raises(Exception) as excinfo:
+    _check(-1)
+  assert 'BN' in str(excinfo.value)
+
+  with pytest.raises(Exception) as excinfo:
+    _check(0)      
+  assert 'BN' in str(excinfo.value)
