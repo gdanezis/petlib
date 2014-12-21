@@ -17,6 +17,8 @@ def _check(return_val):
 
 def secure_compare(a1, a2):
     """A constant-time comparison function. Returns True if the two strings are equal and False otherwise."""
+    _check(type(a1) == type(a2))
+
     if len(a1) != len(a2):
         return False
 
@@ -28,6 +30,7 @@ def secure_compare(a1, a2):
 
 class Hmac:
     def __init__(self, name, key):
+        self.mac_ctx = None
         md = _C.EVP_get_digestbyname(name)
         if md == _FFI.NULL:
             raise Exception("HMAC Error loading function %s", name)
@@ -56,9 +59,9 @@ class Hmac:
 
         return str(_FFI.buffer(out_md))
 
-
     def __del__(self):
-        _C.HMAC_CTX_cleanup(self.mac_ctx)
+        if self.mac_ctx != None:
+            _C.HMAC_CTX_cleanup(self.mac_ctx)
         
 
 def test_init():
@@ -89,9 +92,26 @@ def test_vectors():
     h.update("what do ya want ")
     h.update("for nothing?")
     d = h.digest()
+
+    with pytest.raises(Exception) as excinfo:
+        h.update("some more")
+    assert 'finalized' in str(excinfo.value)
+
+    with pytest.raises(Exception) as excinfo:
+        h.digest()
+    assert 'finalized' in str(excinfo.value)
+
+    with pytest.raises(Exception) as excinfo:
+        h = Hmac("sha999", "Jefe")
+    assert 'Error' in str(excinfo.value)
+
     assert hexlify(d) == "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
 
-def test_tmp():
+def test_cmp():
     assert secure_compare("Hello", "Hello")
     assert not secure_compare("Hello", "Hellx")
     assert not secure_compare("Hello", "Hell")
+
+    with pytest.raises(Exception) as excinfo:
+        assert not secure_compare("Hello", 2)
+    assert 'HMAC' in str(excinfo.value)

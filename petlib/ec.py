@@ -1,5 +1,4 @@
 from bindings import _FFI, _C
-from functools import wraps
 from copy import copy
 from binascii import hexlify
 from bn import Bn, force_Bn
@@ -33,6 +32,7 @@ class EcGroup(object):
       _check( _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL) )
 
   def parameters(self):
+    """Returns a dictionary with the parameters (a,b and p) of the curve."""
     p, a, b = Bn(), Bn(), Bn()
     _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL) )
     return {"p":p, "a":a, "b":b}
@@ -76,6 +76,7 @@ class EcGroup(object):
     return res == 1
 
   def hash_to_point(self, hinput):
+    """Hash a string into an EC Point."""
     p = self.parameters()["p"]
     
     pt = EcPt(self)
@@ -117,6 +118,7 @@ class EcPt(object):
 
   def pt_add(self, other):
     """Adds two points together. Synonym with self + other."""
+    return self.__add__(other)
 
   def __add__(self, other):
     _check( type(other) == EcPt )
@@ -126,15 +128,14 @@ class EcPt(object):
     return result
 
   def pt_double(self):
-    """Doubles the point. equivalent to "self + self".
-    """
+    """Doubles the point. equivalent to "self + self"."""
     result = EcPt(self.group)
     _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL) )
     return result
 
   def pt_neg(self):
     """Returns the negative of the point. Synonym with -self"""
-    return sefl.__neg__()
+    return self.__neg__()
 
   def __neg__(self):
     result = copy(self)
@@ -144,7 +145,6 @@ class EcPt(object):
   def pt_mul(self, scalar):
     """Returns the product of the point with a scalar (not communtative). Synonym with scalar * self."""
     return self.__rmul__(scalar)
-
 
   @force_Bn(1)
   def __rmul__(self, other):
@@ -182,6 +182,7 @@ class EcPt(object):
     return output
 
   def get_affine(self):
+    """Return the affine coordinates (x,y) of this EC Point."""
     x = Bn()
     y = Bn()
     _check( _C.EC_POINT_get_affine_coordinates_GFp(self.group.ecg,
@@ -226,6 +227,11 @@ def test_ec_arithmetic():
   d[2*g] = 2
   assert d[2*g] == 2
 
+  ## Test long names
+  assert (g + g).pt_eq(g + g)  
+  assert g + g == g.pt_add(g)  
+  assert -g == g.pt_neg()  
+  assert 10 * g == g.pt_mul(10)  
 
 def test_ec_io():
   G = EcGroup(409)

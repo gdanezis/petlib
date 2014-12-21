@@ -1,7 +1,4 @@
 from bindings import _FFI, _C
-from functools import wraps
-from copy import copy
-from binascii import hexlify
 
 import pytest
 
