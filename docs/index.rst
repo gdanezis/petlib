@@ -6,7 +6,23 @@
 Welcome to petlib's documentation!
 ==================================
 
+Testing and Packaging:
+----------------------
+
+Petlib uses `py.test`_ for managing and running unit tests, and the `pytest-cov`_ module for test coverage. For running all tests and generating a code coverage report run::
+
+	py.test --cov petlib petlib/*.py
+
+.. _py.test: http://pytest.org
+.. _pytest-cov: https://pypi.python.org/pypi/pytest-cov
+
+To generate an HTML report of lines not covered by tests run::
+
+	py.test --cov-report html --cov petlib petlib/*.py
+
+
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2

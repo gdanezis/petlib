@@ -6,8 +6,7 @@ from binascii import hexlify
 import pytest
 
 def force_Bn(n):
-  """A decorator that coerces the nth input to be a Big Number
-  """
+  """A decorator that coerces the nth input to be a Big Number"""
 
   def convert_nth(f):
     @wraps(f)
@@ -39,12 +38,10 @@ def _check(return_val):
 
 class Bn(object):
   """The core Big Number class. 
-
-  It supports all comparisons (<, <=, ==, !=, >=, >),
-  arithemtic operations (+, -, %, /, divmod, **, pow) 
-  and copy operations (copy and deep copy). The right-hand 
-  side operand may be a small native python integer (< 2**64).
-  """
+     It supports all comparisons (<, <=, ==, !=, >=, >),
+     arithemtic operations (+, -, %, /, divmod, pow) 
+     and copy operations (copy and deep copy). The right-hand 
+     side operand may be a small native python integer (<2^64). """
 
   # We know this class will keep minimal state
   __slots__ = ['bn']
@@ -215,7 +212,7 @@ class Bn(object):
     return str(_FFI.buffer(bin_string)[:])
 
   def random(self):
-    """Returns a random number 0 <= rnd < self"""
+    """Returns a cryptographically strong random number 0 <= rnd < self."""
     rnd = Bn()
     _check( _C.BN_rand_range(rnd.bn, self.bn) )
     return rnd

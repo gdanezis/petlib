@@ -224,8 +224,10 @@ void cleanup_ciphers();
 // The HMAC interface
 
 
-typedef ... HMAC_CTX;
+typedef struct { ...; } HMAC_CTX;
 typedef ... EVP_MD;
+
+size_t hmac_ctx_size();
 
 int EVP_MD_size(const EVP_MD *md);
 int EVP_MD_block_size(const EVP_MD *md);
@@ -234,15 +236,13 @@ const EVP_MD *EVP_get_digestbyname(const char *name);
 
  void HMAC_CTX_init(HMAC_CTX *ctx);
 
- int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
-               const EVP_MD *md);
  int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int key_len,
                    const EVP_MD *md, ENGINE *impl);
  int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, int len);
  int HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
 
  void HMAC_CTX_cleanup(HMAC_CTX *ctx);
- void HMAC_cleanup(HMAC_CTX *ctx);
+ 
 
 """)
 
@@ -255,6 +255,11 @@ _C = _FFI.verify("""
 
 int _bn_num_bytes(BIGNUM * a){
   return BN_num_bytes(a);
+}
+
+size_t hmac_ctx_size(){
+  return sizeof(HMAC_CTX);
+
 }
 
 void init_ciphers(){
