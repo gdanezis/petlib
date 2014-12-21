@@ -15,6 +15,17 @@ def _check(return_val):
     raise Exception("HMAC exception") 
 
 
+def secure_compare(a1, a2):
+    """A constant-time comparison function. Returns True if the two strings are equal and False otherwise."""
+    if len(a1) != len(a2):
+        return False
+
+    x = _C.CRYPTO_memcmp(a1, a2, len(a1))
+    if int(x) == 0:
+        return True
+
+    return False
+
 class Hmac:
     def __init__(self, name, key):
         md = _C.EVP_get_digestbyname(name)
@@ -79,3 +90,8 @@ def test_vectors():
     h.update("for nothing?")
     d = h.digest()
     assert hexlify(d) == "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
+
+def test_tmp():
+    assert secure_compare("Hello", "Hello")
+    assert not secure_compare("Hello", "Hellx")
+    assert not secure_compare("Hello", "Hell")

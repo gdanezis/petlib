@@ -12,6 +12,10 @@ _FFI.cdef("""
 */ 
 
 void OPENSSL_free(void*);
+ 
+ // The constant-time compare functions
+ int CRYPTO_memcmp(const void *a, const void *b, size_t len);
+
 
 /* 
   ECC OpenSSL functions.

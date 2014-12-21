@@ -39,6 +39,8 @@ Contents
 
 .. automodule:: petlib
  
+.. autofunction:: petlib.hmac.secure_compare
+
 .. autoclass:: petlib.bn.Bn
     :members:
 
