@@ -16,18 +16,24 @@ def _check(return_val):
     raise Exception("Cipher exception") 
 
 class Cipher(object):
+    """ A class representing a symmetric cipher and mode."""
     def __init__(self, name):
+        """Initialize the cipher by name"""
         self.alg = _C.EVP_get_cipherbyname(name)
         if self.alg == _FFI.NULL:
             raise Exception("Unknown cipher: %s" % name )
 
     def len_IV(self):
+        """Return the Initialization Vector length in bytes."""
         return int(self.alg.iv_len)
     def len_key(self):
+        """Return the secret key length in bytes."""
         return int(self.alg.key_len)
     def len_block(self):
+        """Return the block size in bytes."""
         return int(self.alg.block_size)
     def get_nid(self):
+        """Return the OpenSSL nid of the cipher and mode."""
         return int(self.alg.nid)
 
     def op(self, key, iv, enc=1):
@@ -41,9 +47,13 @@ class Cipher(object):
         return c_op
 
     def enc(self, key, iv):
+        """Initializes an encryption engine with the cipher with a specific key and Initialization Vector (IV). 
+        Returns the CipherOperation engine."""
         return self.op(key, iv, enc=1)
 
     def dec(self, key, iv):
+        """Initializes an decryption engine with the cipher with a specific key and Initialization Vector (IV). 
+        Returns the CipherOperation engine."""
         return self.op(key, iv, enc=0)
 
     def __del__(self):
@@ -56,10 +66,12 @@ class CipherOperation(object):
         self.cipher = None
         
     def control(self, ctype, arg, ptr):
+        """Passes an OpenSSL control message to the CipherOpenration engine."""
         ret = int(_C.EVP_CIPHER_CTX_ctrl(self.ctx, ctype, arg, ptr))
         return ret
 
     def update(self, data):
+        """Processes some data, and returns a partial result."""
         block_len = self.cipher.len_block()
         alloc_len = len(data) + block_len - 1
         outl = _FFI.new("int *")
@@ -70,6 +82,7 @@ class CipherOperation(object):
         return ret
 
     def finalize(self):
+        """Finalizes the operation and may return some additional data"""
         block_len = self.cipher.len_block()
         alloc_len = block_len
         outl = _FFI.new("int *")

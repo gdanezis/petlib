@@ -9,7 +9,7 @@ def force_Bn(n):
   """A decorator that coerces the nth input to be a Big Number"""
 
   def convert_nth(f):
-    @wraps(f)
+    @wraps(f)  
     def new_f(*args, **kwargs):
       if not n < len(args):
         return f(*args, **kwargs)
@@ -258,7 +258,9 @@ class Bn(object):
   @force_Bn(1)
   @force_Bn(2)
   def mod_add(self, other, m):
-    """Returns the sum of self and other modulo m."""
+    """
+    mod_add(other, m)
+    Returns the sum of self and other modulo m."""
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
@@ -270,7 +272,9 @@ class Bn(object):
   @force_Bn(1)
   @force_Bn(2)
   def mod_sub(self, other, m):
-    """Returns the difference of self and other modulo m."""
+    """
+    mod_sub(other, m)
+    Returns the difference of self and other modulo m."""
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
@@ -282,7 +286,9 @@ class Bn(object):
   @force_Bn(1)
   @force_Bn(2)
   def mod_mul(self, other, m):
-    """Return the product of self and other modulo m."""
+    """
+    mod_mul(other, m)
+    Return the product of self and other modulo m."""
     try:
       bnctx = _C.BN_CTX_new()
       r = Bn()
@@ -360,7 +366,9 @@ class Bn(object):
 
   @force_Bn(1)
   def mod_inverse(self, m):
-    """Compute the inverse mod m, such that self * res == 1 mod m."""
+    """
+    mod_inverse(m)
+    Compute the inverse mod m, such that self * res == 1 mod m."""
 
     try:
       bnctx = _C.BN_CTX_new()
