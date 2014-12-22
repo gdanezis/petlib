@@ -29,6 +29,8 @@ def secure_compare(a1, a2):
     return False
 
 class Hmac:
+    """Initialize the HMAC by name with a key"""
+
     def __init__(self, name, key):
         self.mac_ctx = None
         md = _C.EVP_get_digestbyname(name)
@@ -42,11 +44,13 @@ class Hmac:
         self.active = True
 
     def update(self, data):
+        """Update the HMAC with some data to authenticate."""
         if not self.active:
             raise Exception("HMAC already finalized!")
         _check(_C.HMAC_Update(self.mac_ctx, data, len(data)))
 
     def digest(self):
+        """Output the HMAC digest as a binary string."""
         if not self.active:
             raise Exception("HMAC already finalized!")
         self.active = False
