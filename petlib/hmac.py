@@ -28,8 +28,16 @@ def secure_compare(a1, a2):
 
     return False
 
-class Hmac:
-    """Initialize the HMAC by name with a key"""
+class Hmac(object):
+    """Initialize the HMAC by name with a key.
+
+    Args:
+        name: the name of the hash function to be used.
+        key: the cryptographic symmetric key of the HMAC.
+
+    Returns:
+        An HMAC instance, ready to accept data to MAC.
+    """
 
     def __init__(self, name, key):
         self.mac_ctx = None
@@ -44,13 +52,26 @@ class Hmac:
         self.active = True
 
     def update(self, data):
-        """Update the HMAC with some data to authenticate."""
+        """Update the HMAC with some data to authenticate.
+
+        Args:
+            data: the data to add to the MAC.
+
+        Note: you must not call update after you finalize the HMAC.
+
+        Raises:
+            Exception: if called after the HMAC has been finalized.
+        """
         if not self.active:
             raise Exception("HMAC already finalized!")
         _check(_C.HMAC_Update(self.mac_ctx, data, len(data)))
 
     def digest(self):
-        """Output the HMAC digest as a binary string."""
+        """Output the HMAC digest as a binary string.
+
+        Returns:
+            The digest as a binary data string.
+        """
         if not self.active:
             raise Exception("HMAC already finalized!")
         self.active = False

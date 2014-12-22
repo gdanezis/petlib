@@ -231,7 +231,7 @@ def test_ec_arithmetic():
   assert (g + g).pt_eq(g + g)  
   assert g + g == g.pt_add(g)  
   assert -g == g.pt_neg()  
-  assert 10 * g == g.pt_mul(10)  
+  assert 10 * g == g.pt_mul(10)
 
 def test_ec_io():
   G = EcGroup(409)
