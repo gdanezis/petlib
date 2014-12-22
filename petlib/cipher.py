@@ -1,4 +1,5 @@
 from bindings import _FFI, _C
+from binascii import hexlify
 
 import pytest
 
@@ -13,7 +14,23 @@ def _check(return_val):
     raise Exception("Cipher exception") 
 
 class Cipher(object):
-    """ A class representing a symmetric cipher and mode."""
+    """ A class representing a symmetric cipher and mode.
+
+    Example:
+        >>> aes = Cipher("AES-128-CTR")
+        >>> enc = aes.enc(key="A"*16, iv="A"*16)
+        >>> ref = "Hello World"
+        >>> ciphertext = enc.update(ref)
+        >>> ciphertext += enc.finalize()
+        >>> hexlify(ciphertext)
+        'b0aecdc6347177db8091be'
+        >>> dec = aes.dec(key="A"*16, iv="A"*16)
+        >>> plaintext = dec.update(ciphertext)
+        >>> plaintext += dec.finalize()
+        >>> plaintext == ref
+        True
+
+    """
     def __init__(self, name):
         """Initialize the cipher by name"""
         self.alg = _C.EVP_get_cipherbyname(name)

@@ -16,7 +16,15 @@ def _check(return_val):
 
 
 def secure_compare(a1, a2):
-    """A constant-time comparison function. Returns True if the two strings are equal and False otherwise."""
+    """A constant-time comparison function. Returns True if the two strings are equal and False otherwise.
+
+    Args:
+        a1 (str): the first string
+        a2 (str): the second string
+
+    Returns:
+        bool: whether the two stings are equal.
+    """
     _check(type(a1) == type(a2))
 
     if len(a1) != len(a2):
@@ -37,6 +45,16 @@ class Hmac(object):
 
     Returns:
         An HMAC instance, ready to accept data to MAC.
+
+    Example:
+
+        >>> h = Hmac("sha512", "Jefe")
+        >>> h.update("what do ya want ")
+        >>> h.update("for nothing?")
+        >>> d = h.digest()
+        >>> hexlify(d)[:10] == "164b7a7bfc"
+        True
+
     """
 
     def __init__(self, name, key):
