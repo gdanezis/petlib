@@ -1,18 +1,18 @@
 ## An implementation of an additivelly homomorphic 
 ## ECC El-Gamal scheme, used in Privex.
 
-from petlib.ec import EcGroup, EcPt
+from petlib.ec import EcGroup
 
 def params_gen(nid=409):
     """Generates the AHEG for an EC group nid"""
-    G = EcGroup(409)
+    G = EcGroup(nid)
     g = G.generator()
     o = G.order()
     return (G, g, o)
 
 def key_gen(params):
     """Generates a fresh key pair"""
-    G, g, o = params
+    _, g, o = params
     priv = o.random()
     pub = priv * g
     return (pub, priv)
@@ -43,9 +43,9 @@ def randomize(params, pub, c1):
     zero = enc(params, pub, 0)
     return add(params, c1, zero)
 
-def make_table(param):
+def make_table(params):
     """Make a decryption table"""
-    G, g, o = params
+    _, g, o = params
     table = {}
     for i in range(-1000, 1000):
         table[i * g] = i
@@ -53,8 +53,8 @@ def make_table(param):
 
 def dec(params, table, priv, c1):
     """Decrypt an encrypted counter"""
-    G, g, o = params
-    a,b = c1
+    _, g, o = params
+    a, b = c1
     plain = b + (-priv * a)
     return table[plain] 
 
