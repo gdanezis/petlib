@@ -13,6 +13,7 @@ setup(name='petlib',
       license="2-clause BSD",
       long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
       install_requires=[
-            "cffi >= 0.8.2"
+            "cffi >= 0.8.2",
+            "pytest >= 2.6.4"
       ],
 )

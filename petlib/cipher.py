@@ -17,14 +17,15 @@ class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
     Example:
+        Encrypt and decrypt the string "Hello World!" using AES-CTR, and fixed IV and key (all "A").
         >>> aes = Cipher("AES-128-CTR")
-        >>> enc = aes.enc(key="A"*16, iv="A"*16)
+        >>> enc = aes.enc(key="AAAAAAAAAAAAAAAA", iv="AAAAAAAAAAAAAAAA")
         >>> ref = "Hello World"
         >>> ciphertext = enc.update(ref)
         >>> ciphertext += enc.finalize()
         >>> hexlify(ciphertext)
         'b0aecdc6347177db8091be'
-        >>> dec = aes.dec(key="A"*16, iv="A"*16)
+        >>> dec = aes.dec(key="AAAAAAAAAAAAAAAA", iv="AAAAAAAAAAAAAAAA")
         >>> plaintext = dec.update(ciphertext)
         >>> plaintext += dec.finalize()
         >>> plaintext == ref
