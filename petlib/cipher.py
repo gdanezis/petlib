@@ -17,7 +17,7 @@ class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
     Example:
-        Encrypt and decrypt the string "Hello World!" using AES-CTR, and fixed IV and key (all "A").
+        
         >>> aes = Cipher("AES-128-CTR")
         >>> enc = aes.enc(key="AAAAAAAAAAAAAAAA", iv="AAAAAAAAAAAAAAAA")
         >>> ref = "Hello World"
@@ -67,7 +67,7 @@ class Cipher(object):
         return self.op(key, iv, enc=1)
 
     def dec(self, key, iv):
-        """Initializes an decryption engine with the cipher with a specific key and Initialization Vector (IV). 
+        """Initializes a decryption engine with the cipher with a specific key and Initialization Vector (IV). 
         Returns the CipherOperation engine."""
         return self.op(key, iv, enc=0)
 
