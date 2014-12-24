@@ -1,3 +1,13 @@
+## An example of how to implement an engine for Zero-Knowledge
+#  Proof of Discrete Log representations using Brands' and 
+#  Camenisch's extensions to the basic Schnor proof.
+#  
+# For details of what is doing on see Chapter 3:
+# "Rethinking Public Key Infrastructures and Digital Certificates
+# Building in Privacy" By Stefan Brands, MIT Press (2000)
+# On-line: http://www.credentica.com/the_mit_pressbook.html
+
+
 from petlib.ec import EcGroup 
 from petlib.bn import Bn 
 from hashlib import sha256
