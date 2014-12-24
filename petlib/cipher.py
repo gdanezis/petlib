@@ -32,6 +32,9 @@ class Cipher(object):
         True
 
     """
+
+    __slots__ = ["alg"]
+
     def __init__(self, name):
         """Initialize the cipher by name"""
         self.alg = _C.EVP_get_cipherbyname(name)
@@ -75,6 +78,9 @@ class Cipher(object):
         pass
 
 class CipherOperation(object):
+
+    __slots__ = ["ctx", "cipher"]
+
     def __init__(self):
         self.ctx = _C.EVP_CIPHER_CTX_new()
         _C.EVP_CIPHER_CTX_init(self.ctx)

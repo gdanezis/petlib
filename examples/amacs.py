@@ -40,6 +40,7 @@ def verify_ggm(params, sk, messages, sig):
     """Verify the mac on messages"""
     u, uprime = sig
     G, _, _, _ = params
+    
     if u == G.infinite():
         raise Exception("Invalid MAC: u point at infinity.")
 
