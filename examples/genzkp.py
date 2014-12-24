@@ -66,13 +66,11 @@ class Gen(object):
         self.constuction = constuction
 
     def get_repr(self):
-        if self.name:
+        if self.name or self.constuction[0] == "Gen*":
             return [self]
-        if self.constuction[0] == "Gen*":
-            return [self]
-        if self.constuction[0] == "Gen+":
+        elif self.constuction[0] == "Gen+":
             return self.constuction[1:]
-        print self.name, self.constuction
+        
         raise Exception("Unknown Gen type")
 
     def __add__(self, other):
@@ -147,6 +145,7 @@ class ZKProof(object):
         self.proofs = []
 
     def add_proof(self, lhs, rhs):
+        """Adds a proof obligation to show the rhs is the representation of the lhs"""
         assert isinstance(lhs, Gen)
         assert lhs.prove == False
         assert isinstance(rhs, Gen)
@@ -156,6 +155,7 @@ class ZKProof(object):
         self.proofs += [(lhs, rhs)]
 
     def get(self, vtype, name):
+        """Returns a number of proof variables of a certain type"""
         if isinstance(name, str):
             assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
             return vtype(self, name)
@@ -165,6 +165,7 @@ class ZKProof(object):
         raise Exception("Wrong type of names: str or list(str)")
 
     def build_proof(self, env, message=""):
+        """Generates a proof within an environment of assigned public and secret variables."""
 
         G = self.G
         order = G.order()
@@ -212,6 +213,7 @@ class ZKProof(object):
         return (c, responses)
 
     def verify_proof(self, env, sig, message=""):
+        """Verifies a proof within an environment of assigned public only variables."""
 
         ## Select the constants for the env
         env_l = [(k,v)for  k,v in env.items() if k in self.Const]
