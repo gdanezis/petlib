@@ -34,6 +34,7 @@ def verify(G, h, g, proof, m=""):
     """Verify the statement ZK(x ; h = g^x)"""
     c, r = proof
     W = (r * g + c * h)
+    o = G.order()
 
     state = ['schnor', G.nid(), g, h, m, W]
     hash_c = challenge(state)
@@ -41,7 +42,7 @@ def verify(G, h, g, proof, m=""):
     return c == c2
 
 
-if __name__ == "__main__":
+def test_zkp():
     G = EcGroup(409)
     g = G.generator()
     o = G.order()

@@ -1,6 +1,10 @@
 from amacs import *
 from genzkp import *
 
+def lnames(name, n):
+    assert type(name) == str
+    return [name+"%i" % i for i in range(1, n+1)]
+
 def cred_setup():
     params = setup_ggm()
     return params
@@ -22,9 +26,9 @@ def cred_issue_proof(params, n):
     u, up, g, h, Cx0 = zk.get(ConstGen, ["u", "up", "g", "h", "Cx0"])
     x0, x0_bar =  zk.get(Sec, ["x0", "x0_bar"])
 
-    xi_names = ["x%i" % i for i in range(1, n+1)]
-    mi_names = ["m%i" % i for i in range(1, n+1)]
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
+    xi_names = lnames("x", n) 
+    mi_names = lnames("m", n) 
+    Xi_names = lnames("X", n) 
 
     xis = zk.get(Sec, xi_names)
     mis = zk.get(Pub, mi_names)
@@ -64,9 +68,9 @@ def cred_issue(params, publics, secrets, messages):
     }
 
     n = len(messages)
-    xi_names = ["x%i" % i for i in range(1, n+1)]
-    mi_names = ["m%i" % i for i in range(1, n+1)]
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
+    xi_names = lnames("x", n)
+    mi_names = lnames("m", n) 
+    Xi_names = lnames("X", n)
 
     ivars = zip(xi_names, sk[1:]) \
             + zip(mi_names, messages) \
@@ -97,8 +101,8 @@ def cred_issue_check(params, publics, mac, sig, messages):
     }
 
     n = len(messages)
-    mi_names = ["m%i" % i for i in range(1, n+1)]
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
+    mi_names = lnames("m", n) 
+    Xi_names = lnames("X", n) 
 
     ivars = zip(mi_names, messages) \
             + zip(Xi_names, iparams)
@@ -117,10 +121,10 @@ def cred_show_proof(params, n):
     ## The variables
     u, g, h = zk.get(ConstGen, ["u", "g", "h"])
     
-    zi_names = ["z%i" % i for i in range(1, n+1)]
-    mi_names = ["m%i" % i for i in range(1, n+1)]
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
-    Cmi_names = ["Cm%i" % i for i in range(1, n+1)]
+    zi_names = lnames("z", n)
+    mi_names = lnames("m", n)
+    Xi_names = lnames("X", n)
+    Cmi_names = lnames("Cm", n)
 
     V = zk.get(ConstGen, "V")
     minus_one = zk.get(ConstPub, "-1")
@@ -170,10 +174,10 @@ def cred_show(params, publics, mac, sig, messages):
         "V": V, "r": r, "-1": -Bn(1)
     }
 
-    zi_names = ["z%i" % i for i in range(1, n+1)]
-    mi_names = ["m%i" % i for i in range(1, n+1)]
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
-    Cmi_names = ["Cm%i" % i for i in range(1, n+1)]
+    zi_names = lnames("z", n)
+    mi_names = lnames("m", n)
+    Xi_names = lnames("X", n)
+    Cmi_names = lnames("Cm", n)
 
     env.update(zip(zi_names, zis))    
     env.update(zip(mi_names, messages))    
@@ -209,8 +213,8 @@ def cred_show_check(params, publics, secrets, creds, sig):
         "V": V, "-1": -Bn(1)
     }
 
-    Xi_names = ["X%i" % i for i in range(1, n+1)]
-    Cmi_names = ["Cm%i" % i for i in range(1, n+1)]
+    Xi_names = lnames("X", n)
+    Cmi_names = lnames("Cm", n)
 
     env.update(zip(Xi_names, iparams))    
     env.update(zip(Cmi_names, Cmis))    

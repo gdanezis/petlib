@@ -2,6 +2,7 @@
 ## ECC El-Gamal scheme, used in Privex.
 
 from petlib.ec import EcGroup
+import pytest
 
 def params_gen(nid=409):
     """Generates the AHEG for an EC group nid"""
@@ -58,7 +59,7 @@ def dec(params, table, priv, c1):
     plain = b + (-priv * a)
     return table[plain] 
 
-if __name__ == "__main__":
+def test_AHEG():
     params = params_gen()
     (pub, priv) = key_gen(params)
     table = make_table(params)

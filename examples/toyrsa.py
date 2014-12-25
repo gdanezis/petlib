@@ -1,6 +1,8 @@
 from petlib.bn import Bn
 from os import urandom
 
+import pytest
+
 def gen_key():
     """Example naive RSA key generation"""
     p = Bn.get_prime(512)
@@ -30,7 +32,7 @@ def dec(pub, priv, ciphertext):
     plain = pow(cipher, d, m)
     return plain.binary()
 
-if __name__ == "__main__":
+def test_toyrsa():
     pub, priv = gen_key()
     c = enc(pub, "Hello World!")
     p = dec(pub, priv, c)
