@@ -208,7 +208,9 @@ class Bn(object):
                 raise Exception("Cannot represent negative numbers")
         size = _C._bn_num_bytes(self.bn);
         bin_string = _FFI.new("unsigned char[]", size)
-        _check( _C.BN_bn2bin(self.bn, bin_string) )
+        
+        l = _C.BN_bn2bin(self.bn, bin_string)
+        assert int(l) == size
         return str(_FFI.buffer(bin_string)[:])
 
     def random(self):
