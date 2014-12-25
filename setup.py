@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='petlib',
-      version='0.0.13',
+      version='0.0.14',
       description='A library implementing a number of Privacy Enhancing Technologies (PETs)',
       author='George Danezis',
       author_email='g.danezis@ucl.ac.uk',

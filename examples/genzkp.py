@@ -77,7 +77,8 @@ class Gen(object):
         assert isinstance(other, Gen)
         assert self.zkp == other.zkp
         assert self.prove == other.prove
-        prove = self.prove
+
+        prove = self.prove or other.prove
         c = ["Gen+"] + self.get_repr() + other.get_repr()
         newG = Gen(self.zkp, prove=prove, constuction=c)
         return newG
@@ -164,8 +165,18 @@ class ZKProof(object):
 
         raise Exception("Wrong type of names: str or list(str)")
 
+    def _check_env(self, env):
+        variables = self.Const.keys() \
+                    + self.Pub.keys() \
+                    + self.Sec.keys()
+
+        for v in variables:
+            assert v in env
+
     def build_proof(self, env, message=""):
         """Generates a proof within an environment of assigned public and secret variables."""
+
+        self._check_env(env)
 
         G = self.G
         order = G.order()
@@ -220,6 +231,10 @@ class ZKProof(object):
         c, responses = sig
         responses = dict(responses.items() + env_l)
 
+        ## Ensure all variables we need are here
+        self._check_env(responses)
+
+        ## Define the maths group we work in
         G = self.G
         order = G.order()
 
