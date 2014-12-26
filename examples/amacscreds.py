@@ -1,3 +1,8 @@
+## An implementation of the credential scheme based on an algebraic
+## MAC proposed by Chase, Meiklejohn and Zaverucha in Algebraic MACs and Keyed-Veriffcation 
+## Anonymous Credentials", at ACM CCS 2014. The credentials scheme
+## is based on the GGM based aMAC. (see section 4.2, pages 8-9)
+
 from amacs import *
 from genzkp import *
 
