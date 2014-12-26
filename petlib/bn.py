@@ -444,6 +444,12 @@ def test_bn_constructors():
     assert Bn.from_binary(Bn(100).binary()) == 100
 
     with pytest.raises(Exception) as excinfo:
+        s = 10**10
+        Bn(s)
+    assert 'does not fit' in str(excinfo.value)
+
+
+    with pytest.raises(Exception) as excinfo:
         _check(False)
     assert 'BN' in str(excinfo.value)
 
@@ -499,6 +505,8 @@ def test_bn_arithmetic():
     
     assert Bn(2) ** Bn(8) == Bn(2 ** 8)
     assert pow(Bn(2), Bn(8), Bn(27)) == Bn(2 ** 8 % 27)
+
+    pow(Bn(10), Bn(10)).binary()
 
     assert pow(Bn(2), 8, 27) == 2 ** 8 % 27
 
