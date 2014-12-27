@@ -41,6 +41,7 @@ def get_latest_dist():
 @needs('build')
 @task
 def make_env():
+    tell("Make a virtualenv")
     if os.path.exists("test_env"):
         return
     os.mkdir("test_env")
@@ -52,6 +53,7 @@ def make_env():
 @task
 @virtualenv(dir=r"test_env/pltest")
 def big_tests():
+    tell("Run acceptance tests (big examples)")
     sh("pip install %s" % get_latest_dist())
     sh("py.test examples/*.py")
     
@@ -60,7 +62,7 @@ def big_tests():
 @task
 def test():
     pass
-
+    
 
 @needs('unit_tests', 'build', 'make_docs', 'make_env', 'big_tests')
 @task
