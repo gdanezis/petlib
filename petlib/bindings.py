@@ -266,12 +266,42 @@ const EVP_MD *EVP_get_digestbyname(const char *name);
  void HMAC_CTX_cleanup(HMAC_CTX *ctx);
  
 
+// The ECDSA interface
+
+
+typedef struct ECDSA_SIG_st
+{
+  BIGNUM * r;
+  BIGNUM * s;
+} ECDSA_SIG;
+
+typedef ... EC_KEY; 
+
+ ECDSA_SIG*     ECDSA_SIG_new(void);
+ void           ECDSA_SIG_free(ECDSA_SIG *sig);
+
+ ECDSA_SIG*     ECDSA_do_sign(const unsigned char *dgst, int dgst_len,
+                        EC_KEY *eckey);
+ int            ECDSA_do_verify(const unsigned char *dgst, int dgst_len,
+                        const ECDSA_SIG *sig, EC_KEY* eckey);
+ int            ECDSA_size(const EC_KEY *eckey);
+
+
+EC_KEY *EC_KEY_new(void);
+void EC_KEY_free(EC_KEY *key);
+
+int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group);
+int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
+int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
+
+
 """)
 
 _C = _FFI.verify("""
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/ecdsa.h>
 
 #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 

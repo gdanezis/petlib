@@ -6,8 +6,12 @@ from hashlib import sha512
 
 def _check(return_val):
         """Checks the return code of the C calls"""
-        if not (return_val):
-            raise Exception("EC exception") 
+        if type(return_val) is int and return_val == 1:
+            return
+        if type(return_val) is bool and return_val == True:
+            return
+
+        raise Exception("EC exception") 
 
 
 class EcGroup(object):

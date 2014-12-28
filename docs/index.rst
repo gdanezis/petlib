@@ -6,10 +6,33 @@
 Welcome to petlib's documentation!
 ==================================
 
+Installation and Dependences
+----------------------------
+
+petlib requires a number of packages, including:
+  * A working installation of OpenSSL > 1.0.1.
+  * A working instalation of python packages cffi, pytest, paver.
+
+To install pelib and the python dependencies you may use the pip package manager::
+
+  pip install petlib
+
 Testing and Packaging
 ---------------------
 
-Petlib uses `py.test`_ for managing and running unit tests, and the `pytest-cov`_ module for test coverage. For running all tests and generating a code coverage report run::
+To build the distribution, create a venv for tests and run all tests (including the examples)::
+
+  paver
+
+Specific paver targets include:
+  * ``unit_tests``: runs the unit tests.
+  * ``build``: builds a distribution bundle in the ``dist`` directory.
+  * ``make_docs``: builds the html documentation in ``docs/_build/html``
+  * ``make_env``: initialized a virtualenv with a fresh petlib in folder ``test_env/pltest``.
+  * ``big_test``: runs all the examples in a virtual environment.
+  * ``test``: runs all tests.
+
+**Under the hood.** Petlib uses `py.test`_ for managing and running unit tests, and the `pytest-cov`_ module for test coverage. For running all tests and generating a code coverage report run::
 
 	py.test --doctest-modules --cov petlib petlib/*.py
 
@@ -39,8 +62,6 @@ Contents
 
 .. automodule:: petlib
  
-.. autofunction:: petlib.hmac.secure_compare
-
 .. autoclass:: petlib.bn.Bn
     :members:
 
@@ -56,10 +77,14 @@ Contents
 .. autoclass:: petlib.cipher.CipherOperation
     :members:
 
-
 .. autoclass:: petlib.hmac.Hmac
     :members:
 
+.. autofunction:: petlib.hmac.secure_compare
+
+.. autofunction:: petlib.ecdsa.do_ecdsa_sign
+
+.. autofunction:: petlib.ecdsa.do_ecdsa_verify
 
 
 Indices and tables
