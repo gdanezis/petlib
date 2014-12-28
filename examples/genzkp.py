@@ -284,7 +284,7 @@ def test_basic():
 def test_Pedersen():
 
     # Define an EC group
-    G = EcGroup(409)
+    G = EcGroup(713)
     order = G.order()
 
     ## Proof definitions

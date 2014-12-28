@@ -15,7 +15,7 @@ import pytest
 
 def test_protocol():
 	# Parameters of the BL schemes
-	G = EcGroup(409)
+	G = EcGroup(713)
 	q = G.order()
 
 	g = G.hash_to_point("g")

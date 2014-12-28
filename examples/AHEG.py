@@ -4,7 +4,7 @@
 from petlib.ec import EcGroup
 import pytest
 
-def params_gen(nid=409):
+def params_gen(nid=713):
     """Generates the AHEG for an EC group nid"""
     G = EcGroup(nid)
     g = G.generator()

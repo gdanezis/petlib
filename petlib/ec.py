@@ -25,8 +25,8 @@ class EcGroup(object):
             all_curves +=  [(int(names[i].nid), str(_FFI.string(names[i].comment)))]
         return dict(all_curves)
     
-    def __init__(self, nid, optimize_mult=True):
-        """Build an EC group from the Open SSL nid"""
+    def __init__(self, nid=713, optimize_mult=True):
+        """Build an EC group from the Open SSL nid. By default use NIST p224, which in OpenSSL 64bit supports constant-time operations."""
         self.ecg = _C.EC_GROUP_new_by_curve_name(nid)
         if optimize_mult:
             _check( _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL) )
@@ -195,7 +195,7 @@ self.pt, x.bn, y.bn, _FFI.NULL))
 def test_ec_list_group():
     c = EcGroup.list_curves()
     assert len(c) > 0 
-    assert 409 in c
+    assert 713 in c
     assert 410 in c
 
 def test_ec_build_group():
@@ -214,7 +214,7 @@ def test_ec_build_group():
     h1 = G.hash_to_point("Hello2")
 
 def test_ec_arithmetic():
-    G = EcGroup(409)
+    G = EcGroup(713)
     g = G.generator()
     assert g + g == g + g  
     assert g + g == g.pt_double()
@@ -234,13 +234,35 @@ def test_ec_arithmetic():
     assert 10 * g == g.pt_mul(10)
 
 def test_ec_io():
-    G = EcGroup(409)
+    G = EcGroup(713)
     g = G.generator()
 
     x,y = g.get_affine()
-    assert len(g.export()) == 25
+    assert len(g.export()) == 29
     i = G.infinite()
     assert len(i.export()) == 1
     assert EcPt.from_binary(g.export(), G) == g
     assert EcPt.from_binary(i.export(), G) == i
+
+def test_p224_const_timing():
+    import time
+
+    ## Note: NIST / SECG p224 is nid: 713/712 (p192 is nid:711)
+    G = EcGroup(713)
+    g = G.generator()
+    order = G.order()
+    h = order.random() * g
+
+    repreats = 100
+    t = []
+    for x in range(0, 200, 20):
+        o = Bn(2) ** x
+        tests = [o.random() for _ in range(repreats)]
+
+        t0 = time.clock()
+        for y in tests:
+            y * h
+        t += [time.clock() - t0]
+        print x, t[-1] / repreats
+    assert abs(t[0] - t[-1]) < 1.0 / 1000
 

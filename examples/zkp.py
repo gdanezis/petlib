@@ -43,7 +43,7 @@ def verify(G, h, g, proof, m=""):
 
 
 def test_zkp():
-    G = EcGroup(409)
+    G = EcGroup(713)
     g = G.generator()
     o = G.order()
     x = o.random()

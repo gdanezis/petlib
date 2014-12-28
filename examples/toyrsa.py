@@ -24,7 +24,7 @@ def enc(pub, plaintext):
     return cipher.binary()
 
 def dec(pub, priv, ciphertext):
-    """Naive RSA decryption"""
+    """Naive RSA decryption. NOT const. time."""
     _, m = pub
     d, = priv
     cipher = Bn.from_binary(ciphertext)

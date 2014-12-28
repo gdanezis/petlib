@@ -6,7 +6,7 @@
 from petlib.ec import EcGroup
 import pytest
 
-def setup_ggm(nid = 409):
+def setup_ggm(nid = 713):
     """Generates the parameters for an EC group nid"""
     G = EcGroup(nid)
     g = G.hash_to_point("g")
@@ -40,7 +40,7 @@ def verify_ggm(params, sk, messages, sig):
     """Verify the mac on messages"""
     u, uprime = sig
     G, _, _, _ = params
-    
+
     if u == G.infinite():
         raise Exception("Invalid MAC: u point at infinity.")
 
