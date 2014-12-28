@@ -240,7 +240,7 @@ def test_aes_ops():
     plaintext += dec.finalize()
     assert plaintext == ref
 
-def test_aes_gcm():
+def test_aes_gcm_encrypt():
     aes = Cipher.aes_128_gcm()
     assert aes.gcm
 
@@ -255,6 +255,26 @@ def test_aes_gcm():
     tag = enc.get_tag(16)
     assert len(tag) == 16
 
+@pytest.fixture
+def aesenc():
+    aes = Cipher.aes_128_gcm()
+    assert aes.gcm
+
+    print aes.len_IV()
+    enc = aes.op(key="A"*16, iv="A"*16)
+
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    assert c2 == None
+
+    tag = enc.get_tag(16)
+    assert len(tag) == 16
+
+    return (aes,enc, ciphertext, tag)
+
+def test_gcm_dec(aesenc):
+    aes, enc, ciphertext, tag = aesenc
     dec = aes.dec(key="A"*16, iv="A"*16)
     dec.update_associated("Hello")
     plaintext = dec.update(ciphertext)
@@ -264,6 +284,9 @@ def test_aes_gcm():
     dec.finalize()
 
     assert plaintext == "World!"
+
+def test_gcm_dec_badassoc(aesenc):
+    aes, enc, ciphertext, tag = aesenc
 
     dec = aes.dec(key="A"*16, iv="A"*16)
     dec.update_associated("H4llo")
@@ -275,6 +298,9 @@ def test_aes_gcm():
         dec.finalize()
     assert "Cipher" in str(excinfo.value)
 
+def test_gcm_dec_badkey(aesenc):
+    aes, enc, ciphertext, tag = aesenc
+
     dec = aes.dec(key="B"*16, iv="A"*16)
     dec.update_associated("Hello")
     plaintext = dec.update(ciphertext)
@@ -285,6 +311,8 @@ def test_aes_gcm():
         dec.finalize()
     assert "Cipher" in str(excinfo.value)
 
+def test_gcm_dec_badiv(aesenc):
+    aes, enc, ciphertext, tag = aesenc
     dec = aes.dec(key="A"*16, iv="B"*16)
     dec.update_associated("Hello")
     plaintext = dec.update(ciphertext)
