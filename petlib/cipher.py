@@ -140,31 +140,18 @@ class CipherOperation(object):
 
     def finalize(self):
         """Finalizes the operation and may return some additional data"""
-        if not self.cipher.gcm:
-            block_len = self.cipher.len_block()
-            alloc_len = block_len
-            outl = _FFI.new("int *")
-            outl[0] = alloc_len
-            out = _FFI.new("unsigned char[]", alloc_len)
+        block_len = self.cipher.len_block()
+        alloc_len = block_len
+        outl = _FFI.new("int *")
+        outl[0] = alloc_len
+        out = _FFI.new("unsigned char[]", alloc_len)
 
-            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
-            if outl[0] == 0:
-                return ''
+        _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+        if outl[0] == 0:
+            return ''
 
-            ret = str(_FFI.buffer(out)[:int(outl[0])])
-            return ret
-        else:
-            block_len = self.cipher.len_block()
-            alloc_len = block_len
-            outl = _FFI.new("int *")
-            outl[0] = alloc_len
-            out = _FFI.new("unsigned char[]", alloc_len)
-
-            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
-            if outl[0] == 0:
-                return
-
-            raise Exception("Expected Nothing, got something")
+        ret = str(_FFI.buffer(out)[:int(outl[0])])
+        return ret
 
 
     def get_tag(self, tag_len = 16):
@@ -250,7 +237,7 @@ def test_aes_gcm_encrypt():
     enc.update_associated("Hello")
     ciphertext = enc.update("World!")
     c2 = enc.finalize()
-    assert c2 == None
+    assert c2 == ''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -266,7 +253,7 @@ def aesenc():
     enc.update_associated("Hello")
     ciphertext = enc.update("World!")
     c2 = enc.finalize()
-    assert c2 == None
+    assert c2 == ''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -333,7 +320,7 @@ def test_aes_gcm_byname():
     enc.update_associated("Hello")
     ciphertext = enc.update("World!")
     c2 = enc.finalize()
-    assert c2 == None
+    assert c2 == ''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
