@@ -20,16 +20,16 @@ def unit_tests():
 
 
 @task
-def build():
+def build(quiet=True):
     tell("Build dist")
-    sh('python setup.py sdist')
+    sh('python setup.py sdist', capture=quiet)
 
 
 @task
-def make_docs():
+def make_docs(quiet=True):
     tell("Making Docs")
     with pushd('docs') as old_dir:
-        sh('make html')
+        sh('make html', capture=quiet)
 
 
 def get_latest_dist():
@@ -40,21 +40,21 @@ def get_latest_dist():
 
 @needs('build')
 @task
-def make_env():
+def make_env(quiet=True):
     tell("Make a virtualenv")
     if os.path.exists("test_env"):
         return
     os.mkdir("test_env")
     with pushd('test_env') as old_dir:
-        sh("virtualenv pltest")
+        sh("virtualenv pltest", capture=quiet)
 
 
 @needs("make_env")
 @task
 @virtualenv(dir=r"test_env/pltest")
-def big_tests():
+def big_tests(quiet=True):
     tell("Run acceptance tests (big examples)")
-    sh("pip install %s" % get_latest_dist())
+    sh("pip install %s" % get_latest_dist(), capture=quiet)
     sh("py.test -v examples/*.py")
     
 

@@ -174,6 +174,9 @@ typedef struct evp_cipher_ctx_st
   ...;
 } EVP_CIPHER_CTX;
 
+EVP_CIPHER * EVP_aes_128_gcm();
+EVP_CIPHER * EVP_aes_256_gcm();
+
 typedef ... ENGINE; // Ignore details of the engine.
 
 // Cipher context operations
@@ -221,6 +224,20 @@ int  EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
 #define EVP_CTRL_AEAD_TLS1_AAD  ...
 #define EVP_CTRL_AEAD_SET_MAC_KEY ...
 #define EVP_CTRL_GCM_SET_IV_INV ...
+
+ int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
+         ENGINE *impl, unsigned char *key, unsigned char *iv);
+ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl, unsigned char *in, int inl);
+ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl);
+
+ int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
+         ENGINE *impl, unsigned char *key, unsigned char *iv);
+ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl, unsigned char *in, int inl);
+ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm,
+         int *outl);
 
 void init_ciphers();
 void cleanup_ciphers();

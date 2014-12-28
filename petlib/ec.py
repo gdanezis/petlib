@@ -264,5 +264,5 @@ def test_p224_const_timing():
             y * h
         t += [time.clock() - t0]
         print x, t[-1] / repreats
-    assert abs(t[0] - t[-1]) < 1.0 / 1000
+    assert abs(t[0] - t[-1]) < 1.0 / 100
 

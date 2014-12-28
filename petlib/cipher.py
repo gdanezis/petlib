@@ -33,13 +33,30 @@ class Cipher(object):
 
     """
 
-    __slots__ = ["alg"]
+    @staticmethod
+    def aes_128_gcm():
+        return Cipher(None, _C.EVP_aes_128_gcm())
+        
+    __slots__ = ["alg", "gcm"]
 
-    def __init__(self, name):
+    def __init__(self, name, _alg=None):
         """Initialize the cipher by name"""
-        self.alg = _C.EVP_get_cipherbyname(name)
-        if self.alg == _FFI.NULL:
-            raise Exception("Unknown cipher: %s" % name )
+
+        if _alg:
+            self.alg = _alg
+            self.gcm = True
+            return
+        else:
+            self.alg = _C.EVP_get_cipherbyname(name)
+            self.gcm = False
+            if self.alg == _FFI.NULL:
+                raise Exception("Unknown cipher: %s" % name )
+
+        if "gcm" in name.lower():
+            self.gcm = True
+        
+        if "ccm" in name.lower():
+            raise Exception("CCM mode not supported")
 
     def len_IV(self):
         """Return the Initialization Vector length in bytes."""
@@ -57,10 +74,24 @@ class Cipher(object):
     def op(self, key, iv, enc=1):
         c_op = CipherOperation()
         _check( len(key) == self.len_key())
-        _check( len(iv) == self.len_IV())
         _check( enc in [0,1] )
-        _check( _C.EVP_CipherInit_ex(c_op.ctx, 
-            self.alg,  _FFI.NULL, key, iv, enc) )
+       
+        if not self.gcm:
+            _check( len(iv) == self.len_IV())
+            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+                self.alg,  _FFI.NULL, key, iv, enc) )
+        else:
+            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+                self.alg,  _FFI.NULL, _FFI.NULL, _FFI.NULL, enc) )
+
+            # assert len(iv) <= self.len_block()
+
+            _check( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, 
+                _C.EVP_CTRL_GCM_SET_IVLEN, len(iv), _FFI.NULL))
+
+            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+                _FFI.NULL,  _FFI.NULL, key, iv, enc) )
+
         c_op.cipher = self
         return c_op
 
@@ -86,11 +117,16 @@ class CipherOperation(object):
         _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
         
-    def control(self, ctype, arg, ptr):
-        """Passes an OpenSSL control message to the CipherOpenration engine."""
-        ret = int(_C.EVP_CIPHER_CTX_ctrl(self.ctx, ctype, arg, ptr))
-        return ret
+    #def control(self, ctype, arg, ptr):
+    #    """Passes an OpenSSL control message to the CipherOpenration engine."""
+    #    ret = int(_C.EVP_CIPHER_CTX_ctrl(self.ctx, ctype, arg, ptr))
+    #    return ret
 
+    def update_associated(self, data):
+        """Processes some associated data, and returns nothing."""
+        outl = _FFI.new("int *")
+        _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
+    
     def update(self, data):
         """Processes some data, and returns a partial result."""
         block_len = self.cipher.len_block()
@@ -104,16 +140,44 @@ class CipherOperation(object):
 
     def finalize(self):
         """Finalizes the operation and may return some additional data"""
-        block_len = self.cipher.len_block()
-        alloc_len = block_len
-        outl = _FFI.new("int *")
-        outl[0] = alloc_len
-        out = _FFI.new("unsigned char[]", alloc_len)
+        if not self.cipher.gcm:
+            block_len = self.cipher.len_block()
+            alloc_len = block_len
+            outl = _FFI.new("int *")
+            outl[0] = alloc_len
+            out = _FFI.new("unsigned char[]", alloc_len)
 
-        _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) ) 
-        ret = str(_FFI.buffer(out)[:int(outl[0])])
-        return ret
+            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+            if outl[0] == 0:
+                return ''
+
+            ret = str(_FFI.buffer(out)[:int(outl[0])])
+            return ret
+        else:
+            block_len = self.cipher.len_block()
+            alloc_len = block_len
+            outl = _FFI.new("int *")
+            outl[0] = alloc_len
+            out = _FFI.new("unsigned char[]", alloc_len)
+
+            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+            if outl[0] == 0:
+                return
+
+            raise Exception("Expected Nothing, got something")
+
+
+    def get_tag(self, tag_len = 16):
+        tag = _FFI.new("unsigned char []", tag_len)
+        ret =  _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_GET_TAG, tag_len, tag)
+        _check( ret )
+        s = str(_FFI.buffer(tag)[:])
+        return s
         
+
+    def set_tag(self, tag):
+        _check( _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))
+
     def __del__(self):
         _check( _C.EVP_CIPHER_CTX_cleanup(self.ctx) )
         _C.EVP_CIPHER_CTX_free(self.ctx)
@@ -175,3 +239,83 @@ def test_aes_ops():
     plaintext = dec.update(ciphertext)
     plaintext += dec.finalize()
     assert plaintext == ref
+
+def test_aes_gcm():
+    aes = Cipher.aes_128_gcm()
+    assert aes.gcm
+
+    print aes.len_IV()
+    enc = aes.op(key="A"*16, iv="A"*16)
+
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    assert c2 == None
+
+    tag = enc.get_tag(16)
+    assert len(tag) == 16
+
+    dec = aes.dec(key="A"*16, iv="A"*16)
+    dec.update_associated("Hello")
+    plaintext = dec.update(ciphertext)
+
+    dec.set_tag(tag)
+
+    dec.finalize()
+
+    assert plaintext == "World!"
+
+    dec = aes.dec(key="A"*16, iv="A"*16)
+    dec.update_associated("H4llo")
+    plaintext = dec.update(ciphertext)
+
+    dec.set_tag(tag)
+
+    with pytest.raises(Exception) as excinfo:
+        dec.finalize()
+    assert "Cipher" in str(excinfo.value)
+
+    dec = aes.dec(key="B"*16, iv="A"*16)
+    dec.update_associated("Hello")
+    plaintext = dec.update(ciphertext)
+
+    dec.set_tag(tag)
+
+    with pytest.raises(Exception) as excinfo:
+        dec.finalize()
+    assert "Cipher" in str(excinfo.value)
+
+    dec = aes.dec(key="A"*16, iv="B"*16)
+    dec.update_associated("Hello")
+    plaintext = dec.update(ciphertext)
+
+    dec.set_tag(tag)
+
+    with pytest.raises(Exception) as excinfo:
+        dec.finalize()
+    assert "Cipher" in str(excinfo.value)
+
+def test_aes_gcm_byname():
+    aes = Cipher("id-aes128-GCM")
+    assert aes.gcm
+
+    print aes.len_IV()
+    enc = aes.op(key="A"*16, iv="A"*16)
+
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    assert c2 == None
+
+    tag = enc.get_tag(16)
+    assert len(tag) == 16
+
+    dec = aes.dec(key="A"*16, iv="A"*16)
+    dec.update_associated("Hello")
+    plaintext = dec.update(ciphertext)
+
+    dec.set_tag(tag)
+
+    dec.finalize()
+
+    assert plaintext == "World!"
