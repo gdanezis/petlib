@@ -251,6 +251,38 @@ def test_aes_gcm_encrypt():
     tag = enc.get_tag(16)
     assert len(tag) == 16
 
+def test_aes_gcm_encrypt_192():
+    aes = Cipher.aes_192_gcm()
+    assert aes.gcm
+
+    print aes.len_IV()
+    enc = aes.op(key="A"*(192/8), iv="A"*16)
+
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    assert c2 == ''
+
+    tag = enc.get_tag(16)
+    assert len(tag) == 16
+
+
+def test_aes_gcm_encrypt_256():
+    aes = Cipher.aes_256_gcm()
+    assert aes.gcm
+
+    print aes.len_IV()
+    enc = aes.op(key="A"*(256/8), iv="A"*16)
+
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    assert c2 == ''
+
+    tag = enc.get_tag(16)
+    assert len(tag) == 16
+
+
 @pytest.fixture
 def aesenc():
     aes = Cipher.aes_128_gcm()

@@ -204,6 +204,7 @@ def test_ec_list_group():
 
 def test_ec_build_group():
     G = EcGroup(409)
+    assert G.nid() == 409
     H = EcGroup(410)
     assert G.check_point(G.generator())
     assert not H.check_point(G.generator())
@@ -236,6 +237,8 @@ def test_ec_arithmetic():
     assert g + g == g.pt_add(g)  
     assert -g == g.pt_neg()  
     assert 10 * g == g.pt_mul(10)
+
+    assert len(str(g)) > 0 
 
 def test_ec_io():
     G = EcGroup(713)
