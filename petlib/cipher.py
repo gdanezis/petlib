@@ -352,7 +352,7 @@ def test_gcm_dec_badiv(aesenc):
     assert "Cipher" in str(excinfo.value)
 
 def test_aes_gcm_byname():
-    aes = Cipher("id-aes128-GCM")
+    aes = Cipher("aes-128-gcm")
     assert aes.gcm
 
     print aes.len_IV()
@@ -377,7 +377,7 @@ def test_aes_gcm_byname():
     assert plaintext == "World!"
 
 def test_aes_gcm_different_IV():
-    aes = Cipher("id-aes128-GCM")
+    aes = Cipher("aes-128-gcm")
 
     enc = aes.op(key="A"*16, iv="A"*16)
     enc.update_associated("Hello")

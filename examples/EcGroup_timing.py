@@ -1,5 +1,6 @@
 from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
+
 import time
 
 if __name__ == "__main__":
