@@ -36,6 +36,15 @@ class Cipher(object):
     @staticmethod
     def aes_128_gcm():
         return Cipher(None, _C.EVP_aes_128_gcm())
+
+    @staticmethod
+    def aes_192_gcm():
+        return Cipher(None, _C.EVP_aes_192_gcm())
+
+    @staticmethod
+    def aes_256_gcm():
+        return Cipher(None, _C.EVP_aes_256_gcm())
+
         
     __slots__ = ["alg", "gcm"]
 
@@ -334,3 +343,30 @@ def test_aes_gcm_byname():
     dec.finalize()
 
     assert plaintext == "World!"
+
+def test_aes_gcm_different_IV():
+    aes = Cipher("id-aes128-GCM")
+
+    enc = aes.op(key="A"*16, iv="A"*16)
+    enc.update_associated("Hello")
+    ciphertext = enc.update("World!")
+    c2 = enc.finalize()
+    tag = enc.get_tag(16)
+
+    enc = aes.op(key="A"*16, iv="A"*16)
+    enc.update_associated("Hello")
+    ciphertext2 = enc.update("World!")
+    c2 = enc.finalize()
+    tag2 = enc.get_tag(16)
+
+    enc = aes.op(key="A"*16, iv="B"*16)
+    enc.update_associated("Hello")
+    ciphertext3 = enc.update("World!")
+    c2 = enc.finalize()
+    tag3 = enc.get_tag(16)
+
+    assert ciphertext == ciphertext2
+    assert ciphertext != ciphertext3
+
+
+

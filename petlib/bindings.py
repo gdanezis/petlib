@@ -174,8 +174,9 @@ typedef struct evp_cipher_ctx_st
   ...;
 } EVP_CIPHER_CTX;
 
-EVP_CIPHER * EVP_aes_128_gcm();
-EVP_CIPHER * EVP_aes_256_gcm();
+const EVP_CIPHER * EVP_aes_128_gcm(void);
+const EVP_CIPHER * EVP_aes_192_gcm(void);
+const EVP_CIPHER * EVP_aes_256_gcm(void);
 
 typedef ... ENGINE; // Ignore details of the engine.
 
