@@ -117,6 +117,27 @@ class Cipher(object):
     def __del__(self):
         pass
 
+    def quick_gcm_enc(self, key, iv, msg, assoc=None, tagl=16):
+        """One operation GCM encryption"""
+        enc = self.enc(key, iv)
+        if assoc:
+            dec.update_associated(assoc)
+        ciphertext = enc.update(msg)
+        enc.finalize()
+        tag = enc.get_tag(tagl)
+        return (ciphertext, tag)
+
+    def quick_gcm_dec(self, key, iv, cip, tag, assoc=None):
+        """One operation GCM decrypt"""
+        dec = self.dec(key, iv)
+        if assoc:
+            dec.update_associated(assoc)
+        plain = dec.update(cip)
+        dec.set_tag(tag)
+        dec.finalize()
+        return plain
+                
+
 class CipherOperation(object):
 
     __slots__ = ["ctx", "cipher"]
@@ -400,5 +421,8 @@ def test_aes_gcm_different_IV():
     assert ciphertext == ciphertext2
     assert ciphertext != ciphertext3
 
-
-
+def test_quick():
+    aes = Cipher("aes-128-gcm")
+    c, t = aes.quick_gcm_enc("A"*16, "A"*16, "Hello")
+    p = aes.quick_gcm_dec("A"*16, "A"*16, c, t)
+    assert p == "Hello"

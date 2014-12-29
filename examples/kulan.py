@@ -173,7 +173,9 @@ class KulanClient(object):
         name = name.decode("base64")
         sig_key = EcPt.from_binary(sig_key.decode("base64"), self.G)
 
-        return (name, sig_key)
+        if self.pki[name] == pub1:
+            return (name, sig_key)
+        return None
             
 
     def steady_encrypt(self, plaintext):
@@ -300,7 +302,7 @@ def test_broad():
 
     msgs = client.broadcast_encrypt("Hello!")
 
-    pki2 = { "b":(pubb, pubb2), "c":(pubc, pubc2)}
+    pki2 = {"me": x * g, "b":(pubb, pubb2), "c":(pubc, pubc2)}
     dec_client = KulanClient(G, "a", a, pki2)
 
     dec_client.priv_enc = a2
