@@ -40,40 +40,6 @@ def derive_3DH_receiver(G, pub1, pub2, priv1, priv2):
     md.update((priv2 * pub2).export())
     return md.digest()
 
-
-def test_2DH():
-    G = EcGroup()
-    g = G.generator()
-    o = G.order()
-
-    priv1 = o.random()
-    priv2 = o.random()
-    priv3 = o.random()
-
-    k1 = derive_2DH_sender(G, priv1, priv2 * g, priv3 * g)
-    k2 = derive_2DH_receiver(G, priv1 * g, priv2, priv3)
-
-    assert k1 == k2
-
-def test_3DH():
-    G = EcGroup()
-    g = G.generator()
-    o = G.order()
-
-    priv1 = o.random()
-    pub1 = priv1 * g 
-    priv2 = o.random()
-    pub2 = priv2 * g
-    priv3 = o.random()
-    pub3 = priv3 * g
-    priv4 = o.random()
-    pub4 = priv4 * g
-
-    k1 = derive_3DH_sender(G, priv1, priv2, pub3, pub4)
-    k2 = derive_3DH_receiver(G, pub1, pub2, priv3, priv4)
-    assert k1 == k2
-
-
 ## Define a "steady state" channel:
 #  - Use a shared key for channel confidentiality and integrity.
 #  - Use "ecdsa" for authenticaity (ephemeral)
@@ -123,21 +89,13 @@ class KulanClient(object):
         for name, (pub1, pub2) in self.pki.items():
             K = derive_3DH_sender(self.G, self.priv, self.priv_enc, pub1, pub2)            
 
-            enc = self.aes.enc(key=K[:16], iv=iv)
-            ciphertext = enc.update(sym_key)
-            enc.finalize()
-            tag = enc.get_tag(16)
-
+            ciphertext, tag = self.aes.quick_gcm_enc(K[:16], iv, sym_key)
             msg2 += [(ciphertext, tag)]
 
         msg += [msg2]
         inner_msg = json.dumps([self.name.encode("base64"), self.pub_sign.export().encode("base64")])
         
-        enc = self.aes.enc(key=sym_key, iv=iv)
-        ciphertext = enc.update(inner_msg)
-        enc.finalize()
-        tag = enc.get_tag(16)
-
+        ciphertext, tag = self.aes.quick_gcm_enc(sym_key, iv, inner_msg)
         msg += [(ciphertext, tag)]
 
         return msg
@@ -151,10 +109,7 @@ class KulanClient(object):
 
         for cip, tag in msgs[3]:
             try:
-                dec = self.aes.dec(key=K[:16], iv=iv)
-                sym_key = dec.update(cip)
-                dec.set_tag(tag)
-                dec.finalize()
+                sym_key = self.aes.quick_gcm_dec(K[:16], iv, cip, tag)
                 break
             except:
                 sym_key = None
@@ -164,11 +119,8 @@ class KulanClient(object):
             raise Exception("No decryption")
 
         ciphertext2, tag2 = msgs[-1] 
-        dec = self.aes.dec(key=sym_key, iv=iv)
-        plaintext = dec.update(ciphertext2)
-        dec.set_tag(tag2)
-        dec.finalize()
-
+        plaintext = self.aes.quick_gcm_dec(sym_key, iv, ciphertext2, tag2)
+        
         [name, sig_key] = json.loads(plaintext)
         name = name.decode("base64")
         sig_key = EcPt.from_binary(sig_key.decode("base64"), self.G)
@@ -182,10 +134,7 @@ class KulanClient(object):
         assert len(self.Ks) > 0
 
         ## Sign using ephemeral signature
-        md = sha1()
-        md.update(self.Ks[-1])
-        md.update(plaintext)
-        md = md.digest()
+        md = sha1(self.Ks[-1] + plaintext).digest()
 
         # Note: include the key here to bing the signature 
         # to the encrypted channel defined by this key. 
@@ -195,11 +144,9 @@ class KulanClient(object):
         
         ## Encrypt using AEC-GCM
         iv = urandom(16)
-        enc = self.aes.op(key=self.Ks[-1], iv=iv)
-        ciphertext = enc.update(plain_inner)
-        enc.finalize()
-        tag = enc.get_tag(16)
-
+        ciphertext, tag = self.aes.quick_gcm_enc(self.Ks[-1], iv, 
+                                                 plain_inner)
+        
         return json.dumps([iv.encode("base64"), ciphertext.encode("base64"), tag.encode("base64")])
 
 
@@ -212,18 +159,13 @@ class KulanClient(object):
                               tag.decode("base64")
 
         ## Decrypt and check integrity
-        dec = self.aes.dec(key=self.Ks[-1], iv=iv)
-        plaintext = dec.update(ciphertext)
-        dec.set_tag(tag)
-        dec.finalize()
+        plaintext = self.aes.quick_gcm_dec(self.Ks[-1], iv,
+                                           ciphertext, tag)
 
         ## Check signature
         [xname, xplain, xr, xs] = json.loads(plaintext)
 
-        md = sha1()
-        md.update(self.Ks[-1])
-        md.update(str(xplain))
-        md = md.digest()
+        md = sha1(self.Ks[-1] + str(xplain)).digest()
         
         sig = Bn.from_hex(str(xr)), Bn.from_hex(str(xs))
         pub = self.current_dict[str(xname)]
@@ -276,6 +218,40 @@ def test_steady():
 
     print
     print " - %2.2f operations / sec" % (1.0 / (t / 1000))
+
+def test_2DH():
+    G = EcGroup()
+    g = G.generator()
+    o = G.order()
+
+    priv1 = o.random()
+    priv2 = o.random()
+    priv3 = o.random()
+
+    k1 = derive_2DH_sender(G, priv1, priv2 * g, priv3 * g)
+    k2 = derive_2DH_receiver(G, priv1 * g, priv2, priv3)
+
+    assert k1 == k2
+
+def test_3DH():
+    G = EcGroup()
+    g = G.generator()
+    o = G.order()
+
+    priv1 = o.random()
+    pub1 = priv1 * g 
+    priv2 = o.random()
+    pub2 = priv2 * g
+    priv3 = o.random()
+    pub3 = priv3 * g
+    priv4 = o.random()
+    pub4 = priv4 * g
+
+    k1 = derive_3DH_sender(G, priv1, priv2, pub3, pub4)
+    k2 = derive_3DH_receiver(G, pub1, pub2, priv3, priv4)
+    assert k1 == k2
+
+
 
 def test_broad():
     G = EcGroup()
