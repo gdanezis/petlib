@@ -82,6 +82,7 @@ class KulanClient(object):
 
     def broadcast_encrypt(self, plaintext):
         encode = CryptoEnc().encode
+        gcm_enc = self.aes.quick_gcm_enc
 
         sym_key = urandom(16)
         iv = urandom(16)
@@ -92,28 +93,29 @@ class KulanClient(object):
         for name, (pub1, pub2) in self.pki.items():
             K = derive_3DH_sender(self.G, self.priv, self.priv_enc, pub1, pub2)            
 
-            ciphertext, tag = self.aes.quick_gcm_enc(K[:16], iv, sym_key)
+            ciphertext, tag = gcm_enc(K[:16], iv, sym_key)
             msg2 += [(B(ciphertext), B(tag))]
 
         msg += [msg2]
         inner_msg = encode([B(self.name), self.pub_sign])
         
-        ciphertext, tag = self.aes.quick_gcm_enc(sym_key, iv, inner_msg)
+        ciphertext, tag = gcm_enc(sym_key, iv, inner_msg)
         msg += [(B(ciphertext), B(tag))]
 
         return encode(msg)
 
     def broadcast_decrypt(self, msgs):
         decode = CryptoDec().decode
+        gcm_dec = self.aes.quick_gcm_dec
 
         msgs = decode(msgs)
         pub1, pub2, iv = msgs[0:3]
 
-        K = derive_3DH_receiver(self.G, pub1, pub2, self.priv, self.priv_enc)
+        K = derive_3DH_receiver(self.G, pub1, pub2, 
+                                self.priv, self.priv_enc)
 
-        sym_key = None
         for cip, tag in msgs[3]:
-            sym_key = self.aes.quick_gcm_dec(K[:16], iv, cip, tag)
+            sym_key = gcm_dec(K[:16], iv, cip, tag)
             if sym_key:
                 break
 
@@ -122,7 +124,7 @@ class KulanClient(object):
             raise Exception("No decryption")
 
         ciphertext2, tag2 = msgs[-1] 
-        plaintext = self.aes.quick_gcm_dec(sym_key, iv, ciphertext2, tag2)
+        plaintext = gcm_dec(sym_key, iv, ciphertext2, tag2)
         
         [name, sig_key] = decode(plaintext)
         
@@ -134,6 +136,7 @@ class KulanClient(object):
     def steady_encrypt(self, plaintext):
         assert len(self.Ks) > 0
         encode = CryptoEnc().encode
+        gcm_enc = self.aes.quick_gcm_enc
 
         ## Sign using ephemeral signature
         md = sha1(self.Ks[-1] + plaintext).digest()
@@ -146,8 +149,7 @@ class KulanClient(object):
         
         ## Encrypt using AEC-GCM
         iv = urandom(16)
-        ciphertext, tag = self.aes.quick_gcm_enc(self.Ks[-1], iv, 
-                                                 plain_inner)
+        ciphertext, tag = gcm_enc(self.Ks[-1], iv, plain_inner)
         
         return encode([B(iv), B(ciphertext), B(tag)])
 
@@ -155,12 +157,13 @@ class KulanClient(object):
     def steady_decrypt(self, ciphertext):
         assert len(self.Ks) > 0
         decode = CryptoDec().decode
+        gcm_dec = self.aes.quick_gcm_dec
 
         [iv, ciphertext, tag] = decode(ciphertext)
 
         ## Decrypt and check integrity
-        plaintext = self.aes.quick_gcm_dec(self.Ks[-1], iv,
-                                           ciphertext, tag)
+        plaintext = gcm_dec(self.Ks[-1], iv, ciphertext, tag)
+        
         ## Check signature
         [xname, xplain, r, s] = decode(plaintext)
         md = sha1(self.Ks[-1] + str(xplain)).digest()
