@@ -134,7 +134,6 @@ class Cipher(object):
             dec.update_associated(assoc)
         plain = dec.update(cip)
         dec.set_tag(tag)
-        
         dec.finalize()
         return plain
                 
@@ -186,6 +185,20 @@ class CipherOperation(object):
 
 
     def get_tag(self, tag_len = 16):
+        """Get the GCM authentication tag. Execute after finalizing the encryption.
+
+        Example GCM encryption usage:
+
+            >>> aes = Cipher.aes_128_gcm()
+            >>> enc = aes.op(key="A"*16, iv="A"*16)
+            >>> enc.update_associated("Hello")
+            >>> ciphertext = enc.update("World!")
+            >>> nothing = enc.finalize()
+            >>> tag = enc.get_tag(16)
+            >>> ciphertext, tag
+            ('dV\\xb9:\\xd0\\xbe', 'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
+
+        """
         tag = _FFI.new("unsigned char []", tag_len)
         ret =  _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_GET_TAG, tag_len, tag)
         _check( ret )
@@ -194,6 +207,20 @@ class CipherOperation(object):
         
 
     def set_tag(self, tag):
+        """Specify the GCM authenticator tag. Must be done before finalizing decryption
+
+        Example GCM decryption and check:
+            >>> aes = Cipher.aes_128_gcm()
+            >>> ciphertext, tag = ('dV\\xb9:\\xd0\\xbe', 'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
+            >>> dec = aes.dec(key="A"*16, iv="A"*16)
+            >>> dec.update_associated("Hello")
+            >>> plaintext = dec.update(ciphertext)
+            >>> dec.set_tag(tag)
+            >>> nothing = dec.finalize()
+            >>> plaintext
+            'World!'
+
+        """
         _check( _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))
 
     def __del__(self):
