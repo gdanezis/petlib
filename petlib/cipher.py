@@ -35,21 +35,24 @@ class Cipher(object):
 
     @staticmethod
     def aes_128_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 128 bits key size"""
         return Cipher(None, _C.EVP_aes_128_gcm())
 
     @staticmethod
     def aes_192_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 192 bits key size"""
         return Cipher(None, _C.EVP_aes_192_gcm())
 
     @staticmethod
     def aes_256_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 256 bits key size"""
         return Cipher(None, _C.EVP_aes_256_gcm())
 
         
     __slots__ = ["alg", "gcm"]
 
     def __init__(self, name, _alg=None):
-        """Initialize the cipher by name"""
+        """Initialize the cipher by name."""
 
         if _alg:
             self.alg = _alg
@@ -81,6 +84,15 @@ class Cipher(object):
         return int(self.alg.nid)
 
     def op(self, key, iv, enc=1):
+        """Initializes a cipher operation, either encrypt or decrypt 
+        and returns a CipherOperation object
+
+        Args:
+            key (str): the block cipher symmetric key. Length depends on block cipher choice.
+            iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
+            end (int): set to 1 to perform encryption, or 0 to perform decryption.
+
+        """
         c_op = CipherOperation()
         _check( len(key) == self.len_key())
         _check( enc in [0,1] )
@@ -106,19 +118,47 @@ class Cipher(object):
 
     def enc(self, key, iv):
         """Initializes an encryption engine with the cipher with a specific key and Initialization Vector (IV). 
-        Returns the CipherOperation engine."""
+        Returns the CipherOperation engine.
+
+        Args:
+            key (str): the block cipher symmetric key. Length depends on block cipher choice.
+            iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
+
+        """
         return self.op(key, iv, enc=1)
 
     def dec(self, key, iv):
         """Initializes a decryption engine with the cipher with a specific key and Initialization Vector (IV). 
-        Returns the CipherOperation engine."""
+        Returns the CipherOperation engine.
+
+        Args:
+            key (str): the block cipher symmetric key. Length depends on block cipher choice.
+            iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
+
+        """
         return self.op(key, iv, enc=0)
 
     def __del__(self):
         pass
 
     def quick_gcm_enc(self, key, iv, msg, assoc=None, tagl=16):
-        """One operation GCM encryption"""
+        """One operation GCM encryption.
+
+        Args:
+            key (str): the AES symmetric key. Length depends on block cipher choice.
+            iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
+            msg (str): the message to encrypt.
+            assoc (str): associated data that will be integrity protected, but not encrypted.
+            tagl (int): the length of the tag, up to the block length.
+
+        Example: 
+
+            >>> aes = Cipher("aes-128-gcm")
+            >>> c, t = aes.quick_gcm_enc("A"*16, "A"*16, "Hello")
+            >>> aes.quick_gcm_dec("A"*16, "A"*16, c, t)
+            'Hello'
+
+        """
         enc = self.enc(key, iv)
         if assoc:
             dec.update_associated(assoc)
@@ -128,7 +168,16 @@ class Cipher(object):
         return (ciphertext, tag)
 
     def quick_gcm_dec(self, key, iv, cip, tag, assoc=None):
-        """One operation GCM decrypt"""
+        """One operation GCM decrypt. See usage example in "quick_gcm_enc". 
+
+        Args:
+            key (str): the AES symmetric key. Length depends on block cipher choice.
+            iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
+            cip (str): the ciphertext to decrypt.
+            tag (int): the integrity tag.
+            assoc (str): associated data that will be integrity protected, but not encrypted.
+
+        """
         dec = self.dec(key, iv)
         if assoc:
             dec.update_associated(assoc)
