@@ -166,11 +166,11 @@ class KulanClient(object):
         
         ## Check signature
         [xname, xplain, r, s] = decode(plaintext)
-        md = sha1(self.Ks[-1] + str(xplain)).digest()
+        md = sha1(self.Ks[-1] + bytes(xplain)).digest()
         
         sig = (r,s)
-        pub = self.current_dict[str(xname)]
-        if not do_ecdsa_verify(self.G, pub, sig, str(md)):
+        pub = self.current_dict[bytes(xname)]
+        if not do_ecdsa_verify(self.G, pub, sig, bytes(md)):
             return None
 
         return (xname, xplain)
@@ -198,22 +198,22 @@ def test_steady():
     client.Ks += [urandom(16)]
 
     # Decrypt a small message
-    ciphertext = client.steady_encrypt("Hello World!")
+    ciphertext = client.steady_encrypt(b"Hello World!")
     client.steady_decrypt(ciphertext)
 
     # Decrypt a big message
-    ciphertext = client.steady_encrypt("Hello World!"*10000)
+    ciphertext = client.steady_encrypt(b"Hello World!"*10000)
     client.steady_decrypt(ciphertext)
 
     # decrypt an empty string
-    ciphertext = client.steady_encrypt("")
+    ciphertext = client.steady_encrypt(b"")
     client.steady_decrypt(ciphertext)
 
     # Time it
     import time
     t0 = time.clock()
     for _ in range(1000):
-        ciphertext = client.steady_encrypt("Hello World!"*10)
+        ciphertext = client.steady_encrypt(b"Hello World!"*10)
         client.steady_decrypt(ciphertext)
     t = time.clock() - t0
 
@@ -269,7 +269,7 @@ def test_broad():
     pki = {"a":(puba,puba2) , "b":(pubb, pubb2), "c":(pubc, pubc2)}
     client = KulanClient(G, "me", x, pki)
 
-    msgs = client.broadcast_encrypt("Hello!")
+    msgs = client.broadcast_encrypt(b"Hello!")
 
     pki2 = {"me": x * g, "b":(pubb, pubb2), "c":(pubc, pubc2)}
     dec_client = KulanClient(G, "a", a, pki2)
@@ -278,5 +278,5 @@ def test_broad():
     dec_client.pub_enc = puba2
 
     namex, keysx = dec_client.broadcast_decrypt(msgs)
-    assert namex == "me"
+    assert namex == b"me"
     # print msgs

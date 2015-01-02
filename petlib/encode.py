@@ -53,7 +53,7 @@ class CryptoDec(json.JSONDecoder):
 
     def dict_to_object(self, d):
         if u"_t" in d and d[u"_t"] == u"Bn":
-            return  b64decode(Bn.from_binary(d[u"bn"]))
+            return  Bn.from_binary(b64decode(d[u"bn"]))
 
         if u"_t" in d and d[u"_t"] == u"EcPt":
             G = EcGroup(int(d[u"Gid"]))

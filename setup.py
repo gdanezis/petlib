@@ -14,6 +14,7 @@ setup(name='petlib',
       long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
       install_requires=[
             "cffi >= 0.8.2",
+            "future >= 0.14.3",
             "pytest >= 2.6.4",
             "paver >= 1.2.3"
       ],
