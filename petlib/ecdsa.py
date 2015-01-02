@@ -1,6 +1,6 @@
-from bindings import _FFI, _C
-from ec import EcGroup, EcPt, _check
-from bn import Bn
+from .bindings import _FFI, _C
+from .ec import EcGroup, EcPt, _check
+from .bn import Bn
 
 def do_ecdsa_sign(G, priv, data):
     """A quick function to ECDSA sign a hash.
@@ -69,13 +69,13 @@ def test_ecdsa():
     G = EcGroup()
     priv = G.order().random()
     g = G.generator()
-    sig = do_ecdsa_sign(G, priv, "Hello")
-    assert do_ecdsa_verify(G, priv * g, sig, "Hello")
+    sig = do_ecdsa_sign(G, priv, b"Hello")
+    assert do_ecdsa_verify(G, priv * g, sig, b"Hello")
 
 def test_ecdsa_fail():
     G = EcGroup()
     priv = G.order().random()
     g = G.generator()
-    sig = do_ecdsa_sign(G, priv, "Hello")
+    sig = do_ecdsa_sign(G, priv, b"Hello")
 
-    assert not do_ecdsa_verify(G, priv * g, sig, "Hellx")
+    assert not do_ecdsa_verify(G, priv * g, sig, b"Hellx")

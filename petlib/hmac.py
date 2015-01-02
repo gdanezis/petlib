@@ -1,4 +1,5 @@
-from bindings import _FFI, _C
+from .bindings import _FFI, _C
+
 from functools import wraps
 from copy import copy
 from binascii import hexlify
@@ -7,9 +8,9 @@ import pytest
 
 def _check(return_val):
     """Checks the return code of the C calls"""
-    if type(return_val) is int and return_val == 1:
+    if isinstance(return_val, int) and return_val == 1:
       return
-    if type(return_val) is bool and return_val == True:
+    if isinstance(return_val, bool) and return_val == True:
       return
 
     raise Exception("HMAC exception") 
@@ -100,7 +101,7 @@ class Hmac(object):
         if int(out_len[0]) != self.outsize:
             raise Exception("HMAC Unexpected length")
 
-        return str(_FFI.buffer(out_md))
+        return bytes(_FFI.buffer(out_md))
 
     def __del__(self):
         if self.mac_ctx != None:
@@ -108,8 +109,8 @@ class Hmac(object):
         
 
 def test_init():
-    h = Hmac("md5", "Hello")
-    h.update("hello")
+    h = Hmac(b"md5", b"Hello")
+    h.update(b"hello")
     d = h.digest()
 
 def test_vectors():
@@ -131,13 +132,13 @@ def test_vectors():
                   caeab1a34d4a6b4b636e070a38bce737
     """
 
-    h = Hmac("sha512", "Jefe")
-    h.update("what do ya want ")
-    h.update("for nothing?")
+    h = Hmac(b"sha512", b"Jefe")
+    h.update(b"what do ya want ")
+    h.update(b"for nothing?")
     d = h.digest()
 
     with pytest.raises(Exception) as excinfo:
-        h.update("some more")
+        h.update(b"some more")
     assert 'finalized' in str(excinfo.value)
 
     with pytest.raises(Exception) as excinfo:
@@ -145,16 +146,16 @@ def test_vectors():
     assert 'finalized' in str(excinfo.value)
 
     with pytest.raises(Exception) as excinfo:
-        h = Hmac("sha999", "Jefe")
+        h = Hmac(b"sha999", b"Jefe")
     assert 'Error' in str(excinfo.value)
 
-    assert hexlify(d) == "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
+    assert hexlify(d) == b"164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
 
 def test_cmp():
-    assert secure_compare("Hello", "Hello")
-    assert not secure_compare("Hello", "Hellx")
-    assert not secure_compare("Hello", "Hell")
+    assert secure_compare(b"Hello", b"Hello")
+    assert not secure_compare(b"Hello", b"Hellx")
+    assert not secure_compare(b"Hello", b"Hell")
 
     with pytest.raises(Exception) as excinfo:
-        assert not secure_compare("Hello", 2)
+        assert not secure_compare(b"Hello", 2)
     assert 'HMAC' in str(excinfo.value)

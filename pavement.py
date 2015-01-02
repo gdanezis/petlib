@@ -16,7 +16,7 @@ def tell(x):
 @task
 def unit_tests():
     tell("Unit tests")
-    sh('py.test -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
+    sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
 
 
 @task
@@ -55,7 +55,7 @@ def make_env(quiet=True):
 def big_tests(quiet=True):
     tell("Run acceptance tests (big examples)")
     sh("pip install %s" % get_latest_dist(), capture=quiet)
-    sh("py.test -v examples/*.py")
+    sh("py.test-2.7 -v examples/*.py")
     
 
 @needs('unit_tests', 'big_tests')

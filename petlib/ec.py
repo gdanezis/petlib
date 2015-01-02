@@ -1,17 +1,24 @@
-from bindings import _FFI, _C
+from .bindings import _FFI, _C
+from .bn import Bn, force_Bn
+
+from builtins import int
+from builtins import object
+from future.utils import python_2_unicode_compatible
+
 from copy import copy
 from binascii import hexlify
-from bn import Bn, force_Bn
 from hashlib import sha512
 
 def _check(return_val):
         """Checks the return code of the C calls"""
-        if type(return_val) is int and return_val == 1:
+        if isinstance(return_val, int) and return_val == 1:
             return
-        if type(return_val) is bool and return_val == True:
+        if isinstance(return_val, bool) and return_val == True:
             return
 
         raise Exception("EC exception") 
+
+
 
 
 class EcGroup(object):
@@ -97,7 +104,7 @@ class EcGroup(object):
         _check( ret )
         return pt
 
-
+@python_2_unicode_compatible
 class EcPt(object):
     """An EC point, supporting point addition, doubling 
     and multiplication with a scalar
@@ -182,7 +189,7 @@ class EcPt(object):
         buf = _FFI.new("unsigned char[]", size)
         _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED,
                              buf, size, _FFI.NULL)
-        output = str(_FFI.buffer(buf)[:])
+        output = bytes(_FFI.buffer(buf)[:])
         return output
 
     def get_affine(self):
@@ -194,7 +201,7 @@ self.pt, x.bn, y.bn, _FFI.NULL))
         return (x,y)
 
     def __str__(self):
-        return hexlify(self.export())
+        return hexlify(self.export()).decode("utf8")
 
 def test_ec_list_group():
     c = EcGroup.list_curves()
@@ -216,7 +223,7 @@ def test_ec_build_group():
     assert not (G != G)
     assert "a" in G.parameters()
 
-    h1 = G.hash_to_point("Hello2")
+    h1 = G.hash_to_point(b"Hello2")
 
 def test_ec_arithmetic():
     G = EcGroup(713)
@@ -270,6 +277,6 @@ def test_p224_const_timing():
         for y in tests:
             y * h
         t += [time.clock() - t0]
-        print x, t[-1] / repreats
+        print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 1.0 / 100
 

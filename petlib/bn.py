@@ -1,4 +1,10 @@
-from bindings import _FFI, _C
+from .bindings import _FFI, _C
+
+# Py2/3 compatibility
+from builtins import int
+from builtins import object
+from future.utils import python_2_unicode_compatible
+
 from functools import wraps
 from copy import copy
 from binascii import hexlify
@@ -14,10 +20,10 @@ def force_Bn(n):
             if not n < len(args):
                 return f(*args, **kwargs)
 
-            if type(args[n]) == Bn:
+            if isinstance(args[n], Bn):
                 return f(*args, **kwargs)
             
-            if type(args[n]) == int:
+            if isinstance(args[n], int):
                 r = Bn(args[n])
                 new_args = list(args)
                 new_args[n] = r
@@ -29,13 +35,14 @@ def force_Bn(n):
 
 def _check(return_val):
         """Checks the return code of the C calls"""
-        if type(return_val) is int and return_val == 1:
+        if isinstance(return_val, int) and return_val == 1:
             return
-        if type(return_val) is bool and return_val == True:
+        if isinstance(return_val, bool) and return_val == True:
             return
 
         raise Exception("BN exception") 
 
+@python_2_unicode_compatible
 class Bn(object):
     """The core Big Number class. 
          It supports all comparisons (<, <=, ==, !=, >=, >),
@@ -57,7 +64,7 @@ class Bn(object):
         """
 
         ptr = _FFI.new("BIGNUM **")
-        read_bytes = _C.BN_dec2bn(ptr, sdec)
+        read_bytes = _C.BN_dec2bn(ptr, sdec.encode("utf8"))
         if read_bytes != len(sdec):
             raise Exception("BN Error")
 
@@ -76,8 +83,10 @@ class Bn(object):
         """
 
         ptr = _FFI.new("BIGNUM **")
-        read_bytes = _C.BN_hex2bn(ptr, shex)
+        read_bytes = _C.BN_hex2bn(ptr, shex.encode("utf8"))
         if read_bytes != len(shex):
+            #print(bytes(shex, "utf8"), shex)
+            #print(read_bytes, len(shex))
             raise Exception("BN Error")
 
         ret = Bn()
@@ -148,17 +157,37 @@ class Bn(object):
         _C.BN_clear_free(self.bn)
 
     @force_Bn(1)
-    def __cmp__(self, other):
+    def __inner_cmp__(self, other):
         'Internal comparison function' 
         _check( type(other) == Bn )
         sig = int(_C.BN_cmp(self.bn, other.bn))
         return sig
 
-    def nonzero(self):
-        'Turn bn into boolean. False if zero, True otherwise.' 
-        return self.__nonzero__()
+    @force_Bn(1)
+    def __lt__(self, other):
+        return self.__inner_cmp__(other) < 0
 
-    def __nonzero__(self):
+    @force_Bn(1)
+    def __le__(self, other):
+        return self.__inner_cmp__(other) <= 0
+
+    @force_Bn(1)
+    def __eq__(self, other):
+        return self.__inner_cmp__(other) == 0
+
+    @force_Bn(1)
+    def __gt__(self, other):
+        return self.__inner_cmp__(other) > 0
+
+    @force_Bn(1)
+    def __ge__(self, other):
+        return self.__inner_cmp__(other) >= 0
+
+    def bool(self):
+        'Turn bn into boolean. False if zero, True otherwise.' 
+        return self.__bool__()
+
+    def __bool__(self):
         'Turn into boolean' 
         return not (self == Bn(0))
 
@@ -171,9 +200,9 @@ class Bn(object):
     def __repr__(self):
         'The representation of the number as a decimal string'
         buf =  _C.BN_bn2dec(self.bn);
-        s = str(_FFI.string(buf))
+        s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
-        return s
+        return s.decode('utf8')
 
     def int(self):
         """A native python integer representation of the Big Number.
@@ -197,9 +226,9 @@ class Bn(object):
     def __hex__(self):
         """The representation of the string in hexadecimal"""
         buf =  _C.BN_bn2hex(self.bn);
-        s = str(_FFI.string(buf))
+        s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
-        return s
+        return s.decode("utf8")
 
     def binary(self):
         """Returns the binary representation of the absolute value of the Big 
@@ -211,7 +240,7 @@ class Bn(object):
         
         l = _C.BN_bn2bin(self.bn, bin_string)
         assert int(l) == size
-        return str(_FFI.buffer(bin_string)[:])
+        return bytes(_FFI.buffer(bin_string)[:])
 
     def random(self):
         """Returns a cryptographically strong random number 0 <= rnd < self."""
@@ -410,6 +439,8 @@ class Bn(object):
             ret._set_neg(0)
         return ret
 
+    def __hash__(self):
+        return int(self).__hash__()
     
 ## Unsuported
 # object.__lshift__(self, other)
@@ -432,8 +463,8 @@ def test_bn_constructors():
         Bn.from_hex("100ABCZ")
     assert 'BN Error' in str(excinfo.value)
 
-    assert Bn.from_hex(hex(Bn(-100))) == -100
-    assert Bn(15).hex() == hex(Bn(15))
+    assert Bn.from_hex(Bn(-100).hex()) == -100
+    assert Bn(15).hex() == Bn(15).hex()
 
     with pytest.raises(Exception) as excinfo:
         Bn(-100).binary()
@@ -521,7 +552,7 @@ def test_bn_arithmetic():
     assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
     assert Bn(10).mod_sub(100, 15) == (10 - 100) % 15
     assert Bn(10).mod_mul(10, 15) == (10 * 10) % 15
-    assert Bn(-1).nonzero()
+    assert Bn(-1).bool()
 
 
 def test_bn_allocate():
@@ -534,8 +565,8 @@ def test_bn_allocate():
     assert str(Bn(1)) == "1"
     assert str(Bn(-1)) == "-1"
 
-    assert hex(Bn(15)) == "0F"
-    assert hex(Bn(-15)) == "-0F"
+    assert Bn(15).hex() == "0F"
+    assert Bn(-15).hex() == "-0F"
 
     assert int(Bn(5)) == 5
     assert Bn(5).int() == 5

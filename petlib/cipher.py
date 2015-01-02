@@ -1,4 +1,4 @@
-from bindings import _FFI, _C
+from .bindings import _FFI, _C
 from binascii import hexlify
 
 import pytest
@@ -59,7 +59,8 @@ class Cipher(object):
             self.gcm = True
             return
         else:
-            self.alg = _C.EVP_get_cipherbyname(name)
+
+            self.alg = _C.EVP_get_cipherbyname(name.encode("utf8"))
             self.gcm = False
             if self.alg == _FFI.NULL:
                 raise Exception("Unknown cipher: %s" % name )
@@ -214,7 +215,7 @@ class CipherOperation(object):
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
         _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)))
-        ret = str(_FFI.buffer(out)[:int(outl[0])])
+        ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
     def finalize(self):
@@ -227,9 +228,9 @@ class CipherOperation(object):
 
         _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
         if outl[0] == 0:
-            return ''
+            return b''
 
-        ret = str(_FFI.buffer(out)[:int(outl[0])])
+        ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
 
@@ -251,7 +252,7 @@ class CipherOperation(object):
         tag = _FFI.new("unsigned char []", tag_len)
         ret =  _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_GET_TAG, tag_len, tag)
         _check( ret )
-        s = str(_FFI.buffer(tag)[:])
+        s = bytes(_FFI.buffer(tag)[:])
         return s
         
 
@@ -294,42 +295,42 @@ def test_errors():
 
 def test_aes_enc():
     aes = Cipher("AES-128-CBC")
-    enc = aes.op(key="A"*16, iv="A"*16)
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
 
-    ref = "Hello World" * 10000
+    ref = b"Hello World" * 10000
 
     ciphertext = enc.update(ref)
     ciphertext += enc.finalize()
 
-    dec = aes.op(key="A"*16, iv="A"*16, enc=0)
+    dec = aes.op(key=b"A"*16, iv=b"A"*16, enc=0)
     plaintext = dec.update(ciphertext)
     plaintext += dec.finalize()
     assert plaintext == ref
 
 def test_aes_ctr():
     aes = Cipher("AES-128-CTR")
-    enc = aes.op(key="A"*16, iv="A"*16)
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
 
-    ref = "Hello World" * 10000
+    ref = b"Hello World" * 10000
 
     ciphertext = enc.update(ref)
     ciphertext += enc.finalize()
 
-    dec = aes.op(key="A"*16, iv="A"*16, enc=0)
+    dec = aes.op(key=b"A"*16, iv=b"A"*16, enc=0)
     plaintext = dec.update(ciphertext)
     plaintext += dec.finalize()
     assert plaintext == ref
 
 def test_aes_ops():
     aes = Cipher("AES-128-CTR")
-    enc = aes.enc(key="A"*16, iv="A"*16)
+    enc = aes.enc(key=b"A"*16, iv=b"A"*16)
 
-    ref = "Hello World" * 10000
+    ref = b"Hello World" * 10000
 
     ciphertext = enc.update(ref)
     ciphertext += enc.finalize()
 
-    dec = aes.dec(key="A"*16, iv="A"*16)
+    dec = aes.dec(key=b"A"*16, iv=b"A"*16)
     plaintext = dec.update(ciphertext)
     plaintext += dec.finalize()
     assert plaintext == ref
@@ -338,13 +339,12 @@ def test_aes_gcm_encrypt():
     aes = Cipher.aes_128_gcm()
     assert aes.gcm
 
-    print aes.len_IV()
-    enc = aes.op(key="A"*16, iv="A"*16)
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
 
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
-    assert c2 == ''
+    assert c2 == b''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -353,13 +353,12 @@ def test_aes_gcm_encrypt_192():
     aes = Cipher.aes_192_gcm()
     assert aes.gcm
 
-    print aes.len_IV()
-    enc = aes.op(key="A"*(192/8), iv="A"*16)
+    enc = aes.op(key=b"A"*24, iv=b"A"*16)
 
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
-    assert c2 == ''
+    assert c2 == b''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -369,13 +368,12 @@ def test_aes_gcm_encrypt_256():
     aes = Cipher.aes_256_gcm()
     assert aes.gcm
 
-    print aes.len_IV()
-    enc = aes.op(key="A"*(256/8), iv="A"*16)
+    enc = aes.op(key=b"A"*32, iv=b"A"*16)
 
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
-    assert c2 == ''
+    assert c2 == b''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -386,13 +384,12 @@ def aesenc():
     aes = Cipher.aes_128_gcm()
     assert aes.gcm
 
-    print aes.len_IV()
-    enc = aes.op(key="A"*16, iv="A"*16)
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
 
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
-    assert c2 == ''
+    assert c2 == b''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
@@ -401,21 +398,21 @@ def aesenc():
 
 def test_gcm_dec(aesenc):
     aes, enc, ciphertext, tag = aesenc
-    dec = aes.dec(key="A"*16, iv="A"*16)
-    dec.update_associated("Hello")
+    dec = aes.dec(key=b"A"*16, iv=b"A"*16)
+    dec.update_associated(b"Hello")
     plaintext = dec.update(ciphertext)
 
     dec.set_tag(tag)
 
     dec.finalize()
 
-    assert plaintext == "World!"
+    assert plaintext == b"World!"
 
 def test_gcm_dec_badassoc(aesenc):
     aes, enc, ciphertext, tag = aesenc
 
-    dec = aes.dec(key="A"*16, iv="A"*16)
-    dec.update_associated("H4llo")
+    dec = aes.dec(key=b"A"*16, iv=b"A"*16)
+    dec.update_associated(b"H4llo")
     plaintext = dec.update(ciphertext)
 
     dec.set_tag(tag)
@@ -427,8 +424,8 @@ def test_gcm_dec_badassoc(aesenc):
 def test_gcm_dec_badkey(aesenc):
     aes, enc, ciphertext, tag = aesenc
 
-    dec = aes.dec(key="B"*16, iv="A"*16)
-    dec.update_associated("Hello")
+    dec = aes.dec(key=b"B"*16, iv=b"A"*16)
+    dec.update_associated(b"Hello")
     plaintext = dec.update(ciphertext)
 
     dec.set_tag(tag)
@@ -439,8 +436,8 @@ def test_gcm_dec_badkey(aesenc):
 
 def test_gcm_dec_badiv(aesenc):
     aes, enc, ciphertext, tag = aesenc
-    dec = aes.dec(key="A"*16, iv="B"*16)
-    dec.update_associated("Hello")
+    dec = aes.dec(key=b"A"*16, iv=b"B"*16)
+    dec.update_associated(b"Hello")
     plaintext = dec.update(ciphertext)
 
     dec.set_tag(tag)
@@ -453,45 +450,44 @@ def test_aes_gcm_byname():
     aes = Cipher("aes-128-gcm")
     assert aes.gcm
 
-    print aes.len_IV()
-    enc = aes.op(key="A"*16, iv="A"*16)
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
 
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
-    assert c2 == ''
+    assert c2 == b''
 
     tag = enc.get_tag(16)
     assert len(tag) == 16
 
-    dec = aes.dec(key="A"*16, iv="A"*16)
-    dec.update_associated("Hello")
+    dec = aes.dec(key=b"A"*16, iv=b"A"*16)
+    dec.update_associated(b"Hello")
     plaintext = dec.update(ciphertext)
 
     dec.set_tag(tag)
 
     dec.finalize()
 
-    assert plaintext == "World!"
+    assert plaintext == b"World!"
 
 def test_aes_gcm_different_IV():
     aes = Cipher("aes-128-gcm")
 
-    enc = aes.op(key="A"*16, iv="A"*16)
-    enc.update_associated("Hello")
-    ciphertext = enc.update("World!")
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
+    enc.update_associated(b"Hello")
+    ciphertext = enc.update(b"World!")
     c2 = enc.finalize()
     tag = enc.get_tag(16)
 
-    enc = aes.op(key="A"*16, iv="A"*16)
-    enc.update_associated("Hello")
-    ciphertext2 = enc.update("World!")
+    enc = aes.op(key=b"A"*16, iv=b"A"*16)
+    enc.update_associated(b"Hello")
+    ciphertext2 = enc.update(b"World!")
     c2 = enc.finalize()
     tag2 = enc.get_tag(16)
 
-    enc = aes.op(key="A"*16, iv="B"*16)
-    enc.update_associated("Hello")
-    ciphertext3 = enc.update("World!")
+    enc = aes.op(key=b"A"*16, iv=b"B"*16)
+    enc.update_associated(b"Hello")
+    ciphertext3 = enc.update(b"World!")
     c2 = enc.finalize()
     tag3 = enc.get_tag(16)
 
@@ -500,6 +496,6 @@ def test_aes_gcm_different_IV():
 
 def test_quick():
     aes = Cipher("aes-128-gcm")
-    c, t = aes.quick_gcm_enc("A"*16, "A"*16, "Hello")
-    p = aes.quick_gcm_dec("A"*16, "A"*16, c, t)
-    assert p == "Hello"
+    c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello")
+    p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t)
+    assert p == b"Hello"
