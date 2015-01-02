@@ -2,7 +2,6 @@ from .ec import EcGroup, EcPt
 from .bn import Bn
 
 import json
-import codecs
 from os import urandom
 from base64 import b64encode, b64decode
 
@@ -19,7 +18,7 @@ class CryptoEnc(json.JSONEncoder):
     def __init__(self):
         json.JSONEncoder.__init__(self)
 
-    def default(self, o):
+    def default(self, o): # pylint: disable=method-hidden
         if isinstance(o, Bn):
             return {
                 '_t': "Bn",
@@ -82,7 +81,7 @@ def test_encoder_ec():
     y = CryptoDec().decode(s)
     assert y[2] == x.b
 
-def test_encoder_bn():
+def test_encoder_keepB():
     e = CryptoEnc()
     x = B(urandom(160))
     s = e.encode([x, x, x])

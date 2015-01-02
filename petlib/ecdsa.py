@@ -1,5 +1,5 @@
-from .bindings import _FFI, _C
-from .ec import EcGroup, EcPt, _check
+from .bindings import _C
+from .ec import EcGroup, _check
 from .bn import Bn
 
 def do_ecdsa_sign(G, priv, data):

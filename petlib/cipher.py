@@ -1,5 +1,4 @@
 from .bindings import _FFI, _C
-from binascii import hexlify
 
 import pytest
 
@@ -161,7 +160,7 @@ class Cipher(object):
         """
         enc = self.enc(key, iv)
         if assoc:
-            dec.update_associated(assoc)
+            enc.update_associated(assoc)
         ciphertext = enc.update(msg)
         enc.finalize()
         tag = enc.get_tag(tagl)
@@ -275,6 +274,9 @@ class CipherOperation(object):
         _check( _C.EVP_CIPHER_CTX_cleanup(self.ctx) )
         _C.EVP_CIPHER_CTX_free(self.ctx)
 
+
+## When testing ignore extra variables
+# pylint: disable=unused-variable,redefined-outer-name
 
 def test_aes_init():
     aes = Cipher("AES-128-CBC")
@@ -497,3 +499,11 @@ def test_quick():
     c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello")
     p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t)
     assert p == b"Hello"
+
+def test_quick_assoc():
+    aes = Cipher("aes-128-gcm")
+    c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello", assoc=b"blah")
+    p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t, assoc=b"blah")
+    assert p == b"Hello"
+
+# pylint: enable=unused-variable,redefined-outer-name

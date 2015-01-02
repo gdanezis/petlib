@@ -1,13 +1,12 @@
 from .bindings import _FFI, _C
 
 # Py2/3 compatibility
-from builtins import int
-from builtins import object
+from builtins import int        # pylint: disable=redefined-builtin
+from builtins import object     # pylint: disable=redefined-builtin
 from future.utils import python_2_unicode_compatible
 
 from functools import wraps
-from copy import copy
-from binascii import hexlify
+from copy import copy, deepcopy
 
 import pytest
 
@@ -15,6 +14,7 @@ def force_Bn(n):
     """A decorator that coerces the nth input to be a Big Number"""
 
     def convert_nth(f):
+        # pylint: disable=star-args
         @wraps(f)  
         def new_f(*args, **kwargs):
             if not n < len(args):
@@ -149,7 +149,8 @@ class Bn(object):
         return other
 
     def __deepcopy__(self, memento):
-        'Deepcopy is the same as copy' 
+        'Deepcopy is the same as copy'
+        # pylint: disable=unused-argument 
         return self.__copy__()
 
     def __del__(self):
@@ -199,7 +200,7 @@ class Bn(object):
 
     def __repr__(self):
         'The representation of the number as a decimal string'
-        buf =  _C.BN_bn2dec(self.bn);
+        buf =  _C.BN_bn2dec(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
         return s.decode('utf8')
@@ -225,7 +226,7 @@ class Bn(object):
 
     def __hex__(self):
         """The representation of the string in hexadecimal"""
-        buf =  _C.BN_bn2hex(self.bn);
+        buf =  _C.BN_bn2hex(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
         return s.decode("utf8")
@@ -235,7 +236,7 @@ class Bn(object):
         Number. You need to extact the sign separately."""
         if self < 0:
                 raise Exception("Cannot represent negative numbers")
-        size = _C._bn_num_bytes(self.bn);
+        size = _C.bn_num_bytes(self.bn)
         bin_string = _FFI.new("unsigned char[]", size)
         
         l = _C.BN_bn2bin(self.bn, bin_string)
@@ -431,6 +432,7 @@ class Bn(object):
 
     # Implement negative 
     def __neg__(self):
+        # pylint: disable=protected-access
         zero = Bn(0)
         ret = copy(self)
         if ret >= zero:
@@ -492,6 +494,7 @@ def test_bn_constructors():
     assert range(10)[Bn(4)] == 4
 
     d = {Bn(5): 5, Bn(6):6}
+    assert Bn(5) in d
 
 
 def test_bn_prime():
@@ -557,7 +560,6 @@ def test_bn_arithmetic():
 
 def test_bn_allocate():
     # Test allocation
-    n = Bn()
     n0 = Bn(10)
     assert True
 
@@ -575,9 +577,8 @@ def test_bn_allocate():
     assert 0 <= Bn(15).random() < 15
 
     # Test copy
-    import copy
-    o0 = copy.copy(n0)
-    o1 = copy.deepcopy(n0)
+    o0 = copy(n0)
+    o1 = deepcopy(n0)
 
     assert o0 == n0
     assert o1 == n0

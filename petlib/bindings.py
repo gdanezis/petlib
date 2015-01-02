@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 import cffi
-from copy import copy
-from binascii import hexlify
 
 _FFI = cffi.FFI()
 
 _FFI.cdef("""
 
 /* 
-  Generic OpenSSL functions.
+    Generic OpenSSL functions.
 */ 
 
 void OPENSSL_free(void*);
@@ -18,14 +16,14 @@ void OPENSSL_free(void*);
 
 
 /* 
-  ECC OpenSSL functions.
+    ECC OpenSSL functions.
 */
 
 typedef enum {
-  /* values as defined in X9.62 (ECDSA) and elsewhere */
-  POINT_CONVERSION_COMPRESSED = 2,
-  POINT_CONVERSION_UNCOMPRESSED = 4,
-  POINT_CONVERSION_HYBRID = 6
+    /* values as defined in X9.62 (ECDSA) and elsewhere */
+    POINT_CONVERSION_COMPRESSED = 2,
+    POINT_CONVERSION_UNCOMPRESSED = 4,
+    POINT_CONVERSION_HYBRID = 6
 } point_conversion_form_t;
 
 typedef ... EC_GROUP;
@@ -81,19 +79,19 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group, EC_POINT *p,
 const BIGNUM *x, int y_bit, BN_CTX *ctx);
 
 size_t EC_POINT_point2oct(const EC_GROUP *, const EC_POINT *, point_conversion_form_t form,
-        unsigned char *buf, size_t len, BN_CTX *);
+                unsigned char *buf, size_t len, BN_CTX *);
 int EC_POINT_oct2point(const EC_GROUP *, EC_POINT *,
-        const unsigned char *buf, size_t len, BN_CTX *);
+                const unsigned char *buf, size_t len, BN_CTX *);
 
 typedef struct { 
-  int nid;
-  const char *comment;
-  } EC_builtin_curve;
+    int nid;
+    const char *comment;
+    } EC_builtin_curve;
 
 size_t EC_get_builtin_curves(EC_builtin_curve *r, size_t nitems);
 
 /*
-  Big Number (BN) OpenSSL functions.
+    Big Number (BN) OpenSSL functions.
 */
 
 typedef unsigned int BN_ULONG;
@@ -124,13 +122,13 @@ BIGNUM* BN_mod_inverse(BIGNUM *ret, const BIGNUM *a, const BIGNUM *n,BN_CTX *ctx
 
  int    BN_nnmod(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx);
  int    BN_mod_add(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-            BN_CTX *ctx);
+                        BN_CTX *ctx);
  int    BN_mod_sub(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-            BN_CTX *ctx);
+                        BN_CTX *ctx);
  int    BN_mod_mul(BIGNUM *r, BIGNUM *a, BIGNUM *b, const BIGNUM *m,
-            BN_CTX *ctx);
+                        BN_CTX *ctx);
 
-int     _bn_num_bytes(BIGNUM * a);
+int     bn_num_bytes(BIGNUM * a);
 int     BN_num_bits(const BIGNUM *a);
 char *  BN_bn2dec(const BIGNUM *a);
 char *  BN_bn2hex(const BIGNUM *a);
@@ -140,38 +138,38 @@ BIGNUM* BN_bin2bn(const unsigned char *s,int len,BIGNUM *ret);
 int     BN_bn2bin(const BIGNUM *a, unsigned char *to);
 
 int     BN_generate_prime_ex(BIGNUM *ret,int bits,int safe, const BIGNUM *add, 
-            const BIGNUM *rem, BN_GENCB *cb);
+                        const BIGNUM *rem, BN_GENCB *cb);
 int     BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 
 int     BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
 /* 
 
-  EVP Ciphers 
+    EVP Ciphers 
 
 */
 
 typedef struct evp_cipher_st
 {
-  int nid;
-  int block_size;
-  int key_len; /* Default value for variable length ciphers */
-  int iv_len;
-  unsigned long flags; /* Various flags */
-  ...;
+    int nid;
+    int block_size;
+    int key_len; /* Default value for variable length ciphers */
+    int iv_len;
+    unsigned long flags; /* Various flags */
+    ...;
 } EVP_CIPHER;
 
 typedef struct evp_cipher_ctx_st
 {
-  const EVP_CIPHER *cipher;
-  int encrypt; /* encrypt or decrypt */
-  int buf_len; /* number we have left */
-  int num; /* used by cfb/ofb/ctr mode */
-  int key_len; /* May change for variable length cipher */
-  unsigned long flags; /* Various flags */
-  int final_used;
-  int block_mask;
-  ...;
+    const EVP_CIPHER *cipher;
+    int encrypt; /* encrypt or decrypt */
+    int buf_len; /* number we have left */
+    int num; /* used by cfb/ofb/ctr mode */
+    int key_len; /* May change for variable length cipher */
+    unsigned long flags; /* Various flags */
+    int final_used;
+    int block_mask;
+    ...;
 } EVP_CIPHER_CTX;
 
 const EVP_CIPHER * EVP_aes_128_gcm(void);
@@ -227,18 +225,18 @@ int  EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
 #define EVP_CTRL_GCM_SET_IV_INV ...
 
  int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
-         ENGINE *impl, unsigned char *key, unsigned char *iv);
+                 ENGINE *impl, unsigned char *key, unsigned char *iv);
  int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
-         int *outl, unsigned char *in, int inl);
+                 int *outl, unsigned char *in, int inl);
  int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
-         int *outl);
+                 int *outl);
 
  int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
-         ENGINE *impl, unsigned char *key, unsigned char *iv);
+                 ENGINE *impl, unsigned char *key, unsigned char *iv);
  int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
-         int *outl, unsigned char *in, int inl);
+                 int *outl, unsigned char *in, int inl);
  int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm,
-         int *outl);
+                 int *outl);
 
 void init_ciphers();
 void cleanup_ciphers();
@@ -259,7 +257,7 @@ const EVP_MD *EVP_get_digestbyname(const char *name);
  void HMAC_CTX_init(HMAC_CTX *ctx);
 
  int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int key_len,
-                   const EVP_MD *md, ENGINE *impl);
+                                     const EVP_MD *md, ENGINE *impl);
  int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, int len);
  int HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
 
@@ -271,8 +269,8 @@ const EVP_MD *EVP_get_digestbyname(const char *name);
 
 typedef struct ECDSA_SIG_st
 {
-  BIGNUM * r;
-  BIGNUM * s;
+    BIGNUM * r;
+    BIGNUM * s;
 } ECDSA_SIG;
 
 typedef ... EC_KEY; 
@@ -281,9 +279,9 @@ typedef ... EC_KEY;
  void           ECDSA_SIG_free(ECDSA_SIG *sig);
 
  ECDSA_SIG*     ECDSA_do_sign(const unsigned char *dgst, int dgst_len,
-                        EC_KEY *eckey);
+                                                EC_KEY *eckey);
  int            ECDSA_do_verify(const unsigned char *dgst, int dgst_len,
-                        const ECDSA_SIG *sig, EC_KEY* eckey);
+                                                const ECDSA_SIG *sig, EC_KEY* eckey);
  int            ECDSA_size(const EC_KEY *eckey);
 
 
@@ -305,35 +303,35 @@ _C = _FFI.verify("""
 
 #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
-int _bn_num_bytes(BIGNUM * a){
-  return BN_num_bytes(a);
+int bn_num_bytes(BIGNUM * a){
+    return BN_num_bytes(a);
 }
 
 size_t hmac_ctx_size(){
-  return sizeof(HMAC_CTX);
+    return sizeof(HMAC_CTX);
 
 }
 
 void init_ciphers(){
-  /* Load the human readable error strings for libcrypto */
-  ERR_load_crypto_strings();
+    /* Load the human readable error strings for libcrypto */
+    ERR_load_crypto_strings();
 
-  /* Load all digest and cipher algorithms */
-  OpenSSL_add_all_algorithms();
+    /* Load all digest and cipher algorithms */
+    OpenSSL_add_all_algorithms();
 
-  /* Load config file, and other important initialisation */
-  OPENSSL_config(NULL);
+    /* Load config file, and other important initialisation */
+    OPENSSL_config(NULL);
 }
 
 void cleanup_ciphers(){
-  /* Removes all digests and ciphers */
-  EVP_cleanup();
+    /* Removes all digests and ciphers */
+    EVP_cleanup();
 
-  /* if you omit the next, a small leak may be left when you make use of the BIO (low level API) for e.g. base64 transformations */
-  CRYPTO_cleanup_all_ex_data();
+    /* if you omit the next, a small leak may be left when you make use of the BIO (low level API) for e.g. base64 transformations */
+    CRYPTO_cleanup_all_ex_data();
 
-  /* Remove error strings */
-  ERR_free_strings();
+    /* Remove error strings */
+    ERR_free_strings();
 
 }
 
@@ -342,24 +340,25 @@ void cleanup_ciphers(){
 _inited = False
 
 class InitCicphers(object):
+    # pylint: disable=global-statement
 
-  def __init__(self):
-    global _inited
-    self.on = False
-    if not _inited:
-      _C.init_ciphers()
-      _inited = True
-      self.on = True
+    def __init__(self):
+        global _inited
+        self.on = False
+        if not _inited:
+            _C.init_ciphers()
+            _inited = True
+            self.on = True
 
-  def __del__(self):
-    global _inited
-    if _inited and self.on:
-      _inited = False
-      _C.cleanup_ciphers()
+    def __del__(self):
+        global _inited
+        if _inited and self.on:
+            _inited = False
+            _C.cleanup_ciphers()
 
 _ciphers = InitCicphers()
 
 def test_double_load():
-  _c2 = InitCicphers()
-  del _c2
-  ## Nothing bad should happen
+    _c2 = InitCicphers()
+    del _c2
+    ## Nothing bad should happen

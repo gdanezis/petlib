@@ -1,7 +1,5 @@
 from .bindings import _FFI, _C
 
-from functools import wraps
-from copy import copy
 from binascii import hexlify
 
 import pytest
@@ -112,6 +110,7 @@ def test_init():
     h = Hmac(b"md5", b"Hello")
     h.update(b"hello")
     d = h.digest()
+    assert d
 
 def test_vectors():
     """

@@ -1,8 +1,9 @@
 from .bindings import _FFI, _C
 from .bn import Bn, force_Bn
 
-from builtins import int
-from builtins import object
+
+from builtins import int        # pylint: disable=redefined-builtin
+from builtins import object     # pylint: disable=redefined-builtin
 from future.utils import python_2_unicode_compatible
 
 from copy import copy
@@ -17,9 +18,7 @@ def _check(return_val):
             return
 
         raise Exception("EC exception") 
-
-
-
+        
 
 class EcGroup(object):
 
@@ -68,7 +67,7 @@ class EcGroup(object):
         return o
 
     def __eq__(self, other):
-        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _FFI.NULL);
+        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _FFI.NULL)
         return res == 0
 
     def __ne__(self, other):
@@ -79,7 +78,7 @@ class EcGroup(object):
         return int(_C.EC_GROUP_get_curve_name(self.ecg))
 
     def __del__(self):
-        _C.EC_GROUP_free(self.ecg);
+        _C.EC_GROUP_free(self.ecg)
 
     def check_point(self, pt):
         """Ensures the point is on the curve"""
@@ -203,6 +202,9 @@ self.pt, x.bn, y.bn, _FFI.NULL))
     def __str__(self):
         return hexlify(self.export()).decode("utf8")
 
+## Ignore some lint warning in tests
+# pylint: disable=unused-variable
+
 def test_ec_list_group():
     c = EcGroup.list_curves()
     assert len(c) > 0 
@@ -275,8 +277,9 @@ def test_p224_const_timing():
 
         t0 = time.clock()
         for y in tests:
-            y * h
+            dud = y * h
         t += [time.clock() - t0]
         print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 1.0 / 100
 
+# pylint: enable=unused-variable

@@ -29,6 +29,16 @@ def build(quiet=True):
     tell("Build dist")
     sh('python setup.py sdist', capture=quiet)
 
+@task
+def upload(quiet=False):
+    tell("upload dist")
+    sh('python setup.py sdist upload', capture=quiet)
+
+@task
+def lint(quiet=False):
+    tell("Run pylint on the library")
+    sh('pylint --rcfile "pylintrc" petlib', capture=quiet)
+
 
 @task
 def make_docs(quiet=True):
@@ -69,7 +79,7 @@ def test():
     pass
 
 
-@needs('unit_tests', 'build', 'make_docs', 'make_env', 'big_tests')
+@needs('unit_tests', 'test3', 'build', 'make_docs', 'make_env', 'big_tests')
 @task
 def default():
     pass
