@@ -49,11 +49,11 @@ class Hmac(object):
 
     Example:
 
-        >>> h = Hmac("sha512", "Jefe")
-        >>> h.update("what do ya want ")
-        >>> h.update("for nothing?")
+        >>> h = Hmac(b"sha512", b"Jefe")
+        >>> h.update(b"what do ya want ")
+        >>> h.update(b"for nothing?")
         >>> d = h.digest()
-        >>> hexlify(d)[:10] == "164b7a7bfc"
+        >>> hexlify(d)[:10] == b"164b7a7bfc"
         True
 
     """

@@ -19,13 +19,12 @@ class Cipher(object):
     Example:
         
         >>> aes = Cipher("AES-128-CTR")
-        >>> enc = aes.enc(key="AAAAAAAAAAAAAAAA", iv="AAAAAAAAAAAAAAAA")
-        >>> ref = "Hello World"
+        >>> enc = aes.enc(key=b"AAAAAAAAAAAAAAAA", iv=b"AAAAAAAAAAAAAAAA")
+        >>> ref = b"Hello World"
         >>> ciphertext = enc.update(ref)
         >>> ciphertext += enc.finalize()
-        >>> hexlify(ciphertext)
-        'b0aecdc6347177db8091be'
-        >>> dec = aes.dec(key="AAAAAAAAAAAAAAAA", iv="AAAAAAAAAAAAAAAA")
+        >>> assert hexlify(ciphertext) == b'b0aecdc6347177db8091be'
+        >>> dec = aes.dec(key=b"AAAAAAAAAAAAAAAA", iv=b"AAAAAAAAAAAAAAAA")
         >>> plaintext = dec.update(ciphertext)
         >>> plaintext += dec.finalize()
         >>> plaintext == ref
@@ -155,9 +154,9 @@ class Cipher(object):
         Example: 
 
             >>> aes = Cipher("aes-128-gcm")
-            >>> c, t = aes.quick_gcm_enc("A"*16, "A"*16, "Hello")
-            >>> aes.quick_gcm_dec("A"*16, "A"*16, c, t)
-            'Hello'
+            >>> c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello")
+            >>> p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t)
+            >>> assert p == b'Hello'
 
         """
         enc = self.enc(key, iv)
@@ -240,13 +239,13 @@ class CipherOperation(object):
         Example GCM encryption usage:
 
             >>> aes = Cipher.aes_128_gcm()
-            >>> enc = aes.op(key="A"*16, iv="A"*16)
-            >>> enc.update_associated("Hello")
-            >>> ciphertext = enc.update("World!")
+            >>> enc = aes.op(key=b"A"*16, iv=b"A"*16)
+            >>> enc.update_associated(b"Hello")
+            >>> ciphertext = enc.update(b"World!")
             >>> nothing = enc.finalize()
             >>> tag = enc.get_tag(16)
-            >>> ciphertext, tag
-            ('dV\\xb9:\\xd0\\xbe', 'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
+            >>> assert ciphertext == b'dV\\xb9:\\xd0\\xbe'
+            >>> assert tag == b'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa'
 
         """
         tag = _FFI.new("unsigned char []", tag_len)
@@ -261,14 +260,13 @@ class CipherOperation(object):
 
         Example GCM decryption and check:
             >>> aes = Cipher.aes_128_gcm()
-            >>> ciphertext, tag = ('dV\\xb9:\\xd0\\xbe', 'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
-            >>> dec = aes.dec(key="A"*16, iv="A"*16)
-            >>> dec.update_associated("Hello")
+            >>> ciphertext, tag = (b'dV\\xb9:\\xd0\\xbe', b'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
+            >>> dec = aes.dec(key=b"A"*16, iv=b"A"*16)
+            >>> dec.update_associated(b"Hello")
             >>> plaintext = dec.update(ciphertext)
             >>> dec.set_tag(tag)
             >>> nothing = dec.finalize()
-            >>> plaintext
-            'World!'
+            >>> assert plaintext == b'World!'
 
         """
         _check( _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))

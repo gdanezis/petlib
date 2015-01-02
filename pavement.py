@@ -18,6 +18,11 @@ def unit_tests():
     tell("Unit tests")
     sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
 
+@task
+def test3():
+    tell("Unit tests for python 3")
+    sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
+
 
 @task
 def build(quiet=True):
