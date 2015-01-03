@@ -16,7 +16,8 @@ class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
     Example:
-        
+
+        >>> from binascii import hexlify
         >>> aes = Cipher("AES-128-CTR")
         >>> enc = aes.enc(key=b"AAAAAAAAAAAAAAAA", iv=b"AAAAAAAAAAAAAAAA")
         >>> ref = b"Hello World"

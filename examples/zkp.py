@@ -14,7 +14,7 @@ def challenge(elements):
     elem_len = map(lambda x: "%s||%s" % (len(x) , x), elem_str)
     state = "|".join(elem_len)
     H = sha256()
-    H.update(state)
+    H.update(state.encode("utf8"))
     return H.digest()
 
 def prove(G, h, g, x, m=""):

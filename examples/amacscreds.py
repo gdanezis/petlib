@@ -77,9 +77,9 @@ def cred_issue(params, publics, secrets, messages):
     mi_names = lnames("m", n) 
     Xi_names = lnames("X", n)
 
-    ivars = zip(xi_names, sk[1:]) \
-            + zip(mi_names, messages) \
-            + zip(Xi_names, iparams)
+    ivars = list(zip(xi_names, sk[1:])) \
+            + list(zip(mi_names, messages)) \
+            + list(zip(Xi_names, iparams))
 
     env.update(dict(ivars))
 
@@ -109,8 +109,8 @@ def cred_issue_check(params, publics, mac, sig, messages):
     mi_names = lnames("m", n) 
     Xi_names = lnames("X", n) 
 
-    ivars = zip(mi_names, messages) \
-            + zip(Xi_names, iparams)
+    ivars = list(zip(mi_names, messages)) \
+            + list(zip(Xi_names, iparams))
 
     env.update(dict(ivars))
 

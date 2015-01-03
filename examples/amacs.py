@@ -9,8 +9,8 @@ import pytest
 def setup_ggm(nid = 713):
     """Generates the parameters for an EC group nid"""
     G = EcGroup(nid)
-    g = G.hash_to_point("g")
-    h = G.hash_to_point("h")
+    g = G.hash_to_point(b"g")
+    h = G.hash_to_point(b"h")
     o = G.order()
     return (G, g, h, o)
 

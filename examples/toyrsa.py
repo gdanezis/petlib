@@ -34,9 +34,9 @@ def dec(pub, priv, ciphertext):
 
 def test_toyrsa():
     pub, priv = gen_key()
-    c = enc(pub, "Hello World!")
+    c = enc(pub, b"Hello World!")
     p = dec(pub, priv, c)
-    assert p == "Hello World!"
-    print p
+    assert p == b"Hello World!"
+    print(p)
 
     

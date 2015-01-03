@@ -84,8 +84,8 @@ class KulanClient(object):
         encode = CryptoEnc().encode
         gcm_enc = self.aes.quick_gcm_enc
 
-        sym_key = urandom(16)
-        iv = urandom(16)
+        sym_key = bytes(urandom(16))
+        iv = bytes(urandom(16))
 
         msg = [self.pub, self.pub_enc, B(iv)]
 
@@ -94,12 +94,23 @@ class KulanClient(object):
             K = derive_3DH_sender(self.G, self.priv, self.priv_enc, pub1, pub2)            
 
             ciphertext, tag = gcm_enc(K[:16], iv, sym_key)
+
+            print("------------")
+            # print("iv", iv)
+            print("key", K[:16])
+            print("cip", ciphertext)
+            print("tag", tag)
+
+            assert isinstance(ciphertext, bytes)
+            assert isinstance(tag, bytes)
+
             msg2 += [(B(ciphertext), B(tag))]
 
         msg += [msg2]
-        inner_msg = encode([B(self.name), self.pub_sign])
-        
-        ciphertext, tag = gcm_enc(sym_key, iv, inner_msg)
+        inner_msg = encode([B(self.name.encode("utf8")), self.pub_sign])
+        assert isinstance(inner_msg, str)
+
+        ciphertext, tag = gcm_enc(sym_key, iv, inner_msg.encode("utf8"))
         msg += [(B(ciphertext), B(tag))]
 
         return encode(msg)
@@ -108,13 +119,28 @@ class KulanClient(object):
         decode = CryptoDec().decode
         gcm_dec = self.aes.quick_gcm_dec
 
+        assert isinstance(msgs, str)
+
         msgs = decode(msgs)
         pub1, pub2, iv = msgs[0:3]
 
         K = derive_3DH_receiver(self.G, pub1, pub2, 
                                 self.priv, self.priv_enc)
 
+        assert isinstance(K, bytes)
+        assert isinstance(iv, bytes)
+
         for cip, tag in msgs[3]:
+            assert isinstance(cip, bytes)
+            assert isinstance(tag, bytes)
+
+            print()
+            print ("---------------")
+            #print("iv", iv)
+            print("key", K[:16])
+            print("cip", cip)
+            print("tag", tag)
+
             sym_key = gcm_dec(K[:16], iv, cip, tag)
             if sym_key:
                 break
@@ -126,7 +152,11 @@ class KulanClient(object):
         ciphertext2, tag2 = msgs[-1] 
         plaintext = gcm_dec(sym_key, iv, ciphertext2, tag2)
         
-        [name, sig_key] = decode(plaintext)
+        assert isinstance(plaintext, bytes)
+
+        [name, sig_key] = decode(plaintext.decode("utf8"))
+        print(name, sig_key)
+        name = name.decode("utf8")
         
         if self.pki[name] == pub1:
             return (name, sig_key)
@@ -144,11 +174,11 @@ class KulanClient(object):
         # Note: include the key here to bing the signature 
         # to the encrypted channel defined by this key. 
         r, s = do_ecdsa_sign(self.G, self.priv_sign, md)
-        inner_message = [B(self.name), B(plaintext), r, s]
-        plain_inner = encode(inner_message)
+        inner_message = [B(self.name.encode("utf8")), B(plaintext), r, s]
+        plain_inner = encode(inner_message).encode("utf8")
         
         ## Encrypt using AEC-GCM
-        iv = urandom(16)
+        iv = bytes(urandom(16))
         ciphertext, tag = gcm_enc(self.Ks[-1], iv, plain_inner)
         
         return encode([B(iv), B(ciphertext), B(tag)])
@@ -161,15 +191,21 @@ class KulanClient(object):
 
         [iv, ciphertext, tag] = decode(ciphertext)
 
+        assert isinstance(ciphertext, bytes)
+        assert isinstance(iv, bytes)
+        assert isinstance(tag, bytes)
+
         ## Decrypt and check integrity
         plaintext = gcm_dec(self.Ks[-1], iv, ciphertext, tag)
+
+        assert isinstance(plaintext, bytes)
         
         ## Check signature
-        [xname, xplain, r, s] = decode(plaintext)
+        [xname, xplain, r, s] = decode(plaintext.decode("utf8"))
         md = sha1(self.Ks[-1] + bytes(xplain)).digest()
         
         sig = (r,s)
-        pub = self.current_dict[bytes(xname)]
+        pub = self.current_dict[xname.decode("utf8")]
         if not do_ecdsa_verify(self.G, pub, sig, bytes(md)):
             return None
 
@@ -195,7 +231,7 @@ def test_steady():
     client = KulanClient(G, "me", x, pki)
 
     ## Mock some keys
-    client.Ks += [urandom(16)]
+    client.Ks += [bytes(urandom(16))]
 
     # Decrypt a small message
     ciphertext = client.steady_encrypt(b"Hello World!")
@@ -217,8 +253,8 @@ def test_steady():
         client.steady_decrypt(ciphertext)
     t = time.clock() - t0
 
-    print
-    print " - %2.2f operations / sec" % (1.0 / (t / 1000))
+    print()
+    print(" - %2.2f operations / sec" % (1.0 / (t / 1000)))
 
 def test_2DH():
     G = EcGroup()
@@ -278,5 +314,5 @@ def test_broad():
     dec_client.pub_enc = puba2
 
     namex, keysx = dec_client.broadcast_decrypt(msgs)
-    assert namex == b"me"
+    assert namex == "me"
     # print msgs

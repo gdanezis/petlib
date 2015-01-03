@@ -5,7 +5,7 @@ import time
 
 if __name__ == "__main__":
     fails = 0
-    print "List of curves passing the constant-time scalar mult test:"
+    print("List of curves passing the constant-time scalar mult test:")
     for (nid, name) in sorted(EcGroup.list_curves().items()):
         G = EcGroup(nid)
         g = G.generator()
@@ -28,8 +28,8 @@ if __name__ == "__main__":
 
             ps = 1.0 / (t[-1] / repreats)
             res = ["FAIL", "PASS"][res]
-            print "%3d\t%s\t%2.1f/s\t%s" % (nid, res, ps, name)
+            print("%3d\t%s\t%2.1f/s\t%s" % (nid, res, ps, name))
         else:
             fails += 1
 
-    print "%d fails" % fails
+    print("%d fails" % fails)

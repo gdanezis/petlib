@@ -8,7 +8,8 @@ from petlib.bn import Bn
 from petlib.ec import EcGroup, EcPt
 
 from hashlib import sha256
-from binascii import hexlify
+
+from base64 import b64encode
 
 
 import pytest
@@ -18,17 +19,17 @@ def test_protocol():
 	G = EcGroup(713)
 	q = G.order()
 
-	g = G.hash_to_point("g")
-	h = G.hash_to_point("h")
-	z = G.hash_to_point("z")
-	hs = [G.hash_to_point("h%s" % i) for i in range(100)]
+	g = G.hash_to_point(b"g")
+	h = G.hash_to_point(b"h")
+	z = G.hash_to_point(b"z")
+	hs = [G.hash_to_point(("h%s" % i).encode("utf8")) for i in range(100)]
 
 	# Inputs from user
 	R = q.random()
 	L1 = 10
 	L2 = 20
 	C = R * hs[0] + L1 * hs[1] + L2 * hs[2]
-	m = "Hello World!"
+	m = b"Hello World!"
 
 	# Inputs from the Issuer
 	# TODO: check ZK on C
@@ -72,8 +73,8 @@ def test_protocol():
 
 	# Make epsilon
 	H = [zet, zet1, alph, alph1, alph2, eta]
-	Hstr = map(EcPt.export, H) + [m]
-	Hhex = "|".join(map(hexlify, Hstr))
+	Hstr = list(map(EcPt.export, H)) + [m]
+	Hhex = b"|".join(map(b64encode, Hstr))
 	epsilon = Bn.from_binary(sha256(Hhex).digest()) % q
 	
 	e = epsilon.mod_sub(t2,q).mod_sub(t4, q)
@@ -100,8 +101,8 @@ def test_protocol():
 			ro2p * h + omp * zet2, ## problem
 			mu * z + omp * zet]
 	
-	Hstr = map(EcPt.export, rhs_h) + [m]
-	Hhex = "|".join(map(hexlify, Hstr))
+	Hstr = list(map(EcPt.export, rhs_h)) + [m]
+	Hhex = b"|".join(map(b64encode, Hstr))
 	rhs = Bn.from_binary(sha256(Hhex).digest()) % q
 	
-	print rhs == lhs
+	print(rhs == lhs)

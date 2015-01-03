@@ -20,7 +20,7 @@ def challenge(elements):
     elem_len = map(lambda x: "%s||%s" % (len(x) , x), elem_str)
     state = "|".join(elem_len)
     H = sha256()
-    H.update(state)
+    H.update(state.encode("utf8"))
     return H.digest()
 
 class Val:
@@ -166,9 +166,9 @@ class ZKProof(object):
         raise Exception("Wrong type of names: str or list(str)")
 
     def _check_env(self, env):
-        variables = self.Const.keys() \
-                    + self.Pub.keys() \
-                    + self.Sec.keys()
+        variables = list(self.Const) \
+                    + list(self.Pub) \
+                    + list(self.Sec)
 
         for v in variables:
             assert v in env
@@ -229,7 +229,7 @@ class ZKProof(object):
         ## Select the constants for the env
         env_l = [(k,v)for  k,v in env.items() if k in self.Const]
         c, responses = sig
-        responses = dict(responses.items() + env_l)
+        responses = dict(list(responses.items()) + env_l)
 
         ## Ensure all variables we need are here
         self._check_env(responses)
@@ -277,9 +277,9 @@ def test_basic():
 
     zk.add_proof(Cx, Cxp)
 
-    print zk.Const.keys()
-    print zk.Pub.keys()
-    print zk.Sec.keys()
+    print(zk.Const.keys())
+    print(zk.Pub.keys())
+    print(zk.Sec.keys())
 
 def test_Pedersen():
 
