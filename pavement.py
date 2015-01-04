@@ -69,7 +69,7 @@ def make_env(quiet=True):
 @virtualenv(dir=r"test_env/pltest")
 def big_tests(quiet=True):
     tell("Run acceptance tests (big examples)")
-    sh("pip install --force-reinstall %s" % get_latest_dist(), capture=quiet)
+    sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     sh("py.test-2.7 -v examples/*.py")
     
 

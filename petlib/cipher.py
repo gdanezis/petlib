@@ -5,12 +5,12 @@ import pytest
 
 def _check(return_val):
     """Checks the return code of the C calls"""
-    if type(return_val) is int and return_val == 1:
+    if isinstance(return_val, int) and return_val == 1:
       return
-    if type(return_val) is bool and return_val == True:
+    if isinstance(return_val, bool) and return_val == True:
       return
 
-    raise Exception("Cipher exception") 
+    raise Exception("Cipher exception: Unknown type %s or value %s" % (str(type(return_val)), str(return_val)))
 
 class Cipher(object):
     """ A class representing a symmetric cipher and mode.

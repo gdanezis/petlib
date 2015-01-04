@@ -8,6 +8,7 @@ from hashlib import sha1
 
 import json
 from os import urandom
+import random
 
 # Cryptographic primitives used:
 # - AES-128-GCM (IV=16, TAG=16).
@@ -90,7 +91,7 @@ class KulanClient(object):
         msg = [self.pub, self.pub_enc, B(iv)]
 
         msg2 = []
-        for name, (pub1, pub2) in self.pki.items():
+        for name, (pub1, pub2) in sorted(self.pki.items(), key=lambda x: random.random()):
             K = derive_3DH_sender(self.G, self.priv, self.priv_enc, pub1, pub2)            
 
             ciphertext, tag = gcm_enc(K[:16], iv, sym_key)
@@ -141,9 +142,12 @@ class KulanClient(object):
             print("cip", cip)
             print("tag", tag)
 
-            sym_key = gcm_dec(K[:16], iv, cip, tag)
-            if sym_key:
-                break
+            try:
+                sym_key = gcm_dec(K[:16], iv, cip, tag)
+                if sym_key:
+                    break
+            except:
+                continue
 
         ## Is no decryption is available bail-out
         if not sym_key:
