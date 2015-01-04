@@ -95,21 +95,10 @@ class KulanClient(object):
             K = derive_3DH_sender(self.G, self.priv, self.priv_enc, pub1, pub2)            
 
             ciphertext, tag = gcm_enc(K[:16], iv, sym_key)
-
-            print("------------")
-            # print("iv", iv)
-            print("key", K[:16])
-            print("cip", ciphertext)
-            print("tag", tag)
-
-            assert isinstance(ciphertext, bytes)
-            assert isinstance(tag, bytes)
-
             msg2 += [(B(ciphertext), B(tag))]
 
         msg += [msg2]
         inner_msg = encode([B(self.name.encode("utf8")), self.pub_sign])
-        assert isinstance(inner_msg, str)
 
         ciphertext, tag = gcm_enc(sym_key, iv, inner_msg.encode("utf8"))
         msg += [(B(ciphertext), B(tag))]
@@ -120,27 +109,13 @@ class KulanClient(object):
         decode = CryptoDec().decode
         gcm_dec = self.aes.quick_gcm_dec
 
-        assert isinstance(msgs, str)
-
         msgs = decode(msgs)
         pub1, pub2, iv = msgs[0:3]
 
         K = derive_3DH_receiver(self.G, pub1, pub2, 
                                 self.priv, self.priv_enc)
 
-        assert isinstance(K, bytes)
-        assert isinstance(iv, bytes)
-
         for cip, tag in msgs[3]:
-            assert isinstance(cip, bytes)
-            assert isinstance(tag, bytes)
-
-            print()
-            print ("---------------")
-            #print("iv", iv)
-            print("key", K[:16])
-            print("cip", cip)
-            print("tag", tag)
 
             try:
                 sym_key = gcm_dec(K[:16], iv, cip, tag)
@@ -156,8 +131,6 @@ class KulanClient(object):
         ciphertext2, tag2 = msgs[-1] 
         plaintext = gcm_dec(sym_key, iv, ciphertext2, tag2)
         
-        assert isinstance(plaintext, bytes)
-
         [name, sig_key] = decode(plaintext.decode("utf8"))
         print(name, sig_key)
         name = name.decode("utf8")
