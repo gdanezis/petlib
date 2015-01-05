@@ -35,10 +35,22 @@ def upload(quiet=False):
     sh('python setup.py sdist upload', capture=quiet)
 
 @task
-def lint(quiet=False):
+def lintlib(quiet=False):
     tell("Run pylint on the library")
     sh('pylint --rcfile "pylintrc" petlib', capture=quiet)
 
+@needs("make_env")
+@task
+@virtualenv(dir=r"test_env/pltest")
+def lintexamples(quiet=True):
+    tell("Run Lint on example code")
+    sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
+    sh('pylint --rcfile "pylintrc" --load-plugins ignoretest examples/*.py', capture=quiet)
+
+@needs("lintlib", "lintexamples")
+@task
+def lint():
+    pass
 
 @task
 def make_docs(quiet=True):
