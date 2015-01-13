@@ -22,4 +22,5 @@ setup(name='petlib',
             "pytest >= 2.6.4",
             "paver >= 1.2.3"
       ],
+      ext_modules=[petlib.bindings._FFI.verifier.get_extension()],
 )
