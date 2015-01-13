@@ -8,10 +8,14 @@ from hashlib import sha512
 try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
-    from future.utils import python_2_unicode_compatible
 except:
     print('Cannot mock for docs')
 
+try:
+    from future.utils import python_2_unicode_compatible
+except:
+    # An identity decorator
+    python_2_unicode_compatible = lambda x: x
 
 import pytest
 
