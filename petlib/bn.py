@@ -7,10 +7,10 @@ from copy import copy, deepcopy
 try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
+    from future.utils import python_2_unicode_compatible
 except:
     print("Mannot mock for docs")
 
-from future.utils import python_2_unicode_compatible
 
 import pytest
 

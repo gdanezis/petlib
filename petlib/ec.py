@@ -8,10 +8,10 @@ from hashlib import sha512
 try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
+    from future.utils import python_2_unicode_compatible
 except:
     print('Cannot mock for docs')
 
-from future.utils import python_2_unicode_compatible
 
 import pytest
 
