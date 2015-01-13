@@ -2,8 +2,12 @@
 
 from distutils.core import setup
 
+## Need to import the CFFI module during installation to ensure it 
+## builds the packages, and places them in the right context.
+import petlib.bindings
+
 setup(name='petlib',
-      version='0.0.20',
+      version='0.0.21',
       description='A library implementing a number of Privacy Enhancing Technologies (PETs)',
       author='George Danezis',
       author_email='g.danezis@ucl.ac.uk',
