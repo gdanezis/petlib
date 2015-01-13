@@ -1,14 +1,16 @@
 from .bindings import _FFI, _C
 from .bn import Bn, force_Bn
 
-
-from builtins import int        # pylint: disable=redefined-builtin
-from builtins import object     # pylint: disable=redefined-builtin
-from future.utils import python_2_unicode_compatible
-
 from copy import copy
 from binascii import hexlify
 from hashlib import sha512
+
+try:
+    from builtins import int        # pylint: disable=redefined-builtin
+    from builtins import object     # pylint: disable=redefined-builtin
+    from future.utils import python_2_unicode_compatible
+except:
+    print("Mock the packages for the sake of generating docs")
 
 import pytest
 
