@@ -4,7 +4,10 @@ from distutils.core import setup
 
 ## Need to import the CFFI module during installation to ensure it 
 ## builds the packages, and places them in the right context.
-import petlib.bindings
+try:
+      import petlib.bindings
+except:
+      print("Alter: Not compiling the library -- useful for readthedocs.")
 
 setup(name='petlib',
       version='0.0.21',
