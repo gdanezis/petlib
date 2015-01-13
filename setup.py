@@ -6,8 +6,10 @@ from distutils.core import setup
 ## builds the packages, and places them in the right context.
 try:
       import petlib.bindings
+      deps = [petlib.bindings._FFI.verifier.get_extension()]
 except:
       print("Alter: Not compiling the library -- useful for readthedocs.")
+      deps = []
 
 setup(name='petlib',
       version='0.0.21',
@@ -25,5 +27,5 @@ setup(name='petlib',
             "pytest >= 2.6.4",
             "paver >= 1.2.3"
       ],
-      ext_modules=[petlib.bindings._FFI.verifier.get_extension()],
+      ext_modules=deps,
 )
