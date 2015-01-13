@@ -183,7 +183,10 @@ class Cipher(object):
             dec.update_associated(assoc)
         plain = dec.update(cip)
         dec.set_tag(tag)
-        dec.finalize()
+        try:
+            dec.finalize()
+        except:
+            raise Exception("Cipher: decryption failed.")
         return plain
                 
 

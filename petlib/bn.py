@@ -177,6 +177,10 @@ class Bn(object):
         return self.__inner_cmp__(other) == 0
 
     @force_Bn(1)
+    def __ne__(self, other):
+        return self.__inner_cmp__(other) != 0
+
+    @force_Bn(1)
     def __gt__(self, other):
         return self.__inner_cmp__(other) > 0
 
@@ -422,6 +426,16 @@ class Bn(object):
             return True
         raise Exception("Primality test failure %s" % int(res) )
 
+    def is_odd(self):
+        """Returns True if the number is odd."""
+
+        return bool(_C.bn_is_odd(self.bn))
+
+    def is_bit_set(self,n):
+        """Returns True if the nth bit is set"""
+        return int(_C.BN_is_bit_set(self.bn, n))
+
+
     def num_bits(self):
         """Returns the number of bits representing this Big Number"""
         return int(_C.BN_num_bits(self.bn))
@@ -596,6 +610,20 @@ def test_bn_cmp():
     assert Bn(2) == Bn(2)
     assert Bn(2) <= Bn(3)
     assert Bn(2) < Bn(3)
+
+def test_odd():
+    assert Bn(1).is_odd()
+    assert Bn(1).is_bit_set(0)
+    assert not Bn(1).is_bit_set(1)
+
+    assert Bn(3).is_odd()
+    assert Bn(3).is_bit_set(0)
+    assert Bn(3).is_bit_set(1)
+
+    assert not Bn(0).is_odd()
+    assert not Bn(2).is_odd()
+
+    assert Bn(100).is_bit_set(Bn(100).num_bits()-1)
 
 def test_check():
     with pytest.raises(Exception) as excinfo:

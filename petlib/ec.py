@@ -10,6 +10,8 @@ from copy import copy
 from binascii import hexlify
 from hashlib import sha512
 
+import pytest
+
 def _check(return_val):
         """Checks the return code of the C calls"""
         if isinstance(return_val, int) and return_val == 1:
@@ -191,8 +193,14 @@ class EcPt(object):
         output = bytes(_FFI.buffer(buf)[:])
         return output
 
+    def is_infinite(self):
+        """Returns True if this point is at infinity, otherwise False."""
+        return self == self.group.infinite() 
+
     def get_affine(self):
         """Return the affine coordinates (x,y) of this EC Point."""
+        if self == self.group.infinite():
+            raise Exception("EC Infinity has no affine coordinates.")
         x = Bn()
         y = Bn()
         _check( _C.EC_POINT_get_affine_coordinates_GFp(self.group.ecg,
@@ -259,6 +267,17 @@ def test_ec_io():
     assert len(i.export()) == 1
     assert EcPt.from_binary(g.export(), G) == g
     assert EcPt.from_binary(i.export(), G) == i
+
+def test_affine_inf():
+    G = EcGroup(713)
+    inf = G.infinite()
+
+    with pytest.raises(Exception) as excinfo:
+        inf.get_affine()
+    assert 'EC Infinity' in str(excinfo.value)
+
+    
+
 
 def test_p224_const_timing():
     import time

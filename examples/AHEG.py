@@ -28,6 +28,17 @@ def enc(params, pub, counter):
     b = k * pub + counter * g
     return (a, b)
 
+def enc_side(params, pub, counter):
+    """Encrypts the values of a small counter"""
+    assert -2**8 < counter < 2**8
+    G, g, o = params
+
+    k = o.random()
+    a = k * g
+    b = k * pub + counter * g
+    return (a, b, k)
+
+
 def add(c1, c2):
     """Add two encrypted counters"""
     a1, b1 = c1

@@ -143,6 +143,11 @@ int     BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 
 int     BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
+int bn_is_odd(BIGNUM * a);
+
+int BN_is_bit_set(const BIGNUM *a, int n);
+
+
 /* 
 
     EVP Ciphers 
@@ -296,6 +301,7 @@ int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 """)
 
 _C = _FFI.verify("""
+#include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -305,6 +311,10 @@ _C = _FFI.verify("""
 
 int bn_num_bytes(BIGNUM * a){
     return BN_num_bytes(a);
+}
+
+int bn_is_odd(BIGNUM * a){
+    return BN_is_odd(a);
 }
 
 size_t hmac_ctx_size(){
