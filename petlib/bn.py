@@ -12,7 +12,7 @@ except:
 
 try:
     from future.utils import python_2_unicode_compatible
-except:
+except Exception as e:
     # An identity decorator
     python_2_unicode_compatible = lambda x: x
 
