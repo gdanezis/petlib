@@ -155,15 +155,32 @@ class ZKProof(object):
         
         self.proofs += [(lhs, rhs)]
 
-    def get(self, vtype, name):
+    def _check_name_ok(self, name):
+        import re
+        a = re.compile("^[a-zA-Z][a-zA-Z0-9_]*$")
+        if a.match(name) is not None:
+            return True
+        return False
+
+    def get(self, vtype, name, ignore_check = False):
         """Returns a number of proof variables of a certain type"""
+        assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
         if isinstance(name, str):
-            assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
+            assert self._check_name_ok(name) or ignore_check
             return vtype(self, name)
         if isinstance(name, list):
+            assert all(map(self._check_name_ok, name)) or ignore_check
             return [vtype(self, n) for n in name]
 
         raise Exception("Wrong type of names: str or list(str)")
+
+    def get_array(self, vtype, name, number):
+        """Returns an array of variables"""
+        assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
+        assert isinstance(name, str)
+        assert self._check_name_ok(name)
+        names = ["%s[%i]" % (name,i) for i in range(0, number)]
+        return self.get(vtype, names, True)
 
     def _check_env(self, env):
         variables = list(self.Const) \
@@ -259,17 +276,41 @@ class ZKProof(object):
         ## Check equality
         return (c == c_prime)
         
+class ZKEnv(object):
+    """ A class that passes all the ZK environment 
+        state to the proof or verification.
+    """
+
+    def __init__(self, zkp):
+        """ Initializes and ties to a specific proof. """
+        ## Watch out for recursive calls, given we 
+        #  redefined __setattr__
+        object.__setattr__(self, "zkp", zkp)
+        object.__setattr__(self, "env", {})
+
+    def __setattr__(self, name, value):
+        """ Store into a special dictionary """
+        if isinstance(value, list):
+            for i, v in enumerate(value):
+                self.env["%s[%i]" % (name,i)] = v
+        else:          
+            self.env[name] = value
+
+    def get(self):
+        """ Get the environement. """
+        return self.env
+
 
 def test_basic():
     zk = ZKProof(None)
 
     g = zk.get(ConstGen, "g")
     h = zk.get(ConstGen, "h")
-    Gone = zk.get(ConstGen, "1")
+    Gone = zk.get(ConstGen, "d1")
     x = zk.get(Sec, "x")
     o = zk.get(Sec, "o")
     y = zk.get(Pub, "y")
-    one = zk.get(ConstPub, "1g")
+    one = zk.get(ConstPub, "d1g")
 
     Cx = zk.get(Gen, "Cx")
 
@@ -318,4 +359,38 @@ def test_Pedersen():
         }
 
     assert zk.verify_proof(env_verify, sig)
+
+def test_Pedersen_Env():
+
+    # Define an EC group
+    G = EcGroup(713)
+    order = G.order()
+
+    ## Proof definitions
+    zk = ZKProof(G)
+    g, h = zk.get(ConstGen, ["g", "h"])
+    x, o = zk.get(Sec, ["x", "o"])
+    Cxo = zk.get(Gen, "Cxo")
+    zk.add_proof(Cxo, x*g + o*h)
+
+    # A concrete Pedersen commitment
+    ec_g = G.generator()
+    ec_h = order.random() * ec_g
+    bn_x = order.random()
+    bn_o = order.random()
+    ec_Cxo = bn_x * ec_g + bn_o * ec_h
+
+    env = ZKEnv(zk)
+    env.g, env.h = ec_g, ec_h 
+    env.Cxo = ec_Cxo
+    env.x = bn_x 
+    env.o = bn_o
+
+    sig = zk.build_proof(env.get())
+
+    # Execute the verification
+    env = ZKEnv(zk)
+    env.g, env.h = ec_g, ec_h 
+
+    assert zk.verify_proof(env.get(), sig)
     

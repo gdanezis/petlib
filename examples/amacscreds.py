@@ -31,13 +31,9 @@ def cred_issue_proof(params, n):
     u, up, g, h, Cx0 = zk.get(ConstGen, ["u", "up", "g", "h", "Cx0"])
     x0, x0_bar =  zk.get(Sec, ["x0", "x0_bar"])
 
-    xi_names = lnames("x", n) 
-    mi_names = lnames("m", n) 
-    Xi_names = lnames("X", n) 
-
-    xis = zk.get(Sec, xi_names)
-    mis = zk.get(Pub, mi_names)
-    Xis = zk.get(ConstGen, Xi_names)
+    xis = zk.get_array(Sec, "xi", n)
+    mis = zk.get_array(Pub, "mi", n)
+    Xis = zk.get_array(ConstGen, "Xi", n)
 
     ## Proof of correct MAC
     Prod = x0 * u
@@ -63,28 +59,23 @@ def cred_issue(params, publics, secrets, messages):
     (u, uprime) = mac_ggm(params, sk, messages)
 
     # Build the proof and associate real variables
-    zk = cred_issue_proof(params, len(messages))
-
-    env = {
-        "g": g, "h": h,
-        "u": u, "up": uprime,
-        "x0": sk[0], "x0_bar": x0_bar,
-        "Cx0": Cx0
-    }
-
     n = len(messages)
-    xi_names = lnames("x", n)
-    mi_names = lnames("m", n) 
-    Xi_names = lnames("X", n)
+    zk = cred_issue_proof(params, n)
 
-    ivars = list(zip(xi_names, sk[1:])) \
-            + list(zip(mi_names, messages)) \
-            + list(zip(Xi_names, iparams))
+    env = ZKEnv(zk)
 
-    env.update(dict(ivars))
+    env.g, env.h = g, h 
+    env.u, env.up = u, uprime
+    env.x0 = sk[0]
+    env.x0_bar = x0_bar
+    env.Cx0 = Cx0
+
+    env.xi = sk[1:]
+    env.mi = messages
+    env.Xi = iparams
 
     ## Extract the proof
-    sig = zk.build_proof(env)
+    sig = zk.build_proof(env.get())
 
     ## Return the credential (MAC) and proof of correctness
     return (u, uprime), sig
@@ -97,25 +88,19 @@ def cred_issue_check(params, publics, mac, sig, messages):
     (u, uprime) = mac
 
     # Build the proof and assign public variables
-    zk = cred_issue_proof(params, len(messages))
-
-    env = {
-        "g": g, "h": h,
-        "u": u, "up": uprime,
-        "Cx0": Cx0
-    }
-
     n = len(messages)
-    mi_names = lnames("m", n) 
-    Xi_names = lnames("X", n) 
+    zk = cred_issue_proof(params, n)
 
-    ivars = list(zip(mi_names, messages)) \
-            + list(zip(Xi_names, iparams))
+    env = ZKEnv(zk)
+    env.g, env.h = g, h 
+    env.u, env.up = u, uprime
+    env.Cx0 = Cx0
 
-    env.update(dict(ivars))
+    env.mi = messages
+    env.Xi = iparams
 
     # Return the result of the verification
-    return zk.verify_proof(env, sig)
+    return zk.verify_proof(env.get(), sig)
 
 def cred_show_proof(params, n):
     G, _, _, _ = params
@@ -125,21 +110,16 @@ def cred_show_proof(params, n):
 
     ## The variables
     u, g, h = zk.get(ConstGen, ["u", "g", "h"])
-    
-    zi_names = lnames("z", n)
-    mi_names = lnames("m", n)
-    Xi_names = lnames("X", n)
-    Cmi_names = lnames("Cm", n)
-
     V = zk.get(ConstGen, "V")
-    minus_one = zk.get(ConstPub, "-1")
+    minus_one = zk.get(ConstPub, "minus1")
     r = zk.get(Sec, "r")
 
-    zis = zk.get(Sec, zi_names)
-    mis = zk.get(Sec, mi_names)
-    Xis = zk.get(ConstGen, Xi_names)
-    Cmis = zk.get(ConstGen, Cmi_names)
+    zis = zk.get_array(Sec, "zi", n)
+    mis = zk.get_array(Sec, "mi", n)
+    Xis = zk.get_array(ConstGen, "Xi", n)
+    Cmis = zk.get_array(ConstGen, "Cmi", n)
 
+    # Define the relations to prove
     Vp = r * (minus_one * g)
     for zi, Xi in zip(zis, Xis):
         Vp = Vp + (zi * Xi)
@@ -174,24 +154,21 @@ def cred_show(params, publics, mac, sig, messages):
     # Define the proof, and instanciate it with variables
     zk = cred_show_proof(params, n)
 
-    env = {
-        "u": u, "g": g, "h": h,
-        "V": V, "r": r, "-1": -Bn(1)
-    }
+    env = ZKEnv(zk)
+    env.u = u
+    env.g, env.h = g, h
+    env.V = V
+    env.r = r
+    env.minus1 = -Bn(1)
 
-    zi_names = lnames("z", n)
-    mi_names = lnames("m", n)
-    Xi_names = lnames("X", n)
-    Cmi_names = lnames("Cm", n)
+    env.zi = zis
+    env.mi = messages
+    env.Xi = iparams
+    env.Cmi = Cmis
 
-    env.update(zip(zi_names, zis))    
-    env.update(zip(mi_names, messages))    
-    env.update(zip(Xi_names, iparams))    
-    env.update(zip(Cmi_names, Cmis))    
-
-    sig = zk.build_proof(env)
+    sig = zk.build_proof(env.get())
     ## Just a sanity check
-    assert zk.verify_proof(env, sig)
+    assert zk.verify_proof(env.get(), sig)
 
     return cred, sig
 
@@ -213,19 +190,17 @@ def cred_show_check(params, publics, secrets, creds, sig):
     # Define the proof, and instanciate it with variables
     zk = cred_show_proof(params, n)
 
-    env = {
-        "u": u, "g": g, "h": h,
-        "V": V, "-1": -Bn(1)
-    }
+    env = ZKEnv(zk)
+    env.u = u
+    env.g, env.h = g, h
+    env.V = V
+    env.minus1 = -Bn(1)
 
-    Xi_names = lnames("X", n)
-    Cmi_names = lnames("Cm", n)
-
-    env.update(zip(Xi_names, iparams))    
-    env.update(zip(Cmi_names, Cmis))    
+    env.Xi = iparams
+    env.Cmi = Cmis
 
     # Return the result of the verification
-    return zk.verify_proof(env, sig)
+    return zk.verify_proof(env.get(), sig)
 
 
 def test_creds():
