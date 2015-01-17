@@ -6,20 +6,112 @@
 from amacs import *
 from genzkp import *
 
-def lnames(name, n):
-    assert type(name) == str
-    return [name+"%i" % i for i in range(1, n+1)]
-
 def cred_setup():
+    """ Generates the parameters of the algebraic MAC scheme"""
     params = setup_ggm()
     return params
 
 def cred_CredKeyge(params, n):
+    """ Generates keys and parameters for the credential issuer """
     _, g, h, o = params
     sk, iparams = keyGen_ggm(params, n)
     x0_bar = o.random()
     Cx0 = sk[0] * g + x0_bar * h
     return (Cx0, iparams), (sk, x0_bar)
+
+def cred_UserKeyge(params, n):
+    """ Generates keys and parameters for credential user """
+    G, g, h, o = params
+    priv = o.random()
+    pub = priv * g     # This is just an EC El-Gamal key
+    return (priv, pub)
+
+def secret_proof(params, n):
+    """ Builds a proof of correct El-Gamal encryption for a number of secret attributes. """
+    G, _, _, _ = params
+
+    # Contruct the proof
+    zk = ZKProof(G)
+
+    # SOme constants and secrets
+    pub, g, h = zk.get(ConstGen, ["pub", "g", "h"])
+    priv = zk.get(Sec, "priv")
+
+    ## The El-Gamal ciphertexts and secrets
+    ris = zk.get_array(Sec, "ri", n)
+    attrs = zk.get_array(Sec, "attri", n)
+    sKis = zk.get_array(ConstGen, "sKi", n)
+    Cis = zk.get_array(ConstGen, "Ci", n)
+
+    # The proof obligations
+    zk.add_proof(pub, priv * g)
+    for (Ci, sKi, ri, attr) in zip(Cis, sKis, ris, attrs):
+        zk.add_proof(sKi, ri * g)
+        zk.add_proof(Ci, ri * pub + attr * h)
+
+    return zk
+
+
+def cred_secret_issue_user(params, keypair, attrib):
+    """ Encodes a number of secret attributes to be issued. """
+    
+    # We simply encrypt all parameters and make a proof we know
+    # the decryption.
+    G, g, h, o = params
+    priv, pub = keypair
+
+    ris = []
+    sKis = []
+    Cis = []
+
+    for i, attr in enumerate(attrib):
+        ri = o.random()
+        ris += [ri]
+        sKis += [ri * g]
+        Cis += [ri * pub + attr * h]
+
+    zk = secret_proof(params, len(attrib))
+
+    ## Run the proof
+    env = ZKEnv(zk) 
+    env.g, env.h = g, h
+    env.pub = pub
+    env.priv = priv
+
+    env.ri = ris
+    env.attri = attrib
+    env.sKi = sKis
+    env.Ci = Cis
+
+    ## Extract the proof
+    sig = zk.build_proof(env.get())
+
+    return (pub, (sKis, Cis), sig)
+
+def cred_secret_issue_user_check(params, pub, EGenc, sig, pub_attrib=[]):
+    """ Check the encrypted attributes of a user"""
+    G, g, h, o = params
+
+    (sKis, Cis) = EGenc
+
+    assert len(sKis) == len(Cis)
+    zk = secret_proof(params, len(Cis))
+
+    ## Run the proof
+    env = ZKEnv(zk) 
+    env.g, env.h = g, h
+    env.pub = pub
+
+    env.sKi = sKis
+    env.Ci = Cis
+
+    ## Extract the proof
+    res = zk.verify_proof(env.get(), sig)
+    if not res:
+        raise Exception("Proof of knowledge of plaintexts failed.")
+
+
+
 
 def cred_issue_proof(params, n):
     G, _, _, _ = params
@@ -215,3 +307,22 @@ def test_creds():
     ## The show protocol
     (creds, sig) = cred_show(params, ipub, mac, sig, [10, 20])
     assert cred_show_check(params, ipub, isec, creds, sig)
+
+
+def test_secret_creds():
+    ## Setup from credential issuer.
+    params = cred_setup()
+    ipub, isec = cred_CredKeyge(params, 2)
+
+    keypair = cred_UserKeyge(params, 2)
+    pub, EGenc, sig = cred_secret_issue_user(params, keypair, [10, 20])
+
+    cred_secret_issue_user_check(params, pub, EGenc, sig, pub_attrib=[])
+
+    ## Credential issuing and checking
+    #mac, sig = cred_issue(params, ipub, isec, [10, 20])
+    #assert cred_issue_check(params, ipub, mac, sig, [10, 20])
+
+    ## The show protocol
+    #(creds, sig) = cred_show(params, ipub, mac, sig, [10, 20])
+    #assert cred_show_check(params, ipub, isec, creds, sig)

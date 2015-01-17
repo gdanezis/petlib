@@ -12,6 +12,7 @@ from petlib.ec import EcGroup
 from petlib.bn import Bn 
 from hashlib import sha256
 
+import pytest
 
 def challenge(elements):
     """Packages a challenge in a bijective way"""
@@ -188,12 +189,26 @@ class ZKProof(object):
                     + list(self.Sec)
 
         for v in variables:
-            assert v in env
+            if not v in env:
+                raise Exception("Could not find variable \"%s\" in the environment." % v)
 
     def build_proof(self, env, message=""):
         """Generates a proof within an environment of assigned public and secret variables."""
 
         self._check_env(env)
+
+        # Do sanity check on the proofs
+        if __debug__:
+            for base, expr in self.proofs:
+                xGen = base.val(env)
+                xExpr = expr.val(env)
+                try:
+                    assert xGen == xExpr
+                except:
+                    raise Exception("Proof about '%s' does not hold." % base.name)
+
+
+
 
         G = self.G
         order = G.order()
@@ -393,4 +408,34 @@ def test_Pedersen_Env():
     env.g, env.h = ec_g, ec_h 
 
     assert zk.verify_proof(env.get(), sig)
+
+def test_Pedersen_Env_missing():
+
+    # Define an EC group
+    G = EcGroup(713)
+    order = G.order()
+
+    ## Proof definitions
+    zk = ZKProof(G)
+    g, h = zk.get(ConstGen, ["g", "h"])
+    x, o = zk.get(Sec, ["x", "o"])
+    Cxo = zk.get(Gen, "Cxo")
+    zk.add_proof(Cxo, x*g + o*h)
+
+    # A concrete Pedersen commitment
+    ec_g = G.generator()
+    ec_h = order.random() * ec_g
+    bn_x = order.random()
+    bn_o = order.random()
+    ec_Cxo = bn_x * ec_g + bn_o * ec_h
+
+    env = ZKEnv(zk)
+    env.g, env.h = ec_g, ec_h 
+    env.Cxo = ec_Cxo
+    env.x = bn_x 
+    # env.o = bn_o ## MISSING THIS ONE
+
+    with pytest.raises(Exception) as excinfo:
+        zk.build_proof(env.get())
+    assert 'Could not find variable "o"' in str(excinfo.value)
     
