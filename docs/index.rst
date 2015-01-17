@@ -62,6 +62,34 @@ To build the source distribution run (and add ``upload`` if you wish to upload i
 
 	python setup.py sdist
 
+petlib Introduction & Examples
+------------------------------
+
+The ``petlib`` library is designed as a one-stop-shop library to prototype advanced Privacy Enhancing Technologies (PETs) in Python. It abstracts a number of OpenSSL APIs supporting operations on
+big numbers (bn), elliptic curves (ec), ciphers such as AES in a variety of modes of operation (CTM, GCM, ...) (ciphers), message authentication codes (hmac) and ECDSA signatures (ecdsa). 
+
+Besides ``petlib`` Python offers a number of modules in the standard library that are necessary to support modern cryptography:
+
+  * The ``hashlib`` module offers cryptographic hash functions such as ``sha256``, and ``sha512``.
+  * The ``os`` module offers the ``urandom`` cryptographically strong random number generator.
+  * The ``hmac`` module offers keyed hash-based message authentication codes as well as facilities for constant time comparison.
+
+Examples of use of ``petlib`` for implementing historical as well as state of the art PETs include:
+  * A `toy raw-RSA`_ implementation, illustrates the use of ``petlib.bn``.
+  * An `additively homomorphic encryption system (AHEG)`_ based on EC El-Gamal, illustrating the use of ``petlib.ec``.
+  * A `Schnorr zero-knowledge proof`_ of knowledge or a discrete logarithm in EC groups.
+  * An `engine to prove and verify in zero-knowledge statements about Discrete Logarithm representations`_ in EC groups. This is a building blocks for a number of advanced protocols.
+  * The `algebraic message authentication code`_ scheme by Chase, Meiklejohn and Zaverucha (ACM CCS 2014). Illustrates how the generic proof framework of ``genzkp.py`` may be used to easily construct zero-knowledge proofs.
+  * A reference implementation of the `Anonymous Credentials Light`_ scheme by Baldimtsi, Foteini, and Anna Lysyanskaya (ACM CCS 2013).
+
+.. _toy raw-RSA: https://github.com/gdanezis/petlib/blob/master/examples/toyrsa.py
+.. _additively homomorphic encryption system (AHEG): https://github.com/gdanezis/petlib/blob/master/examples/AHEG.py
+.. _Schnorr zero-knowledge proof: https://github.com/gdanezis/petlib/blob/master/examples/zkp.py
+.. _engine to prove and verify in zero-knowledge statements about Discrete Logarithm representations: https://github.com/gdanezis/petlib/blob/master/examples/genzkp.py
+.. _algebraic message authentication code: https://github.com/gdanezis/petlib/blob/master/examples/genzkp.py
+.. _Anonymous Credentials Light: https://github.com/gdanezis/petlib/blob/master/examples/BLcred.py
+
+
 petlib Modules
 ==============
 
