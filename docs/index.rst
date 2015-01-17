@@ -92,7 +92,7 @@ Module petlib.cipher
     :members:
 
 Module petlib.hmac
-----------------
+------------------
 
 .. autoclass:: petlib.hmac.Hmac
     :members:

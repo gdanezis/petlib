@@ -353,7 +353,7 @@ void cleanup_ciphers(void){
 
 _inited = False
 
-class InitCicphers(object):
+class InitCiphers(object):
     # pylint: disable=global-statement
 
     def __init__(self):
@@ -370,9 +370,9 @@ class InitCicphers(object):
             _inited = False
             _C.cleanup_ciphers()
 
-_ciphers = InitCicphers()
+_ciphers = InitCiphers()
 
 def test_double_load():
-    _c2 = InitCicphers()
+    _c2 = InitCiphers()
     del _c2
     ## Nothing bad should happen
