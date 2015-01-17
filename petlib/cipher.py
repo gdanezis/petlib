@@ -1,5 +1,6 @@
 from .bindings import _FFI, _C
 
+from binascii import hexlify
 import pytest
 
 
@@ -16,37 +17,27 @@ class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
     Example:
+        An example of encryption and decryption using AES in counter mode.
 
-        >>> from binascii import hexlify
-        >>> aes = Cipher("AES-128-CTR")
-        >>> enc = aes.enc(key=b"AAAAAAAAAAAAAAAA", iv=b"AAAAAAAAAAAAAAAA")
+        >>> from os import urandom
+        >>> aes = Cipher("AES-128-CTR")     # Init AES in Counter mode
+        >>> key = urandom(16)
+        >>> iv  = urandom(16)
+        >>>
+        >>> # Get a CipherOperation object for encryption
+        >>> enc = aes.enc(key, iv)
         >>> ref = b"Hello World"
         >>> ciphertext = enc.update(ref)
         >>> ciphertext += enc.finalize()
-        >>> assert hexlify(ciphertext) == b'b0aecdc6347177db8091be'
-        >>> dec = aes.dec(key=b"AAAAAAAAAAAAAAAA", iv=b"AAAAAAAAAAAAAAAA")
+        >>>
+        >>> # Get a CipherOperation object for decryption
+        >>> dec = aes.dec(key, iv)
         >>> plaintext = dec.update(ciphertext)
         >>> plaintext += dec.finalize()
-        >>> plaintext == ref
+        >>> plaintext == ref # Check resulting plaintest matches referece one.
         True
 
     """
-
-    @staticmethod
-    def aes_128_gcm():
-        """Returns a pre-initalized AES-GCM cipher with 128 bits key size"""
-        return Cipher(None, _C.EVP_aes_128_gcm())
-
-    @staticmethod
-    def aes_192_gcm():
-        """Returns a pre-initalized AES-GCM cipher with 192 bits key size"""
-        return Cipher(None, _C.EVP_aes_192_gcm())
-
-    @staticmethod
-    def aes_256_gcm():
-        """Returns a pre-initalized AES-GCM cipher with 256 bits key size"""
-        return Cipher(None, _C.EVP_aes_256_gcm())
-
         
     __slots__ = ["alg", "gcm"]
 
@@ -90,7 +81,7 @@ class Cipher(object):
         Args:
             key (str): the block cipher symmetric key. Length depends on block cipher choice.
             iv (str): an Initialization Vector of up to the block size. (Can be shorter.)
-            end (int): set to 1 to perform encryption, or 0 to perform decryption.
+            enc (int): set to 1 to perform encryption, or 0 to perform decryption.
 
         """
         c_op = CipherOperation()
@@ -141,6 +132,24 @@ class Cipher(object):
     def __del__(self):
         pass
 
+# --------- AES GCM special functions ---------------
+
+    @staticmethod
+    def aes_128_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 128 bits key size"""
+        return Cipher(None, _C.EVP_aes_128_gcm())
+
+    @staticmethod
+    def aes_192_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 192 bits key size"""
+        return Cipher(None, _C.EVP_aes_192_gcm())
+
+    @staticmethod
+    def aes_256_gcm():
+        """Returns a pre-initalized AES-GCM cipher with 256 bits key size"""
+        return Cipher(None, _C.EVP_aes_256_gcm())
+
+
     def quick_gcm_enc(self, key, iv, msg, assoc=None, tagl=16):
         """One operation GCM encryption.
 
@@ -152,10 +161,16 @@ class Cipher(object):
             tagl (int): the length of the tag, up to the block length.
 
         Example: 
+            Use of `quick_gcm_enc` and `quick_gcm_dec` for AES-GCM operations.
 
-            >>> aes = Cipher("aes-128-gcm")
-            >>> c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello")
-            >>> p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t)
+            >>> from os import urandom      # Secure OS random source
+            >>> aes = Cipher("aes-128-gcm") # Initialize AES-GCM with 128 bit keys
+            >>> iv = urandom(16)
+            >>> key = urandom(16)
+            >>> # Encryption using AES-GCM returns a ciphertext and a tag
+            >>> ciphertext, tag = aes.quick_gcm_enc(key, iv, b"Hello")
+            >>> # Decrytion using AES-GCM
+            >>> p = aes.quick_gcm_dec(key, iv, ciphertext, tag)
             >>> assert p == b'Hello'
 
         """
@@ -198,17 +213,7 @@ class CipherOperation(object):
         self.ctx = _C.EVP_CIPHER_CTX_new()
         _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
-        
-    #def control(self, ctype, arg, ptr):
-    #    """Passes an OpenSSL control message to the CipherOpenration engine."""
-    #    ret = int(_C.EVP_CIPHER_CTX_ctrl(self.ctx, ctype, arg, ptr))
-    #    return ret
-
-    def update_associated(self, data):
-        """Processes some associated data, and returns nothing."""
-        outl = _FFI.new("int *")
-        _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
-    
+            
     def update(self, data):
         """Processes some data, and returns a partial result."""
         block_len = self.cipher.len_block()
@@ -235,20 +240,27 @@ class CipherOperation(object):
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
+    def update_associated(self, data):
+        """Processes some GCM associated data, and returns nothing."""
+        outl = _FFI.new("int *")
+        _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
+
 
     def get_tag(self, tag_len = 16):
         """Get the GCM authentication tag. Execute after finalizing the encryption.
 
-        Example GCM encryption usage:
+        Example: 
+            AES-GCM encryption usage:
 
-            >>> aes = Cipher.aes_128_gcm()
-            >>> enc = aes.op(key=b"A"*16, iv=b"A"*16)
-            >>> enc.update_associated(b"Hello")
-            >>> ciphertext = enc.update(b"World!")
-            >>> nothing = enc.finalize()
-            >>> tag = enc.get_tag(16)
-            >>> assert ciphertext == b'dV\\xb9:\\xd0\\xbe'
-            >>> assert tag == b'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa'
+            >>> from os import urandom
+            >>> aes = Cipher.aes_128_gcm()          # Initialize AES cipher
+            >>> key = urandom(16)
+            >>> iv = urandom(16)
+            >>> enc = aes.enc(key, iv)              # Get an encryption CipherOperation
+            >>> enc.update_associated(b"Hello")     # Include some associated data
+            >>> ciphertext = enc.update(b"World!")  # Include some plaintext
+            >>> nothing = enc.finalize()            # Finalize
+            >>> tag = enc.get_tag(16)               # Get the AES-GCM tag
 
         """
         tag = _FFI.new("unsigned char []", tag_len)
@@ -261,14 +273,16 @@ class CipherOperation(object):
     def set_tag(self, tag):
         """Specify the GCM authenticator tag. Must be done before finalizing decryption
 
-        Example GCM decryption and check:
-            >>> aes = Cipher.aes_128_gcm()
+        Example:
+            AES-GCM decryption and check:
+
+            >>> aes = Cipher.aes_128_gcm()              # Define an AES-GCM cipher
             >>> ciphertext, tag = (b'dV\\xb9:\\xd0\\xbe', b'pA\\xbe?\\xfc\\xd1&\\x03\\x1438\\xc5\\xf8In\\xaa')
-            >>> dec = aes.dec(key=b"A"*16, iv=b"A"*16)
-            >>> dec.update_associated(b"Hello")
-            >>> plaintext = dec.update(ciphertext)
-            >>> dec.set_tag(tag)
-            >>> nothing = dec.finalize()
+            >>> dec = aes.dec(key=b"A"*16, iv=b"A"*16)  # Get a decryption CipherOperation
+            >>> dec.update_associated(b"Hello")         # Feed in the non-secret assciated data.
+            >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
+            >>> dec.set_tag(tag)                        # Provide the AES-GCM tag for integrity.
+            >>> nothing = dec.finalize()                # Check and finalize.
             >>> assert plaintext == b'World!'
 
         """

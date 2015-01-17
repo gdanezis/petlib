@@ -33,7 +33,14 @@ class EcGroup(object):
 
     @staticmethod
     def list_curves():
-        """Return a dictionary of nid -> curve names"""
+        """Return a dictionary of name id (int) to curve names (str).
+
+        Example:
+            >>> curves = EcGroup.list_curves()
+            >>> curves[713]
+            'NIST/SECG curve over a 224 bit prime field'
+
+        """
         size_t = int(_C.EC_get_builtin_curves(_FFI.NULL, 0))
         _check( 0 < size_t ) 
         names = _FFI.new("EC_builtin_curve[]", size_t)
@@ -41,7 +48,7 @@ class EcGroup(object):
 
         all_curves = []
         for i in range(size_t):
-            all_curves +=  [(int(names[i].nid), str(_FFI.string(names[i].comment)))]
+            all_curves +=  [(int(names[i].nid), str(_FFI.string(names[i].comment).decode("utf8")))]
         return dict(all_curves)
     
     def __init__(self, nid=713, optimize_mult=True):
@@ -51,26 +58,51 @@ class EcGroup(object):
             _check( _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL) )
 
     def parameters(self):
-        """Returns a dictionary with the parameters (a,b and p) of the curve."""
+        """Returns a dictionary with the parameters (a,b and p) of the curve.
+
+        Example:
+            >>> params = EcGroup(713).parameters()
+            >>> params["a"]
+            26959946667150639794667015087019630673557916260026308143510066298878
+            >>> params["b"]
+            18958286285566608000408668544493926415504680968679321075787234672564
+            >>> params["p"]
+            26959946667150639794667015087019630673557916260026308143510066298881
+
+        """
         p, a, b = Bn(), Bn(), Bn()
         _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL) )
         return {"p":p, "a":a, "b":b}
 
     def generator(self):
-        """Returns the generator of the EC group"""
+        """Returns the generator of the EC group."""
         g = EcPt(self)
         internal_g = _C.EC_GROUP_get0_generator(self.ecg)
         _check( _C.EC_POINT_copy(g.pt, internal_g) )
         return g
 
     def infinite(self):
-        """Returns a point at infinity"""
+        """Returns a point at infinity.
+
+        Example:
+            >>> G = EcGroup()
+            >>> G.generator() + G.infinite() == G.generator() ## Should hold.
+            True
+
+        """
         zero = EcPt(self)
         _check( _C.EC_POINT_set_to_infinity(self.ecg, zero.pt) )
         return zero
 
     def order(self):
-        """Returns the order of the group as a Big Number"""
+        """Returns the order of the group as a Big Number.
+
+        Example:
+            >>> G = EcGroup()
+            >>> G.order() * G.generator() == G.infinite() ## Should hold.
+            True
+
+        """
         o = Bn()
         _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _FFI.NULL) )
         return o
@@ -90,7 +122,16 @@ class EcGroup(object):
         _C.EC_GROUP_free(self.ecg)
 
     def check_point(self, pt):
-        """Ensures the point is on the curve"""
+        """Ensures the point is on the curve.
+
+        Example:
+            >>> G = EcGroup()
+            >>> G.check_point(G.generator())
+            True
+            >>> G.check_point(G.infinite())
+            True
+
+        """
         res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _FFI.NULL))
         return res == 1
 
@@ -121,7 +162,15 @@ class EcPt(object):
     
     @staticmethod
     def from_binary(sbin, group):
-        "Create a point from a string binary sequence"
+        """Create a point from a byte sequence.
+
+        Example:
+            >>> G = EcGroup()
+            >>> byte_string = G.generator().export()                # Export EC point as byte string
+            >>> EcPt.from_binary(byte_string, G) == G.generator()   # Import EC point from binary string
+            True
+
+        """
         new_pt = EcPt(group)
         _check( _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _FFI.NULL) )
         return new_pt
@@ -136,7 +185,13 @@ class EcPt(object):
         return new_point
 
     def pt_add(self, other):
-        """Adds two points together. Synonym with self + other."""
+        """Adds two points together. Synonym with self + other.
+
+        Example:
+            >>> g = EcGroup().generator()
+            >>> g.pt_add(g) == (g + g) == (2 * g) == g.pt_double() # Equivalent formulations
+            True
+        """
         return self.__add__(other)
 
     def __add__(self, other):
@@ -153,8 +208,22 @@ class EcPt(object):
         return result
 
     def pt_neg(self):
-        """Returns the negative of the point. Synonym with -self"""
+        """Returns the negative of the point. Synonym with -self.
+
+        Example:
+            >>> G = EcGroup()
+            >>> g = G.generator()
+            >>> g + (-g) == G.infinite() # Unary negative operator.
+            True
+            >>> g - g == G.infinite()    # Binary negative operator. 
+            True
+
+        """
         return self.__neg__()
+
+    def __sub__(self, other):
+        # """ Simulates (abuses notation) subtraction as addition with a negative point."""
+        return self + (-other)
 
     def __neg__(self):
         result = copy(self)
@@ -162,7 +231,17 @@ class EcPt(object):
         return result
 
     def pt_mul(self, scalar):
-        """Returns the product of the point with a scalar (not communtative). Synonym with scalar * self."""
+        """Returns the product of the point with a scalar (not commutative). Synonym with scalar * self.
+
+        Example:
+            >>> G = EcGroup()
+            >>> g = G.generator()
+            >>> 100 * g == g.pt_mul(100) # Operator and function notation mean the same
+            True
+            >>> G.order() * g == G.infinite() # Scalar mul. by the order returns the identity element.
+            True
+
+        """
         return self.__rmul__(scalar)
 
     @force_Bn(1)
@@ -172,7 +251,17 @@ class EcPt(object):
         return result
 
     def pt_eq(self, other):
-        """Returns a boolean denoting whether the points are equal. Synonym with self == other."""
+        """Returns a boolean denoting whether the points are equal. Synonym with self == other.
+
+        Example:
+            >>> G = EcGroup()
+            >>> g = G.generator()
+            >>> 40 * g + 60 * g == 100 * g
+            True
+            >>> g == 2 * g
+            False
+
+        """
         return self.__eq__(other)
 
     def __eq__(self, other):
@@ -191,7 +280,15 @@ class EcPt(object):
         return self.export().__hash__()
 
     def export(self):
-        """Returns a string binary representation of the point"""
+        """Returns a string binary representation of the point in compressed coordinates.
+
+        Example:
+            >>> G = EcGroup()
+            >>> byte_string = G.generator().export()
+            >>> print(hexlify(byte_string).decode("utf8"))
+            02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
+
+        """
         size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED, 
                              _FFI.NULL, 0, _FFI.NULL)
         buf = _FFI.new("unsigned char[]", size)
@@ -201,11 +298,30 @@ class EcPt(object):
         return output
 
     def is_infinite(self):
-        """Returns True if this point is at infinity, otherwise False."""
+        """Returns True if this point is at infinity, otherwise False.
+
+        Example:
+            >>> G = EcGroup()
+            >>> g, o = G.generator(), G.order()
+            >>> (o * g).is_infinite()
+            True
+
+        """
         return self == self.group.infinite() 
 
     def get_affine(self):
-        """Return the affine coordinates (x,y) of this EC Point."""
+        """Return the affine coordinates (x,y) of this EC Point.
+
+        Example:
+            >>> G = EcGroup()
+            >>> g = G.generator()
+            >>> x, y = g.get_affine()
+            >>> x
+            19277929113566293071110308034699488026831934219452440156649784352033
+            >>> y
+            19926808758034470970197974370888749184205991990603949537637343198772
+
+        """
         if self == self.group.infinite():
             raise Exception("EC Infinity has no affine coordinates.")
         x = Bn()
