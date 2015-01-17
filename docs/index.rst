@@ -6,6 +6,15 @@
 Welcome to petlib's documentation!
 ==================================
 
+Contents
+--------
+
+.. toctree::
+   :maxdepth: 2
+
+   index
+
+
 Installation and Dependences
 ----------------------------
 
@@ -53,17 +62,19 @@ To build the source distribution run (and add ``upload`` if you wish to upload i
 
 	python setup.py sdist
 
-
-Contents
---------
-
-.. toctree::
-   :maxdepth: 2
+petlib Modules
+==============
 
 .. automodule:: petlib
+
+Module petlib.bn
+----------------
  
 .. autoclass:: petlib.bn.Bn
     :members:
+
+Module petlib.ec
+----------------
 
 .. autoclass:: petlib.ec.EcGroup
     :members:
@@ -71,16 +82,25 @@ Contents
 .. autoclass:: petlib.ec.EcPt
     :members:
 
+Module petlib.cipher
+--------------------
+
 .. autoclass:: petlib.cipher.Cipher
     :members:
 
 .. autoclass:: petlib.cipher.CipherOperation
     :members:
 
+Module petlib.hmac
+----------------
+
 .. autoclass:: petlib.hmac.Hmac
     :members:
 
 .. autofunction:: petlib.hmac.secure_compare
+
+Module petlib.ecdsa
+-------------------
 
 .. autofunction:: petlib.ecdsa.do_ecdsa_sign
 

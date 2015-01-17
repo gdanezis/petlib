@@ -8,7 +8,7 @@ try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
 except:
-    print("Mannot mock for docs")
+    print("Cannot mock for docs")
 
 try:
     from future.utils import python_2_unicode_compatible
@@ -54,7 +54,7 @@ def _check(return_val):
 class Bn(object):
     """The core Big Number class. 
          It supports all comparisons (<, <=, ==, !=, >=, >),
-         arithemtic operations (+, -, %, /, divmod, pow) 
+         arithmetic operations (+, -, %, /, divmod, pow) 
          and copy operations (copy and deep copy). The right-hand 
          side operand may be a small native python integer (<2^64). """
 
@@ -64,11 +64,19 @@ class Bn(object):
     ## -- static methods  
     @staticmethod
     def from_decimal(sdec):
-        """
-        Creates a Big Number from a decimal string.
+        """Creates a Big Number from a decimal string.
         
         Args:
-            sdec (string) -- numeric string possibly starting with minus.
+            sdec (string): numeric string possibly starting with minus.
+
+        See Also:
+            str() produces a decimal string from a big number.
+
+        Example:
+            >>> hundred = Bn.from_decimal("100")
+            >>> str(hundred)
+            '100'
+
         """
 
         ptr = _FFI.new("BIGNUM **")
@@ -83,11 +91,17 @@ class Bn(object):
 
     @staticmethod
     def from_hex(shex):
-        """
-        Creates a Big Number from a hexadecimal string.
+        """Creates a Big Number from a hexadecimal string.
         
         Args:
-            shex (string) -- hex (0-F) string possibly starting with minus.
+            shex (string): hex (0-F) string possibly starting with minus.
+
+        See Also:
+            hex() produces a hexadecimal representation of a big number.
+
+        Example:
+            >>> Bn.from_hex("FF")
+            255
         """
 
         ptr = _FFI.new("BIGNUM **")
@@ -104,10 +118,10 @@ class Bn(object):
 
     @staticmethod
     def from_binary(sbin):
-        """Creates a Big Number from a binary string. Only positive values are read.
+        """Creates a Big Number from a binary string. Only positive values can be represented as byte strings, and the library user should store the sign bit separately.
         
         Args:
-            sbin (string) -- binary (00-FF) string. 
+            sbin (string): a byte sequence. 
         """
         ret = Bn()
         _C.BN_bin2bn(sbin, len(sbin), ret.bn)
@@ -146,28 +160,28 @@ class Bn(object):
             self._set_neg(1)
 
     def _set_neg(self, sign=1):
-        """Sets the sign to "-" (1) or "+" (0)"""
+        # """Sets the sign to "-" (1) or "+" (0)"""
         _check( sign == 0 or sign == 1 )
         _C.BN_set_negative(self.bn, sign)
 
     def __copy__(self):
-        'Copies the big number. Support for copy module'
+        # 'Copies the big number. Support for copy module'
         other = Bn()
         _C.BN_copy(other.bn, self.bn)
         return other
 
     def __deepcopy__(self, memento):
-        'Deepcopy is the same as copy'
+        # 'Deepcopy is the same as copy'
         # pylint: disable=unused-argument 
         return self.__copy__()
 
     def __del__(self):
-        'Deallocate all resources of the big number'
+        # 'Deallocate all resources of the big number'
         _C.BN_clear_free(self.bn)
 
     @force_Bn(1)
     def __inner_cmp__(self, other):
-        'Internal comparison function' 
+        # 'Internal comparison function' 
         _check( type(other) == Bn )
         sig = int(_C.BN_cmp(self.bn, other.bn))
         return sig
@@ -201,7 +215,7 @@ class Bn(object):
         return self.__bool__()
 
     def __bool__(self):
-        'Turn into boolean' 
+        # 'Turn into boolean' 
         return not (self == Bn(0))
 
     ## Export in different representations
@@ -211,7 +225,7 @@ class Bn(object):
         return self.__repr__()
 
     def __repr__(self):
-        'The representation of the number as a decimal string'
+        # 'The representation of the number as a decimal string'
         buf =  _C.BN_bn2dec(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
@@ -224,11 +238,11 @@ class Bn(object):
         return self.__int__()
 
     def __int__(self):
-        """A native python integer representation of the Big Number"""
+        # """A native python integer representation of the Big Number"""
         return int(self.__repr__())
 
     def __index__(self):
-        """A native python integer representation of the Big Number"""
+        # """A native python integer representation of the Big Number"""
         return int(self.__repr__())
 
     def hex(self):
@@ -237,7 +251,7 @@ class Bn(object):
         return self.__hex__()
 
     def __hex__(self):
-        """The representation of the string in hexadecimal"""
+        # """The representation of the string in hexadecimal"""
         buf =  _C.BN_bn2hex(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
@@ -256,7 +270,14 @@ class Bn(object):
         return bytes(_FFI.buffer(bin_string)[:])
 
     def random(self):
-        """Returns a cryptographically strong random number 0 <= rnd < self."""
+        """Returns a cryptographically strong random number 0 <= rnd < self.
+
+        Example:
+            >>> r = Bn(100).random()
+            >>> 0 <= r < 100
+            True
+
+        """
         rnd = Bn()
         _check( _C.BN_rand_range(rnd.bn, self.bn) )
         return rnd
@@ -264,8 +285,34 @@ class Bn(object):
 
     ## ---------- Arithmetic --------------
 
+    def int_neg(self):
+        """Returns the negative of this number. Synonym with -self.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> one100.int_neg()
+            -100
+            >>> -one100
+            -100
+
+        """
+        return self.__neg__()
+
+
     def int_add(self, other):
-        """Returns the sum of this number with another. Synonym for self + other."""
+        """Returns the sum of this number with another. Synonym for self + other.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> two100 = Bn(200)
+            >>> two100.int_add(one100) # Function syntax
+            300
+            >>> two100 + one100        # Operator syntax
+            300
+
+        """
         return self.__add__(other)
 
     @force_Bn(1)
@@ -276,7 +323,19 @@ class Bn(object):
 
     def int_sub(self, other):
         """Returns the difference between this number and another. 
-        Synonym for self - other."""
+        Synonym for self - other.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> two100 = Bn(200)
+            >>> two100.int_sub(one100) # Function syntax
+            100
+            >>> two100 - one100        # Operator syntax
+            100
+
+        """
+        return self - other
 
     @force_Bn(1)
     def __sub__(self, other):
@@ -286,7 +345,18 @@ class Bn(object):
 
     def int_mul(self, other):
         """Returns the product of this number with another.
-        Synonym for self * other."""
+        Synonym for self * other.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> two100 = Bn(200)
+            >>> one100.int_mul(two100) # Function syntax
+            20000
+            >>> one100 * two100        # Operator syntax
+            20000
+
+        """
         return self.__mul__(other)
 
     @force_Bn(1)
@@ -299,12 +369,21 @@ class Bn(object):
             _C.BN_CTX_free(bnctx)
         return r
 
+# ------------------ Mod arithmetic -------------------------
+
     @force_Bn(1)
     @force_Bn(2)
     def mod_add(self, other, m):
         """
         mod_add(other, m)
-        Returns the sum of self and other modulo m."""
+        Returns the sum of self and other modulo m.
+
+        Example:
+
+            >>> Bn(10).mod_add(Bn(2), Bn(11))  # Only function notation available
+            1
+
+        """
         try:
             bnctx = _C.BN_CTX_new()
             r = Bn()
@@ -318,7 +397,14 @@ class Bn(object):
     def mod_sub(self, other, m):
         """
         mod_sub(other, m)
-        Returns the difference of self and other modulo m."""
+        Returns the difference of self and other modulo m.
+
+        Example:
+
+            >>> Bn(10).mod_sub(Bn(2), Bn(11))  # Only function notation available
+            8
+
+        """
         try:
             bnctx = _C.BN_CTX_new()
             r = Bn()
@@ -332,7 +418,14 @@ class Bn(object):
     def mod_mul(self, other, m):
         """
         mod_mul(other, m)
-        Return the product of self and other modulo m."""
+        Return the product of self and other modulo m.
+
+        Example:
+
+            >>> Bn(10).mod_mul(Bn(2), Bn(11))  # Only function notation available
+            9
+
+        """
         try:
             bnctx = _C.BN_CTX_new()
             r = Bn()
@@ -341,8 +434,47 @@ class Bn(object):
             _C.BN_CTX_free(bnctx)
         return r
 
+
+    @force_Bn(1)
+    def mod_inverse(self, m):
+        """
+        mod_inverse(m)
+        Compute the inverse mod m, such that self * res == 1 mod m.
+
+        Example:
+
+            >>> Bn(10).mod_inverse(m = Bn(11))  # Only function notation available
+            10
+            >>> Bn(10).mod_mul(Bn(10), m = Bn(11)) == Bn(1)
+            True
+
+        """
+
+        try:
+            bnctx = _C.BN_CTX_new()
+            res = Bn()
+            err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, bnctx)
+            if err == _FFI.NULL:
+                raise Exception("No inverse")
+        finally:
+            _C.BN_CTX_free(bnctx)
+        return res
+
+
+    def mod_pow(self, other, m):
+        """ Performs the modular exponentiation of self ** other % m.
+
+            Example:
+                >>> one100 = Bn(100)
+                >>> one100.mod_pow(2, 3)   # Modular exponentiation
+                1
+
+        """
+        return self.__pow__(other, m)
+
+
     def divmod(self, other):
-        """Returns the integer division and remaider of this number by another.
+        """Returns the integer division and remainder of this number by another.
         Synonym for (div, mod) = divmod(self, other)"""
         return self.__divmod__(other)
 
@@ -359,7 +491,18 @@ class Bn(object):
 
     def int_div(self, other):
         """Returns the integer division of this number by another. 
-        Synonym of self / other"""
+        Synonym of self / other.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> two100 = Bn(200)
+            >>> two100.int_div(one100) # Function syntax
+            2
+            >>> two100 / one100        # Operator syntax
+            2
+
+        """
         return self.__div__(other)
 
     @force_Bn(1)
@@ -369,7 +512,19 @@ class Bn(object):
 
     def mod(self, other):
         """Returns the remainder of this number modulo another.
-        Synonym for self % other"""
+        Synonym for self % other.
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> two100 = Bn(200)
+            >>> two100.mod(one100) # Function syntax
+            0
+            >>> two100 % one100        # Operator syntax
+            0
+
+
+        """
         return self.__mod__(other)
 
     @force_Bn(1)
@@ -392,7 +547,23 @@ class Bn(object):
 
     def pow(self, other, modulo=None):
         """Returns the number raised to the power other optionally modulo a third number. 
-        Synonym with powe(self, other, modulo)"""
+        Synonym with pow(self, other, modulo).
+
+        Example:
+
+            >>> one100 = Bn(100)
+            >>> one100.pow(2)      # Function syntax
+            10000
+            >>> one100 ** 2        # Operator syntax
+            10000
+            >>> one100.pow(2, 3)   # Modular exponentiation
+            1
+            
+        """
+        if modulo:
+            return self.__pow__(other, modulo)
+        else:
+            return self ** other
 
     @force_Bn(1)
     @force_Bn(2)
@@ -404,22 +575,6 @@ class Bn(object):
                 _check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
             else:
                 _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
-        return res
-
-    @force_Bn(1)
-    def mod_inverse(self, m):
-        """
-        mod_inverse(m)
-        Compute the inverse mod m, such that self * res == 1 mod m."""
-
-        try:
-            bnctx = _C.BN_CTX_new()
-            res = Bn()
-            err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, bnctx)
-            if err == _FFI.NULL:
-                raise Exception("No inverse")
         finally:
             _C.BN_CTX_free(bnctx)
         return res
@@ -447,10 +602,6 @@ class Bn(object):
     def num_bits(self):
         """Returns the number of bits representing this Big Number"""
         return int(_C.BN_num_bits(self.bn))
-
-    def int_neg(self):
-        """Returns the negative of this number. Synonym with -self"""
-        return self.__neg__()
 
     # Implement negative 
     def __neg__(self):

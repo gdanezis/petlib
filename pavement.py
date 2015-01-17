@@ -2,7 +2,7 @@ import os.path
 import os
 import re
 
-from paver.tasks import task
+from paver.tasks import task, cmdopts
 from paver.easy import sh, needs, pushd
 from paver.virtual import *
 
@@ -22,6 +22,17 @@ def unit_tests():
 def test3():
     tell("Unit tests for python 3")
     sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
+
+@task
+@cmdopts([
+    ('file=', 'f', 'File to test.')
+])
+def testf(options):
+    """Test a specific file for Python 2/3 with all flags turned on."""
+    tell("Unit tests for specific file")
+    print(options)
+    sh('py.test-3.4 -v --doctest-modules --cov %s %s' % (options.file, options.file))
+    sh('py.test-2.7 -v --doctest-modules --cov %s %s' % (options.file, options.file))
 
 
 @task
