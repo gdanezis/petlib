@@ -183,10 +183,14 @@ class ZKProof(object):
         names = ["%s[%i]" % (name,i) for i in range(0, number)]
         return self.get(vtype, names, True)
 
-    def _check_env(self, env):
+    def all_vars(self):
         variables = list(self.Const) \
                     + list(self.Pub) \
                     + list(self.Sec)
+        return set(variables)
+
+    def _check_env(self, env):
+        variables = self.all_vars()
 
         for v in variables:
             if not v in env:
@@ -206,9 +210,6 @@ class ZKProof(object):
                     assert xGen == xExpr
                 except:
                     raise Exception("Proof about '%s' does not hold." % base.name)
-
-
-
 
         G = self.G
         order = G.order()
@@ -241,15 +242,6 @@ class ZKProof(object):
         for w in self.Sec.keys():
             responses[w] = (witnesses[w] - c * env[w]) % order
          
-        ## This is purely a sanity check
-        #for base, expr in self.proofs:
-        #    Cw = expr.val(witnesses)
-        #    Cr = expr.val(responses)
-        #    Cx = expr.val(env)
-        #    print Cw
-        #    assert Cx == base.val(env)
-        #    assert Cw == Cr + c * Cx
-
         for v in self.Const:
             del responses[v]
 
@@ -307,9 +299,16 @@ class ZKEnv(object):
         """ Store into a special dictionary """
         if isinstance(value, list):
             for i, v in enumerate(value):
-                self.env["%s[%i]" % (name,i)] = v
+                n = "%s[%i]" % (name,i)
+                self._set_var(n, v)
+    
         else:          
-            self.env[name] = value
+            self._set_var(name, value)
+
+    def _set_var(self, name, value):
+        if not name in self.zkp.all_vars():
+            raise Exception("Variable name '%s' not known." % name)
+        self.env[name] = value
 
     def get(self):
         """ Get the environement. """
@@ -436,6 +435,18 @@ def test_Pedersen_Env_missing():
     # env.o = bn_o ## MISSING THIS ONE
 
     with pytest.raises(Exception) as excinfo:
+        env.NOTEXISTING = bn_x
+    assert "Variable name 'NOTEXISTING' not known" in str(excinfo.value)
+
+    ## Ensure we catch missing variables
+    with pytest.raises(Exception) as excinfo:
         zk.build_proof(env.get())
     assert 'Could not find variable "o"' in str(excinfo.value)
-    
+
+    ## Ensure we catch false statements
+    env.o = bn_o + 1    
+    with pytest.raises(Exception) as excinfo:
+        zk.build_proof(env.get())
+    assert "Proof about 'Cxo' does not hold" in str(excinfo.value)
+
+
