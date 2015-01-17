@@ -25,7 +25,8 @@ setup(name='petlib',
             "cffi >= 0.8.2",
             "future >= 0.14.3",
             "pytest >= 2.6.4",
-            "paver >= 1.2.3"
+            "paver >= 1.2.3",
+            "pytest-cov >= 1.8.1",
       ],
       ext_modules=deps,
 )
