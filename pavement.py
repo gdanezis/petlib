@@ -48,7 +48,7 @@ def upload(quiet=False):
 @task
 def lintlib(quiet=False):
     tell("Run pylint on the library")
-    sh('pylint --rcfile "pylintrc" petlib', capture=quiet)
+    sh('pylint --rcfile=pylintrc petlib', capture=quiet)
 
 @needs("make_env")
 @task
@@ -56,7 +56,7 @@ def lintlib(quiet=False):
 def lintexamples(quiet=True):
     tell("Run Lint on example code")
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
-    sh('pylint --rcfile "pylintrc" --load-plugins ignoretest examples/*.py', capture=quiet)
+    sh('export PYTHONPATH=$PYHTONPATH:./utils; pylint --rcfile=pylintrc --load-plugins ignoretest examples/*.py', capture=quiet)
 
 @needs("lintlib", "lintexamples")
 @task
