@@ -366,7 +366,7 @@ class InitCiphers(object):
 
     def __del__(self):
         global _inited
-        if _inited and self.on:
+        if _inited and self.on and _C:
             _inited = False
             _C.cleanup_ciphers()
 
