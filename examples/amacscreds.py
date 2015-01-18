@@ -33,7 +33,7 @@ def secret_proof(params, n):
     # Contruct the proof
     zk = ZKProof(G)
 
-    # SOme constants and secrets
+    # Some constants and secrets
     pub, g, h = zk.get(ConstGen, ["pub", "g", "h"])
     priv = zk.get(Sec, "priv")
 
@@ -402,6 +402,8 @@ def test_secret_creds():
     mac = cred_secret_issue_user_decrypt(keypair, u, EncE)
 
     ## The show protocol using the decrypted amac
+    #  The proof just proves knowledge of the attributes, but any other 
+    #  ZK statement is also possible by augmenting the proof.
     (creds, sig) = cred_show(params, ipub, mac, sig, [30, 40, 10, 20])
     assert cred_show_check(params, ipub, isec, creds, sig)
 
