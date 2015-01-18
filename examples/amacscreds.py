@@ -19,7 +19,7 @@ def cred_CredKeyge(params, n):
     Cx0 = sk[0] * g + x0_bar * h
     return (Cx0, iparams), (sk, x0_bar)
 
-def cred_UserKeyge(params, n):
+def cred_UserKeyge(params):
     """ Generates keys and parameters for credential user """
     G, g, h, o = params
     priv = o.random()
@@ -47,7 +47,7 @@ def secret_proof(params, n):
     zk.add_proof(pub, priv * g)
     for (Ci, sKi, ri, attr) in zip(Cis, sKis, ris, attrs):
         zk.add_proof(sKi, ri * g)
-        zk.add_proof(Ci, ri * pub + attr * h)
+        zk.add_proof(Ci, ri * pub + attr * g)
 
     return zk
 
@@ -68,7 +68,7 @@ def cred_secret_issue_user(params, keypair, attrib):
         ri = o.random()
         ris += [ri]
         sKis += [ri * g]
-        Cis += [ri * pub + attr * h]
+        Cis += [ri * pub + attr * g]
 
     zk = secret_proof(params, len(attrib))
 
@@ -88,12 +88,20 @@ def cred_secret_issue_user(params, keypair, attrib):
 
     return (pub, (sKis, Cis), sig)
 
-def cred_secret_issue_user_check(params, pub, EGenc, sig, pub_attrib=[]):
-    """ Check the encrypted attributes of a user"""
+def _check_enc(params, keypair, EGenc, attrib):
     G, g, h, o = params
+    priv, pub = keypair
+    for (a, b, atr) in zip(EGenc[0], EGenc[1], attrib):
+        assert (b - (priv * a)) == (atr * g)
 
+
+def cred_secret_issue_user_check(params, pub, EGenc, sig):
+    """ Check the encrypted attributes of a user are well formed.
+    """
+    G, g, h, o = params
     (sKis, Cis) = EGenc
 
+    ## First check the inputs (EG ciphertexts) are well formed.
     assert len(sKis) == len(Cis)
     zk = secret_proof(params, len(Cis))
 
@@ -106,12 +114,73 @@ def cred_secret_issue_user_check(params, pub, EGenc, sig, pub_attrib=[]):
     env.Ci = Cis
 
     ## Extract the proof
-    res = zk.verify_proof(env.get(), sig)
-    if not res:
+    if not zk.verify_proof(env.get(), sig):
         raise Exception("Proof of knowledge of plaintexts failed.")
 
+def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
+    """ Encode a mixture of secret (EGenc) and public (messages) attributes"""
 
+    # Parse variables
+    G, g, h, o = params
+    sk, x0_bar = secrets
+    Cx0, iparams = publics
+    (sKis, Cis) = EGenc
 
+    assert len(sKis) == len(Cis)
+    assert len(iparams) == len(messages) + len(Cis)
+
+    # Get a blinding b
+    b = o.random()
+    u = b * g
+
+    bx0_bar = b.mod_mul(x0_bar, o)
+    bsk = []
+    for xi in sk:
+        bsk += [b.mod_mul(xi, o)]
+
+    bCx0 = b * Cx0
+    bXi = []
+    for Xi in iparams:
+        bXi += [b * Xi]
+
+    bsk0 = bsk[0]
+    open_bsk = bsk[1:len(messages)+1]
+    sec_bsk  = bsk[len(messages)+1:len(messages)+1+len(Cis)]
+    assert [bsk0] + open_bsk + sec_bsk == bsk
+
+    # First build a proto-credential in clear using all public attribs
+    Cred = bsk0 * g
+    for bxi, msg in zip(open_bsk, messages):
+        Cred = Cred + (bxi.mod_mul(msg, o)) * g
+
+    r_prime = o.random()
+    EG_a = r_prime * g
+    EG_b = r_prime * pub + Cred
+
+    for (eg_ai, eg_bi, bxi) in zip(sKis, Cis, sec_bsk):
+        EG_a = EG_a + bxi * eg_ai
+        EG_b = EG_b + bxi * eg_bi
+
+    return u, (EG_a, EG_b)
+
+def _internal_ckeck(keypair, u, EncE, secrets, all_attribs):
+    """ Check the invariant that the ciphertexts are the encrypted attributes """
+
+    ## First do decryption
+    priv, pub = keypair
+    (a, b) = EncE
+    Cred = b + (- (priv * a))
+
+    sk, _ = secrets
+    v = Hx(sk, all_attribs)
+    assert Cred == v * u
+
+def cred_secret_issue_user_decrypt(keypair, u, EncE):
+    priv, pub = keypair
+    (a, b) = EncE
+    uprime = b + (- (priv * a))
+
+    return (u, uprime)
 
 def cred_issue_proof(params, n):
     G, _, _, _ = params
@@ -226,6 +295,9 @@ def cred_show(params, publics, mac, sig, messages):
     ## Parse and re-randomize
     G, g, h, o = params
     Cx0, iparams = publics
+
+    ## WARNING: this step not in paper description of protocol
+    #           Checked correctness with Sarah Meiklejohn.
     u, uprime = rerandomize_sig_ggm(params, mac)
 
     n = len(messages)
@@ -312,17 +384,24 @@ def test_creds():
 def test_secret_creds():
     ## Setup from credential issuer.
     params = cred_setup()
-    ipub, isec = cred_CredKeyge(params, 2)
+    ipub, isec = cred_CredKeyge(params, 4)
 
-    keypair = cred_UserKeyge(params, 2)
+    ## User generates keys and encrypts some secret attributes
+    #  the secret attributes are [10, 20]
+    keypair = cred_UserKeyge(params)
     pub, EGenc, sig = cred_secret_issue_user(params, keypair, [10, 20])
+    _check_enc(params, keypair, EGenc, [10, 20])
 
-    cred_secret_issue_user_check(params, pub, EGenc, sig, pub_attrib=[])
+    ## The issuer checks the secret attributes and encrypts a amac
+    #  It also includes some public attributes, namely [30, 40].
+    cred_secret_issue_user_check(params, pub, EGenc, sig)
+    u, EncE = cred_secret_issue(params, pub, EGenc, ipub, isec, [30, 40])
+    _internal_ckeck(keypair, u, EncE, isec, [30, 40] + [10, 20])
 
-    ## Credential issuing and checking
-    #mac, sig = cred_issue(params, ipub, isec, [10, 20])
-    #assert cred_issue_check(params, ipub, mac, sig, [10, 20])
+    ## The user decrypts the amac
+    mac = cred_secret_issue_user_decrypt(keypair, u, EncE)
 
-    ## The show protocol
-    #(creds, sig) = cred_show(params, ipub, mac, sig, [10, 20])
-    #assert cred_show_check(params, ipub, isec, creds, sig)
+    ## The show protocol using the decrypted amac
+    (creds, sig) = cred_show(params, ipub, mac, sig, [30, 40, 10, 20])
+    assert cred_show_check(params, ipub, isec, creds, sig)
+
