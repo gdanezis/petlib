@@ -117,6 +117,60 @@ def cred_secret_issue_user_check(params, pub, EGenc, sig):
     if not zk.verify_proof(env.get(), sig):
         raise Exception("Proof of knowledge of plaintexts failed.")
 
+def cred_secret_issue_proof(params, num_privs, num_pubs):
+    G, _, _, _ = params
+    n = num_privs + num_pubs
+
+    # Contruct the proof
+    zk = ZKProof(G)
+
+    ## The variables
+    bCx0 = zk.get(Gen, "bCx0")
+    u, g, h, Cx0,  pub = zk.get(ConstGen, ["u", "g", "h", "Cx0", "pub"])
+    b, x0, x0_bar, bx0, bx0_bar =  zk.get(Sec, ["b", "x0", "x0_bar", "bx0", "bx0_bar"])
+
+    xis = zk.get_array(Sec, "xi", n)
+    bxis = zk.get_array(Sec, "bxi", n)
+    Xis = zk.get_array(ConstGen, "Xi", n)
+    bXis = zk.get_array(Gen, "bXi", n)
+
+    ## Proof of knowing the secret of MAC
+    zk.add_proof(Cx0, x0 * g + x0_bar * h)
+    zk.add_proof(bCx0, b * Cx0)
+    zk.add_proof(bCx0, bx0 * g + bx0_bar * h)
+    zk.add_proof(u, b * g)
+
+    ## Proof of correct Xi's
+    for (xi, Xi, bXi, bxi) in zip(xis, Xis, bXis, bxis):
+        zk.add_proof(Xi, xi * h)        
+        zk.add_proof(bXi, b * Xi)
+        zk.add_proof(bXi, bxi * h)
+    
+    # Proof of correct Credential Ciphertext
+    mis = zk.get_array(Pub, "mi", num_pubs)
+    CredA, CredB = zk.get(ConstGen, ["CredA", "CredB"])
+
+    EGa = zk.get_array(ConstGen, "EGa", num_privs)
+    EGb = zk.get_array(ConstGen, "EGb", num_privs)
+    r_prime = zk.get(Sec, "r_prime")
+
+    A = r_prime * g
+    B = r_prime * pub + bx0 * g
+
+    for mi, bxi in zip(mis, bxis[:num_pubs]):
+        B = B + bxi * (mi * g)
+
+    bxis_sec = bxis[num_pubs:num_pubs + num_privs]
+    for eg_a, eg_b, bxi in zip(EGa, EGb, bxis_sec):
+        A = A + bxi * eg_a
+        B = B + bxi * eg_b
+
+    zk.add_proof(CredA, A)
+    zk.add_proof(CredB, B)
+
+    return zk
+    
+
 def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     """ Encode a mixture of secret (EGenc) and public (messages) attributes"""
 
@@ -149,19 +203,51 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     assert [bsk0] + open_bsk + sec_bsk == bsk
 
     # First build a proto-credential in clear using all public attribs
-    Cred = bsk0 * g
-    for bxi, msg in zip(open_bsk, messages):
-        Cred = Cred + (bxi.mod_mul(msg, o)) * g
-
-    r_prime = o.random()
+    r_prime = o.random()    
     EG_a = r_prime * g
-    EG_b = r_prime * pub + Cred
+    EG_b = r_prime * pub + bsk0 * g
+
+    for mi, bxi in zip(messages, open_bsk):
+        EG_b = EG_b + bxi * (mi * g)
 
     for (eg_ai, eg_bi, bxi) in zip(sKis, Cis, sec_bsk):
         EG_a = EG_a + bxi * eg_ai
         EG_b = EG_b + bxi * eg_bi
 
-    return u, (EG_a, EG_b)
+    # Now build an epic proof for all this.
+    zk = cred_secret_issue_proof(params, len(Cis), len(messages))
+
+    env = ZKEnv(zk)
+
+    env.g, env.h = g, h 
+    env.u = u
+    env.b = b
+    env.x0 = sk[0]
+    env.bx0 = bsk0
+    env.x0_bar = x0_bar
+    env.bx0_bar = b.mod_mul(x0_bar, o)
+    env.Cx0 = Cx0
+    env.bCx0 = bCx0
+    env.pub = pub
+
+    env.xi = sk[1:]
+    env.Xi = iparams
+    env.bxi = bsk[1:]
+    env.bXi = bXi
+
+    env.mi = messages   
+    env.CredA = EG_a
+    env.CredB = EG_b
+    env.EGa = sKis
+    env.EGb = Cis
+    
+    env.r_prime = r_prime
+
+    ## Extract the proof
+    sig = zk.build_proof(env.get())
+    assert zk.verify_proof(env.get(), sig)
+
+    return u, (EG_a, EG_b), sig
 
 def _internal_ckeck(keypair, u, EncE, secrets, all_attribs):
     """ Check the invariant that the ciphertexts are the encrypted attributes """
@@ -175,10 +261,37 @@ def _internal_ckeck(keypair, u, EncE, secrets, all_attribs):
     v = Hx(sk, all_attribs)
     assert Cred == v * u
 
-def cred_secret_issue_user_decrypt(keypair, u, EncE):
+def cred_secret_issue_user_decrypt(params, keypair, u, EncE, publics, messages, EGab, sig):
+    G, g, h, _ = params
+    Cx0, iparams = publics
+
     priv, pub = keypair
-    (a, b) = EncE
-    uprime = b + (- (priv * a))
+    (EG_a, EG_b) = EncE
+    uprime = EG_b - (priv * EG_a)
+
+    sKis, Cis = EGab
+
+    # Now build an epic proof for all this.
+    zk = cred_secret_issue_proof(params, len(Cis), len(messages))
+
+    env = ZKEnv(zk)
+
+    env.g, env.h = g, h 
+    env.u = u
+    env.Cx0 = Cx0
+    env.pub = pub
+
+    env.Xi = iparams    
+
+    env.mi = messages   
+    env.CredA = EG_a
+    env.CredB = EG_b
+    env.EGa = sKis
+    env.EGb = Cis
+    
+    ## Extract the proof
+    if not zk.verify_proof(env.get(), sig):
+        raise Exception("Decryption of credential failed.")
 
     return (u, uprime)
 
@@ -237,6 +350,7 @@ def cred_issue(params, publics, secrets, messages):
 
     ## Extract the proof
     sig = zk.build_proof(env.get())
+    assert zk.verify_proof(env.get(), sig)
 
     ## Return the credential (MAC) and proof of correctness
     return (u, uprime), sig
@@ -395,12 +509,12 @@ def test_secret_creds():
     ## The issuer checks the secret attributes and encrypts a amac
     #  It also includes some public attributes, namely [30, 40].
     cred_secret_issue_user_check(params, pub, EGenc, sig)
-    u, EncE = cred_secret_issue(params, pub, EGenc, ipub, isec, [30, 40])
+    u, EncE, sig = cred_secret_issue(params, pub, EGenc, ipub, isec, [30, 40])
     _internal_ckeck(keypair, u, EncE, isec, [30, 40] + [10, 20])
 
     ## The user decrypts the amac
-    mac = cred_secret_issue_user_decrypt(keypair, u, EncE)
-
+    # mac = cred_secret_issue_user_decrypt(keypair, u, EncE)
+    mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, [30, 40], EGenc, sig)
     ## The show protocol using the decrypted amac
     #  The proof just proves knowledge of the attributes, but any other 
     #  ZK statement is also possible by augmenting the proof.
