@@ -564,7 +564,7 @@ def time_it_all(repetitions = 1000):
     for _ in range(repetitions):
         mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig)
     T = time.clock() - t0
-    print("%.3f ms\tCredential decyption & verification" % (1000 * T/repetitions))
+    print("%.3f ms\tCredential decryption & verification" % (1000 * T/repetitions))
     
     ## The show protocol using the decrypted amac
     #  The proof just proves knowledge of the attributes, but any other 
