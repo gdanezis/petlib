@@ -69,6 +69,12 @@ def make_docs(quiet=True):
     with pushd('docs') as old_dir:
         sh('make html', capture=quiet)
 
+@task
+def wc(quiet=False):
+    tell("Counting code lines")
+    sh('wc -l examples/*.py', capture=quiet)
+    sh('wc -l petlib/*.py', capture=quiet)
+
 def get_latest_dist():
     D = sh("grep version=\"*\" setup.py", capture = True)
     v = re.findall("version=['\"](.*)['\"]", D)[0]
