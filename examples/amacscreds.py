@@ -117,6 +117,8 @@ def cred_secret_issue_user_check(params, pub, EGenc, sig):
     if not zk.verify_proof(env.get(), sig):
         raise Exception("Proof of knowledge of plaintexts failed.")
 
+    return True
+
 def cred_secret_issue_proof(params, num_privs, num_pubs):
     G, _, _, _ = params
     n = num_privs + num_pubs
@@ -208,7 +210,7 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     EG_b = r_prime * pub + bsk0 * g
 
     for mi, bxi in zip(messages, open_bsk):
-        EG_b = EG_b + bxi * (mi * g)
+        EG_b = EG_b + (bxi.mod_mul(mi,o) *  g)
 
     for (eg_ai, eg_bi, bxi) in zip(sKis, Cis, sec_bsk):
         EG_a = EG_a + bxi * eg_ai
@@ -222,12 +224,14 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     env.g, env.h = g, h 
     env.u = u
     env.b = b
+
     env.x0 = sk[0]
     env.bx0 = bsk0
     env.x0_bar = x0_bar
     env.bx0_bar = b.mod_mul(x0_bar, o)
     env.Cx0 = Cx0
     env.bCx0 = bCx0
+    
     env.pub = pub
 
     env.xi = sk[1:]
@@ -245,7 +249,8 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
 
     ## Extract the proof
     sig = zk.build_proof(env.get())
-    assert zk.verify_proof(env.get(), sig)
+    if __debug__:
+        assert zk.verify_proof(env.get(), sig)
 
     return u, (EG_a, EG_b), sig
 
@@ -255,7 +260,7 @@ def _internal_ckeck(keypair, u, EncE, secrets, all_attribs):
     ## First do decryption
     priv, pub = keypair
     (a, b) = EncE
-    Cred = b + (- (priv * a))
+    Cred = b - (priv * a)
 
     sk, _ = secrets
     v = Hx(sk, all_attribs)
@@ -350,7 +355,8 @@ def cred_issue(params, publics, secrets, messages):
 
     ## Extract the proof
     sig = zk.build_proof(env.get())
-    assert zk.verify_proof(env.get(), sig)
+    if __debug__:
+        assert zk.verify_proof(env.get(), sig)
 
     ## Return the credential (MAC) and proof of correctness
     return (u, uprime), sig
@@ -446,7 +452,8 @@ def cred_show(params, publics, mac, sig, messages):
 
     sig = zk.build_proof(env.get())
     ## Just a sanity check
-    assert zk.verify_proof(env.get(), sig)
+    if __debug__:
+        assert zk.verify_proof(env.get(), sig)
 
     return cred, sig
 
@@ -498,26 +505,36 @@ def test_creds():
 def test_secret_creds():
     ## Setup from credential issuer.
     params = cred_setup()
-    ipub, isec = cred_CredKeyge(params, 4)
+
+    ## Attriutes we want to encode
+    public_attr = [30, 40]
+    private_attr = [10, 20]
+    n = len(public_attr) + len(private_attr)
+
+    ipub, isec = cred_CredKeyge(params, n)
 
     ## User generates keys and encrypts some secret attributes
     #  the secret attributes are [10, 20]
     keypair = cred_UserKeyge(params)
-    pub, EGenc, sig = cred_secret_issue_user(params, keypair, [10, 20])
-    _check_enc(params, keypair, EGenc, [10, 20])
+    pub, EGenc, sig = cred_secret_issue_user(params, keypair, private_attr)
+    
+    if __debug__:
+        _check_enc(params, keypair, EGenc, private_attr)
 
     ## The issuer checks the secret attributes and encrypts a amac
     #  It also includes some public attributes, namely [30, 40].
-    cred_secret_issue_user_check(params, pub, EGenc, sig)
-    u, EncE, sig = cred_secret_issue(params, pub, EGenc, ipub, isec, [30, 40])
-    _internal_ckeck(keypair, u, EncE, isec, [30, 40] + [10, 20])
+    assert cred_secret_issue_user_check(params, pub, EGenc, sig)
+    u, EncE, sig = cred_secret_issue(params, pub, EGenc, ipub, isec, public_attr)
+    
+    if __debug__:
+        _internal_ckeck(keypair, u, EncE, isec, public_attr + private_attr)
 
     ## The user decrypts the amac
-    # mac = cred_secret_issue_user_decrypt(keypair, u, EncE)
-    mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, [30, 40], EGenc, sig)
+    mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig)
+    
     ## The show protocol using the decrypted amac
     #  The proof just proves knowledge of the attributes, but any other 
     #  ZK statement is also possible by augmenting the proof.
-    (creds, sig) = cred_show(params, ipub, mac, sig, [30, 40, 10, 20])
+    (creds, sig) = cred_show(params, ipub, mac, sig, public_attr + private_attr)
     assert cred_show_check(params, ipub, isec, creds, sig)
 

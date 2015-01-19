@@ -157,11 +157,12 @@ class ZKProof(object):
         self.proofs += [(lhs, rhs)]
 
     def _check_name_ok(self, name):
-        import re
-        a = re.compile("^[a-zA-Z][a-zA-Z0-9_]*$")
-        if a.match(name) is not None:
-            return True
-        return False
+        if __debug__:
+            import re
+            a = re.compile("^[a-zA-Z][a-zA-Z0-9_]*$")
+            if a.match(name) is not None:
+                return True
+            return False
 
     def get(self, vtype, name, ignore_check = False):
         """Returns a number of proof variables of a certain type"""
@@ -190,11 +191,12 @@ class ZKProof(object):
         return set(variables)
 
     def _check_env(self, env):
-        variables = self.all_vars()
+        if __debug__:
+            variables = self.all_vars()
 
-        for v in variables:
-            if not v in env:
-                raise Exception("Could not find variable \"%s\" in the environment." % v)
+            for v in variables:
+                if not v in env:
+                    raise Exception("Could not find variable \"%s\" in the environment." % v)
 
     def build_proof(self, env, message=""):
         """Generates a proof within an environment of assigned public and secret variables."""
