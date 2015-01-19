@@ -69,7 +69,6 @@ def make_docs(quiet=True):
     with pushd('docs') as old_dir:
         sh('make html', capture=quiet)
 
-
 def get_latest_dist():
     D = sh("grep version=\"*\" setup.py", capture = True)
     v = re.findall("version=['\"](.*)['\"]", D)[0]
