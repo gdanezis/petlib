@@ -12,6 +12,22 @@ def do_ecdsa_sign(G, priv, data):
 
     Returns:
         Bn, Bn: The (r, s) signature
+
+    Example:
+        How to use ``do_ecdsa_sign`` and ``do_ecdsa_verify`` to sign and verify a string:
+
+        >>> from hashlib import sha1
+        >>> # Generate a signature / verification key pair.
+        >>> G = EcGroup()
+        >>> sig_key = G.order().random()
+        >>> ver_key = sig_key * G.generator()
+        >>> # Hash the (potentially long) message into a short digest.
+        >>> digest = sha1(b"Hello World!").digest()
+        >>> # Sign and verify signature
+        >>> sig = do_ecdsa_sign(G, sig_key, digest)
+        >>> do_ecdsa_verify(G, ver_key, sig, digest)
+        True
+
     """
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
