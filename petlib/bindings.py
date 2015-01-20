@@ -143,7 +143,10 @@ int     BN_is_prime_ex(const BIGNUM *p,int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 
 int     BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
+
 int bn_is_odd(BIGNUM * a);
+// int BN_is_odd(const BIGNUM *a);
+
 
 int BN_is_bit_set(const BIGNUM *a, int n);
 
@@ -297,6 +300,8 @@ int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group);
 int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
 int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 
+#define SSLEAY_VERSION ...
+const char *SSLeay_version(int type);
 
 """)
 
@@ -312,6 +317,7 @@ _C = _FFI.verify("""
 int bn_num_bytes(BIGNUM * a){
     return BN_num_bytes(a);
 }
+
 
 int bn_is_odd(BIGNUM * a){
     return BN_is_odd(a);
@@ -353,6 +359,9 @@ void cleanup_ciphers(void){
 
 _inited = False
 
+def version():
+    return str(_FFI.string(_C.SSLeay_version(_C.SSLEAY_VERSION)))
+
 class InitCiphers(object):
     # pylint: disable=global-statement
 
@@ -376,3 +385,7 @@ def test_double_load():
     _c2 = InitCiphers()
     del _c2
     ## Nothing bad should happen
+
+def test_version():
+    print (version())
+    assert version()

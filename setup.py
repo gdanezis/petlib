@@ -7,7 +7,9 @@ from distutils.core import setup
 try:
       import petlib.bindings
       deps = [petlib.bindings._FFI.verifier.get_extension()]
-except:
+except Exception as e:
+      import traceback
+      traceback.print_exc()
       print("Alter: Not compiling the library -- useful for readthedocs.")
       deps = []
 
