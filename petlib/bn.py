@@ -150,7 +150,7 @@ class Bn(object):
     def __init__(self, num=0):
         'Allocate a Big Number structure, initialized with num or zero'
         _check( 0 <= abs(num) <= 2**(64-1) )
-        assert isinstance(num, (int, long))
+        _check( isinstance(num, (int, long)) )
         self.bn = _C.BN_new()
 
         # Assign
