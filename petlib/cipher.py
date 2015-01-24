@@ -1,6 +1,5 @@
 from .bindings import _FFI, _C
 
-from binascii import hexlify
 import pytest
 
 

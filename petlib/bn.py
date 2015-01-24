@@ -7,12 +7,12 @@ from copy import copy, deepcopy
 try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
-except:
+except:                             # pylint: disable=bare-except
     print("Cannot mock for docs")
 
 try:
     from future.utils import python_2_unicode_compatible
-except Exception as e:
+except Exception as e:              # pylint: disable=broad-except
     # An identity decorator
     python_2_unicode_compatible = lambda x: x
 
