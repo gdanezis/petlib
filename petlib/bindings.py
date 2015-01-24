@@ -318,14 +318,12 @@ int bn_num_bytes(BIGNUM * a){
     return BN_num_bytes(a);
 }
 
-
 int bn_is_odd(BIGNUM * a){
     return BN_is_odd(a);
 }
 
 size_t hmac_ctx_size(void){
     return sizeof(HMAC_CTX);
-
 }
 
 extern void ERR_load_crypto_strings(void);
@@ -333,6 +331,7 @@ extern void OPENSSL_config(void*);
 extern void ERR_free_strings(void);
 
 void init_ciphers(void){
+
     /* Load the human readable error strings for libcrypto */
     ERR_load_crypto_strings();
 
@@ -341,9 +340,11 @@ void init_ciphers(void){
 
     /* Load config file, and other important initialisation */
     OPENSSL_config(NULL);
+
 }
 
 void cleanup_ciphers(void){
+
     /* Removes all digests and ciphers */
     EVP_cleanup();
 

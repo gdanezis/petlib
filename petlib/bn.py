@@ -164,6 +164,10 @@ class Bn(object):
         _check( sign == 0 or sign == 1 )
         _C.BN_set_negative(self.bn, sign)
 
+    def copy(self):
+        """Returns a copy of the Bn object."""
+        return self.__copy__()
+
     def __copy__(self):
         # 'Copies the big number. Support for copy module'
         other = Bn()
@@ -315,6 +319,9 @@ class Bn(object):
         """
         return self.__add__(other)
 
+    def __radd__(self, other):
+        return self.__add__(other)
+
     @force_Bn(1)
     def __add__(self, other):
         r = Bn()
@@ -337,6 +344,9 @@ class Bn(object):
         """
         return self - other
 
+    def __rsub__(self, other):
+        return Bn(other) - self
+
     @force_Bn(1)
     def __sub__(self, other):
         r = Bn()
@@ -357,6 +367,9 @@ class Bn(object):
             20000
 
         """
+        return self.__mul__(other)
+
+    def __rmul__(self, other):
         return self.__mul__(other)
 
     @force_Bn(1)
@@ -478,6 +491,9 @@ class Bn(object):
         Synonym for (div, mod) = divmod(self, other)"""
         return self.__divmod__(other)
 
+    def __rdivmod__(self, other):
+        return Bn(other).__divmod__(self)
+
     @force_Bn(1)
     def __divmod__(self, other):
         try:
@@ -505,6 +521,9 @@ class Bn(object):
         """
         return self.__div__(other)
 
+    def __rdiv__(self, other):
+        return Bn(other).__div__(self)
+
     @force_Bn(1)
     def __div__(self, other):
         dv, _ = divmod(self, other)
@@ -527,6 +546,9 @@ class Bn(object):
         """
         return self.__mod__(other)
 
+    def __rmod__(self, other):
+        return Bn(other).__mod__(self)
+
     @force_Bn(1)
     def __mod__(self, other):
         try:
@@ -537,13 +559,22 @@ class Bn(object):
             _C.BN_CTX_free(bnctx)
         return rem
 
+    def __rtruediv__(self, other):
+        return Bn(other).__truediv__(self)
+
     @force_Bn(1)
     def __truediv__(self, other):
         return self.__div__(other)
 
+    def __rfloordiv__(self, other):
+        return Bn(other).__floordiv__(self)
+
     @force_Bn(1)
     def __floordiv__(self, other):
         return self.__div__(other)
+
+    def __rpow__(self, other):
+        return Bn(other).__pow__(self)
 
     def pow(self, other, modulo=None):
         """Returns the number raised to the power other optionally modulo a third number. 
@@ -730,6 +761,30 @@ def test_bn_arithmetic():
     assert Bn(10).mod_mul(10, 15) == (10 * 10) % 15
     assert Bn(-1).bool()
 
+def test_bn_right_arithmetic():
+    assert (1 + Bn(1) == Bn(2))
+    
+    assert (-1 * Bn(-1) == Bn(1))
+    
+    assert (10 * Bn(10) == Bn(100))
+    assert (10 - Bn(10) == Bn(0))
+    assert (10 - Bn(100) == Bn(-90))
+    assert (10 + (-Bn(10)) == Bn(0))
+    s = -Bn(100)
+    assert (10 + s == Bn(-90))
+    assert (10 - (-Bn(10)) == Bn(20))
+    
+    assert divmod(10, Bn(3)) == (Bn(3), Bn(1))
+    
+    assert 10 / Bn(3) == Bn(3)
+    assert 10 // Bn(3) == Bn(3)
+    
+    assert 10 % Bn(3) == Bn(1)    
+    assert 2 ** Bn(8) == Bn(2 ** 8)
+    
+    pow(10, Bn(10))
+
+
 
 def test_bn_allocate():
     # Test allocation
@@ -769,6 +824,11 @@ def test_bn_cmp():
     assert Bn(2) == Bn(2)
     assert Bn(2) <= Bn(3)
     assert Bn(2) < Bn(3)
+
+def test_extras():
+    two = Bn(2)
+    two2 = two.copy()
+    assert two == two2    
 
 def test_odd():
     assert Bn(1).is_odd()
