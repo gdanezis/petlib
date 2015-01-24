@@ -781,6 +781,8 @@ def test_bn_right_arithmetic():
     
     assert 10 % Bn(3) == Bn(1)    
     assert 2 ** Bn(8) == Bn(2 ** 8)
+
+    assert 100 == Bn(100)
     
     pow(10, Bn(10))
 
