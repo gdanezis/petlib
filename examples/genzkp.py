@@ -29,6 +29,9 @@ class Val:
     def val(self, env):
         return env[self.name]
 
+    def tex(self):
+        return "{%s}" % tex_encode(self.name)
+
 class Pub(Val):
     """Defines a public value, given by the prover"""
     def __init__(self, zkp, name):
@@ -36,6 +39,10 @@ class Pub(Val):
         self.zkp = zkp
         assert name not in zkp.Pub
         zkp.Pub[name] = self
+
+    def tex(self):
+        return r"{\mathrm{%s}}" % tex_encode(self.name)
+
 
 class ConstPub(Pub):
     """Defines a public value from the environment"""
@@ -97,6 +104,25 @@ class Gen(object):
         
         return Gen(self.zkp, constuction=c, prove=prove)
 
+    def tex(self):
+        ## In case of a named value just return it.
+        if self.name:
+            return r"{\mathrm{%s}}" % (tex_encode(self.name))
+
+        if self.constuction[0] == "Gen+":
+            gather = [v.tex() for v in self.constuction[1:]]
+            Sum = " \cdot ".join(gather)
+            return "{%s}" % Sum
+
+        if self.constuction[0] == "Gen*":
+            base = self.constuction[1].tex()
+            exps = [v.tex() for v in self.constuction[2:]]
+            exps = " \cdot ".join(exps)
+            ret = "{%s}^{%s}" % (base, exps)
+            return ret
+
+
+
     def val(self, env):
         """Returns the value of this variable"""
 
@@ -128,8 +154,9 @@ class Gen(object):
 class ConstGen(Gen):
     """Represents a generator constant in the environment"""
     def __init__(self, zkp, name):
-        Gen.__init__(self, zkp, name=name)
+        Gen.__init__(self, zkp, name=None)
         
+        self.name = name
         assert name not in self.zkp.Const
         self.zkp.Const[name] = self
 
@@ -145,6 +172,8 @@ class ZKProof(object):
         self.Pub = {}
         self.Sec = {}
         self.proofs = []
+
+        self.arrays = {}
 
     def add_proof(self, lhs, rhs):
         """Adds a proof obligation to show the rhs is the representation of the lhs"""
@@ -176,12 +205,14 @@ class ZKProof(object):
 
         raise Exception("Wrong type of names: str or list(str)")
 
-    def get_array(self, vtype, name, number):
+    def get_array(self, vtype, name, number, start=0):
         """Returns an array of variables"""
         assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
         assert isinstance(name, str)
         assert self._check_name_ok(name)
-        names = ["%s[%i]" % (name,i) for i in range(0, number)]
+        self.arrays[name] = (number, start)
+
+        names = ["%s[%i]" % (name,i) for i in range(start, start+number)]
         return self.get(vtype, names, True)
 
     def all_vars(self):
@@ -197,6 +228,41 @@ class ZKProof(object):
             for v in variables:
                 if not v in env:
                     raise Exception("Could not find variable \"%s\" in the environment." % v)
+
+    def render_proof_statement(self):
+        s = r'$'
+
+        if len(self.Const) > 0:
+            variables = []
+            for con in sorted(list(self.Const)):
+                variables += ["{\mathrm{%s}}" % tex_encode(con)]
+            s += r"\text{Constants: } %s \\" % (', '.join(variables))
+
+
+        if len(self.Pub) > 0:
+            variables = []
+            for pub in sorted(list(self.Pub)):
+                variables += ["{\mathrm{%s}}" % tex_encode(pub)]
+            s += r"\text{Public: } %s \\" % (', '.join(variables))
+
+        s += r"\text{NIZK}\{" + """("""
+        variables = []
+        for sec in sorted(list(self.Sec)):
+            variables += ["{%s}" % tex_encode(sec)]
+        variables = ', '.join(variables)
+        s += variables
+
+        s += r"): \\ \qquad "
+
+        formulas = []
+        for base, expr in self.proofs:
+            formulas += ["%s = %s" % (base.tex(), expr.tex())]
+
+        s += r" \wedge \\ \qquad ".join(formulas)
+
+        s+= r'\}$'
+        return s
+
 
     def build_proof(self, env, message=""):
         """Generates a proof within an environment of assigned public and secret variables."""
@@ -249,11 +315,17 @@ class ZKProof(object):
 
         return (c, responses)
 
-    def verify_proof(self, env, sig, message=""):
+    def verify_proof(self, env, sig, message="", strict=True):
         """Verifies a proof within an environment of assigned public only variables."""
 
         ## Select the constants for the env
-        env_l = [(k,v)for  k,v in env.items() if k in self.Const]
+        env_l = [(k,v) for  k,v in env.items() if k in self.Const]
+        
+        if __debug__ and strict:
+            env_not = [k for k,v in env.items() if k not in self.Const]
+            if len(env_not):
+                raise Exception("Did not check: " + (", ".join(env_not)))
+
         c, responses = sig
         responses = dict(list(responses.items()) + env_l)
 
@@ -300,8 +372,12 @@ class ZKEnv(object):
     def __setattr__(self, name, value):
         """ Store into a special dictionary """
         if isinstance(value, list):
+            assert name in self.zkp.arrays
+            number, start = self.zkp.arrays[name]
+            assert len(value) == number
+
             for i, v in enumerate(value):
-                n = "%s[%i]" % (name,i)
+                n = "%s[%i]" % (name,start+i)
                 self._set_var(n, v)
     
         else:          
@@ -315,6 +391,27 @@ class ZKEnv(object):
     def get(self):
         """ Get the environement. """
         return self.env
+
+import re
+def tex_encode(name):
+    m = re.match(r"^(.+)i\[([0-9]+)\]$", name)
+    if m != None:
+        return r"{%s}_{%s}" % (tex_encode(m.group(1)), m.group(2))
+
+    m = re.match(r"^(.+)_prime$", name)
+    if m != None:
+        return r"{%s'}" % (tex_encode(m.group(1)))   
+
+    m = re.match(r"^(.+)_bar$", name)
+    if m != None:
+        return r"{\overline{%s}}" % (tex_encode(m.group(1)))
+
+    return name
+
+def test_tex():
+    assert "}_{" in tex_encode("helloi[10]")
+    assert "'}" in tex_encode("hello_prime")
+    assert r"\overline" in tex_encode("hello_bar")
 
 
 def test_basic():
@@ -451,4 +548,18 @@ def test_Pedersen_Env_missing():
         zk.build_proof(env.get())
     assert "Proof about 'Cxo' does not hold" in str(excinfo.value)
 
+def test_latex_print():
 
+    # Define an EC group
+    G = EcGroup(713)
+    order = G.order()
+
+    ## Proof definitions
+    zk = ZKProof(G)
+    g, h = zk.get(ConstGen, ["g", "h"])
+    x, o = zk.get(Sec, ["x", "o"])
+    Cxo = zk.get(Gen, "Cxo")
+    zk.add_proof(Cxo, x*g + o*h)
+
+    print(zk.render_proof_statement())
+    

@@ -128,14 +128,14 @@ def cred_secret_issue_proof(params, num_privs, num_pubs):
     zk = ZKProof(G)
 
     ## The variables
-    bCx0 = zk.get(Gen, "bCx0")
-    u, g, h, Cx0,  pub = zk.get(ConstGen, ["u", "g", "h", "Cx0", "pub"])
-    b, x0, x0_bar, bx0, bx0_bar =  zk.get(Sec, ["b", "x0", "x0_bar", "bx0", "bx0_bar"])
+    bCx0 = zk.get(Gen, "bCx_0")
+    u, g, h, Cx0,  pub = zk.get(ConstGen, ["u", "g", "h", "Cx_0", "pub"])
+    b, x0, x0_bar, bx0, bx0_bar =  zk.get(Sec, ["b", "x_0", "x_0_bar", "bx_0", "bx_0_bar"])
 
-    xis = zk.get_array(Sec, "xi", n)
-    bxis = zk.get_array(Sec, "bxi", n)
-    Xis = zk.get_array(ConstGen, "Xi", n)
-    bXis = zk.get_array(Gen, "bXi", n)
+    xis = zk.get_array(Sec, "xi", n, 1)
+    bxis = zk.get_array(Sec, "bxi", n, 1)
+    Xis = zk.get_array(ConstGen, "Xi", n, 1)
+    bXis = zk.get_array(Gen, "bXi", n, 1)
 
     ## Proof of knowing the secret of MAC
     zk.add_proof(Cx0, x0 * g + x0_bar * h)
@@ -150,11 +150,11 @@ def cred_secret_issue_proof(params, num_privs, num_pubs):
         zk.add_proof(bXi, bxi * h)
     
     # Proof of correct Credential Ciphertext
-    mis = zk.get_array(Pub, "mi", num_pubs)
+    mis = zk.get_array(ConstPub, "mi", num_pubs)
     CredA, CredB = zk.get(ConstGen, ["CredA", "CredB"])
 
-    EGa = zk.get_array(ConstGen, "EGa", num_privs)
-    EGb = zk.get_array(ConstGen, "EGb", num_privs)
+    EGa = zk.get_array(ConstGen, "EGai", num_privs)
+    EGb = zk.get_array(ConstGen, "EGbi", num_privs)
     r_prime = zk.get(Sec, "r_prime")
 
     A = r_prime * g
@@ -228,12 +228,12 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     env.b = b
 
     # These relate to the proof of x0 ...
-    env.x0 = sk[0]
-    env.bx0 = bsk0
-    env.x0_bar = x0_bar
-    env.bx0_bar = b.mod_mul(x0_bar, o)
-    env.Cx0 = Cx0
-    env.bCx0 = bCx0
+    env.x_0 = sk[0]
+    env.bx_0 = bsk0
+    env.x_0_bar = x0_bar
+    env.bx_0_bar = b.mod_mul(x0_bar, o)
+    env.Cx_0 = Cx0
+    env.bCx_0 = bCx0
     
     # These relate to the knowledge of Xi, xi ...
     env.xi = sk[1:]
@@ -246,13 +246,13 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     env.mi = messages   
     env.CredA = EG_a
     env.CredB = EG_b
-    env.EGa = sKis
-    env.EGb = Cis
+    env.EGai = sKis
+    env.EGbi = Cis
 
     ## Extract the proof
     sig = zk.build_proof(env.get())
     if __debug__:
-        assert zk.verify_proof(env.get(), sig)
+        assert zk.verify_proof(env.get(), sig, strict=False)
 
     return u, (EG_a, EG_b), sig
 
@@ -286,7 +286,7 @@ def cred_secret_issue_user_decrypt(params, keypair, u, EncE, publics, messages, 
 
     env.g, env.h = g, h 
     env.u = u
-    env.Cx0 = Cx0
+    env.Cx_0 = Cx0
     env.pub = pub
 
     env.Xi = iparams    
@@ -294,8 +294,8 @@ def cred_secret_issue_user_decrypt(params, keypair, u, EncE, publics, messages, 
     env.mi = messages   
     env.CredA = EG_a
     env.CredB = EG_b
-    env.EGa = sKis
-    env.EGb = Cis
+    env.EGai = sKis
+    env.EGbi = Cis
     
     ## Extract the proof
     if not zk.verify_proof(env.get(), sig):
@@ -315,7 +315,7 @@ def cred_issue_proof(params, n):
     x0, x0_bar =  zk.get(Sec, ["x0", "x0_bar"])
 
     xis = zk.get_array(Sec, "xi", n)
-    mis = zk.get_array(Pub, "mi", n)
+    mis = zk.get_array(ConstPub, "mi", n)
     Xis = zk.get_array(ConstGen, "Xi", n)
 
     ## Proof of correct MAC
@@ -360,7 +360,7 @@ def cred_issue(params, publics, secrets, messages):
     ## Extract the proof
     sig = zk.build_proof(env.get())
     if __debug__:
-        assert zk.verify_proof(env.get(), sig)
+        assert zk.verify_proof(env.get(), sig, strict=False)
 
     ## Return the credential (MAC) and proof of correctness
     return (u, uprime), sig
@@ -457,7 +457,7 @@ def cred_show(params, publics, mac, sig, messages):
     sig = zk.build_proof(env.get())
     ## Just a sanity check
     if __debug__:
-        assert zk.verify_proof(env.get(), sig)
+        assert zk.verify_proof(env.get(), sig, strict=False)
 
     return cred, sig
 
@@ -637,4 +637,22 @@ def test_secret_creds():
 
 
 if __name__ == "__main__":
-    time_it_all()
+    time_it_all(repetitions=100)
+
+    params = cred_setup()
+    
+    print("Proof of secret attributes")
+    zk1 = secret_proof(params, 2)
+    print(zk1.render_proof_statement())
+
+    print("Proof of secret issuing")
+    zk2 = cred_secret_issue_proof(params, 2, 2)
+    print(zk2.render_proof_statement())
+
+    print("Proof of public issuing")
+    zk3 = cred_issue_proof(params, 2)
+    print(zk3.render_proof_statement())
+
+    print("Proof of credential show")
+    zk4 = cred_show_proof(params, 4)
+    print(zk4.render_proof_statement())
