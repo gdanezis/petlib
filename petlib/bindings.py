@@ -11,11 +11,11 @@ if os.name == "nt":
     include_dirs=[r"."]
     extra_compile_args = []
 
-    if "VCINSTALLDIR" not in os.environ:
-        raise Exception(r"Cannot find the Visual Studio %VCINSTALLDIR% variable. Ensure you ran the appropriate vcvars.bat script.")
+    # if "VCINSTALLDIR" not in os.environ:
+    #     raise Exception(r"Cannot find the Visual Studio %VCINSTALLDIR% variable. Ensure you ran the appropriate vcvars.bat script.")
 
-    if "OPENSSL_CONF" not in os.environ:
-        raise Exception(r"Cannot find the Visual Studio %OPENSSL_CONF% variable. Ensure you install OpenSSL for Windows.")        
+    # if "OPENSSL_CONF" not in os.environ:
+    #     raise Exception(r"Cannot find the Visual Studio %OPENSSL_CONF% variable. Ensure you install OpenSSL for Windows.")        
 
     openssl_conf = os.environ["OPENSSL_CONF"]
     openssl_bin, conf_name = os.path.split(openssl_conf)
