@@ -1,6 +1,16 @@
 import os.path
 import os
 import re
+import fnmatch
+
+
+def match_files(directory="petlib", pattern="*.py"):
+    files = []
+    for file in os.listdir(directory):
+        if fnmatch.fnmatch(file, pattern):
+            files += [os.path.join(directory, file)]
+    return files
+
 
 from paver.tasks import task, cmdopts
 from paver.easy import sh, needs, pushd
@@ -16,12 +26,14 @@ def tell(x):
 @task
 def unit_tests():
     tell("Unit tests")
-    sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
+    files = " ".join(match_files())
+    sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
 
 @task
 def test3():
     tell("Unit tests for python 3")
-    sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib petlib/*.py')
+    files = " ".join(match_files())
+    sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib ' + files)
 
 @task
 @cmdopts([
@@ -56,7 +68,8 @@ def lintlib(quiet=False):
 def lintexamples(quiet=True):
     tell("Run Lint on example code")
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
-    sh('export PYTHONPATH=$PYHTONPATH:./utils; pylint --rcfile=pylintrc --load-plugins ignoretest examples/*.py', capture=quiet)
+    files = " ".join(match_files("examples", "*.py"))
+    sh('export PYTHONPATH=$PYHTONPATH:./utils; pylint --rcfile=pylintrc --load-plugins ignoretest ' + files, capture=quiet)
 
 @needs("lintlib", "lintexamples")
 @task
@@ -81,8 +94,8 @@ def get_latest_dist():
     return os.path.join("dist","petlib-%s.tar.gz" % v)
 
 
-@needs('build')
 @task
+@needs('build')
 def make_env(quiet=True):
     tell("Make a virtualenv")
     if os.path.exists("test_env"):
@@ -92,14 +105,21 @@ def make_env(quiet=True):
         sh("virtualenv pltest", capture=quiet)
 
 
-@needs("make_env")
 @task
-@virtualenv(dir=r"test_env/pltest")
+@needs("make_env")
+@virtualenv(dir=os.path.join(r"test_env",r"pltest"))
 def big_tests(quiet=True):
     tell("Run acceptance tests (big examples)")
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
-    sh("py.test-2.7 -v examples/*.py")
-    
+    files = " ".join(match_files("examples", "*.py"))
+    sh("py.test-2.7 -v " + files)
+
+@task
+def local_big_tests(quiet=True):
+    tell("Run acceptance tests (big examples) using local install.")
+    files = " ".join(match_files("examples", "*.py"))
+    sh("py.test-2.7 -v " + files)
+
 
 @needs('unit_tests', 'big_tests')
 @task

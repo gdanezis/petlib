@@ -1,5 +1,39 @@
 #!/usr/bin/env python
+
+import os
 import cffi
+
+
+if os.name == "nt":
+    # WIN: libraries=["libeay32"], include_dirs=[r"...\pyopenssl"]
+    # Ensure you compile with a 64bit lib (run vcvarsx86_amd64.bat)
+    libraries=["libeay32"]
+    include_dirs=[r"."]
+    extra_compile_args = []
+
+    if "VCINSTALLDIR" not in os.environ:
+        raise Exception(r"Cannot find the Visual Studio %VCINSTALLDIR% variable. Ensure you ran the appropriate vcvars.bat script.")
+
+    if "OPENSSL_CONF" not in os.environ:
+        raise Exception(r"Cannot find the Visual Studio %OPENSSL_CONF% variable. Ensure you install OpenSSL for Windows.")        
+
+    openssl_conf = os.environ["OPENSSL_CONF"]
+    openssl_bin, conf_name = os.path.split(openssl_conf)
+    openssl_base, bin_name = os.path.split(openssl_bin)
+    assert bin_name == "bin"
+    include_dirs += [os.path.join(openssl_base, "include")]
+    library_dirs = [openssl_base, os.path.join(openssl_base, "lib")]
+
+    print("Windows Library directories")
+    print(library_dirs)
+
+else:
+    ## Asume we are running on a posix system
+    # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
+    libraries=["crypto"]
+    extra_compile_args=['-Wno-deprecated-declarations']
+    include_dirs=[]
+    library_dirs=[]
 
 _FFI = cffi.FFI()
 
@@ -314,6 +348,7 @@ _C = _FFI.verify("""
 
 #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
+
 int bn_num_bytes(BIGNUM * a){
     return BN_num_bytes(a);
 }
@@ -325,6 +360,7 @@ int bn_is_odd(BIGNUM * a){
 size_t hmac_ctx_size(void){
     return sizeof(HMAC_CTX);
 }
+
 
 extern void ERR_load_crypto_strings(void);
 extern void OPENSSL_config(void*);
@@ -356,7 +392,11 @@ void cleanup_ciphers(void){
 
 }
 
-""", libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations'])
+""", libraries=libraries, 
+     extra_compile_args=extra_compile_args, 
+     include_dirs=include_dirs,
+     library_dirs=library_dirs, 
+     ext_package='petlib')
 
 _inited = False
 

@@ -13,6 +13,8 @@ except Exception as e:
       print("Alter: Not compiling the library -- useful for readthedocs.")
       deps = []
 
+import petlib
+
 setup(name='petlib',
       version=petlib.VERSION,
       description='A library implementing a number of Privacy Enhancing Technologies (PETs)',
@@ -20,6 +22,7 @@ setup(name='petlib',
       author_email='g.danezis@ucl.ac.uk',
       url=r'https://pypi.python.org/pypi/petlib/',
       packages=['petlib'],
+      ext_package='petlib',
       license="2-clause BSD",
       long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
       install_requires=[
@@ -29,5 +32,6 @@ setup(name='petlib',
             "paver >= 1.2.3",
             "pytest-cov >= 1.8.1",
       ],
+      zip_safe=False,
       ext_modules=deps,
 )
