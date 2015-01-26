@@ -89,13 +89,12 @@ def wc(quiet=False):
     sh('wc -l petlib/*.py', capture=quiet)
 
 def get_latest_dist():
-    D = sh("grep version=\"*\" setup.py", capture = True)
-    v = re.findall("version=['\"](.*)['\"]", D)[0]
+    lib = file(os.path.join("petlib", "__init__.py")).read()
+    v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
     return os.path.join("dist","petlib-%s.tar.gz" % v)
 
-
-@task
 @needs('build')
+@task
 def make_env(quiet=True):
     tell("Make a virtualenv")
     if os.path.exists("test_env"):
@@ -105,8 +104,8 @@ def make_env(quiet=True):
         sh("virtualenv pltest", capture=quiet)
 
 
-@task
 @needs("make_env")
+@task
 @virtualenv(dir=os.path.join(r"test_env",r"pltest"))
 def big_tests(quiet=True):
     tell("Run acceptance tests (big examples)")
