@@ -14,6 +14,8 @@ from base64 import b64encode
 
 import pytest
 
+class StateHolder(object):
+    pass
 
 def BL_setup(Gid = 713):
     # Parameters of the BL schemes
@@ -36,7 +38,14 @@ def BL_user_setup(params, attributes):
 
     for (i, attrib_i) in enumerate(attributes):
         C = C + attrib_i * hs[1+i]
-    return (C, )
+
+    user_state = StateHolder()
+    user_state.params = params
+    user_state.attributes = attributes
+    user_state.C = C
+    user_state.R = R
+
+    return user_state, (C, )
 
 def BL_issuer_keys(params):
     (G, q, g, h, z, hs) = params
@@ -44,14 +53,20 @@ def BL_issuer_keys(params):
     x = q.random()
     y = x * g
 
-    return x, y
+    issuer_state = StateHolder()
+    issuer_state.params = params
+    issuer_state.x = x
+    issuer_state.y = y
+
+    return issuer_state, (y, )
 
 
-def BL_issuer_preparation(params, user_commit, issuer_keys):
-    (G, q, g, h, z, hs) = params
+def BL_issuer_preparation(issuer_state, user_commit):
+    (G, q, g, h, z, hs) = issuer_state.params
+    (x, y) = (issuer_state.x, issuer_state.y)
+
     (C, ) = user_commit
-    (x, y) = issuer_keys
-
+    
     # Preparation
     rnd = q.random()
     z1 = C + rnd * g
@@ -61,15 +76,18 @@ def BL_issuer_preparation(params, user_commit, issuer_keys):
     if rnd % q == 0:
         raise
 
-    issuer_state = (x, y, rnd, z1, z2)
-    user_state = (rnd, )
+    issuer_state.rnd = rnd
+    issuer_state.z1 = z1
+    issuer_state.z2 = z2
 
-    return issuer_state, user_state
+    message_to_user = (rnd, )
 
-def BL_user_preparation(params, user_state, user_commit):
-    (G, q, g, h, z, hs) = params
-    (rnd,) = user_state
-    (C, ) = user_commit
+    return message_to_user
+
+def BL_user_preparation(user_state, msg_from_issuer):
+    (G, q, g, h, z, hs) = user_state.params
+    (rnd, ) = msg_from_issuer
+    C = user_state.C
 
     z1 = C + rnd * g
     gam = q.random()
@@ -79,25 +97,36 @@ def BL_user_preparation(params, user_state, user_commit):
     tau = q.random()
     eta = tau * z
 
-    return (z1, gam, zet, zet1, zet2, tau, eta)
+    user_state.z1 = z1
+    user_state.gam = gam
+    user_state.zet = zet
+    user_state.zet1 = zet1
+    user_state.zet2 = zet2
+    user_state.tau = tau
+    user_state.eta = eta
 
-def BL_issuer_validation(params, issuer_state):
-    (G, q, g, h, z, hs) = params
-    (x, y, rnd, z1, z2) = issuer_state
+    user_state.rnd = rnd
 
+def BL_issuer_validation(issuer_state):
+    (G, q, g, h, z, hs) = issuer_state.params
 
     u, r1p, r2p, cp = [q.random() for _ in range(4)]
     a = u * g
-    a1p = r1p * g + cp * z1
-    a2p = r2p * h + cp * z2
+    a1p = r1p * g + cp * issuer_state.z1
+    a2p = r2p * h + cp * issuer_state.z2
 
-    return (u, r1p, r2p, cp), (a, a1p, a2p)    
+    issuer_state.u = u
+    issuer_state.r1p = r1p
+    issuer_state.r2p = r2p
+    issuer_state.cp = cp
 
-def BL_user_validation(params, issuer_pub, user_val_state, user_private_state, message=b''):
-    (G, q, g, h, z, hs) = params
-    (z1, gam, zet, zet1, zet2, tau, eta) = user_private_state
-    (a, a1p, a2p) = user_val_state
-    y = issuer_pub
+    return (a, a1p, a2p)    
+
+def BL_user_validation(user_state, issuer_pub, msg_to_user, message=b''):
+    (G, q, g, h, z, hs) = user_state.params
+     # (z1, gam, zet, zet1, zet2, tau, eta) = user_private_state
+    (a, a1p, a2p) = msg_to_user
+    (y,) = issuer_pub
 
     assert G.check_point(a)
     assert G.check_point(a1p)
@@ -105,50 +134,61 @@ def BL_user_validation(params, issuer_pub, user_val_state, user_private_state, m
 
     t1,t2,t3,t4,t5 = [q.random() for _ in range(5)]
     alph = a + t1 * g + t2 * y
-    alph1 = gam * a1p + t3 * g + t4 * zet1
-    alph2 = gam * a2p + t5 * h + t4 * zet2
+    alph1 = user_state.gam * a1p + t3 * g + t4 * user_state.zet1
+    alph2 = user_state.gam * a2p + t5 * h + t4 * user_state.zet2
 
     # Make epsilon
-    H = [zet, zet1, alph, alph1, alph2, eta]
+    H = [user_state.zet, user_state.zet1, alph, alph1, alph2, user_state.eta]
     Hstr = list(map(EcPt.export, H)) + [message]
     Hhex = b"|".join(map(b64encode, Hstr))
     epsilon = Bn.from_binary(sha256(Hhex).digest()) % q
     
     e = epsilon.mod_sub(t2,q).mod_sub(t4, q)
 
-    return (t1,t2,t3,t4,t5, message), e
+    user_state.ts = [t1,t2,t3,t4,t5]
+    user_state.message = message
 
-def BL_issuer_validation_2(params, key_pair, issuer_val_private, epsilon):
-    (G, q, g, h, z, hs) = params
-    x, y = key_pair
-    (u, r1p, r2p, cp) = issuer_val_private
-    e = epsilon
+    msg_to_issuer = e
+    return msg_to_issuer
+
+def BL_issuer_validation_2(issuer_state, msg_from_user):
+    (G, q, g, h, z, hs) = issuer_state.params
+    # x, y = key_pair
+    # (u, r1p, r2p, cp) = issuer_val_private
+    e = msg_from_user
 
     ## Send: (e,) to Issuer
-    c = e.mod_sub(cp, q)
-    r = u.mod_sub((c * x), q)
+    c = e.mod_sub(issuer_state.cp, q)
+    r = issuer_state.u.mod_sub((c * issuer_state.x), q)
 
-    return (c, r, cp, r1p, r2p)
+    msg_to_user = (c, r, issuer_state.cp, issuer_state.r1p, issuer_state.r2p)
+    return msg_to_user
 
-def BL_user_validation2(params, user_private_state, user_val_private, from_issuer):
-    (G, q, g, h, z, hs) = params
-    (c, r, cp, r1p, r2p) = from_issuer
-    t1,t2,t3,t4,t5,m = user_val_private
-    (z1, gam, zet, zet1, zet2, tau, eta) = user_private_state
+def BL_user_validation2(user_state, msg_from_issuer):
+    (G, q, g, h, z, hs) = user_state.params
+    (c, r, cp, r1p, r2p) = msg_from_issuer
+    (t1,t2,t3,t4,t5), m = user_state.ts, user_state.message
+
+    # (z1, gam, zet, zet1, zet2, tau, eta) = user_private_state
+
+    gam = user_state.gam
 
     ro = r.mod_add(t1,q)
     om = c.mod_add(t2,q)
     ro1p = (gam * r1p + t3) % q
     ro2p = (gam * r2p + t5) % q
     omp = (cp + t4) % q
-    mu = (tau - omp * gam) % q
+    mu = (user_state.tau - omp * gam) % q
 
-    signature = (m, zet, zet1, zet2, om, omp, ro, ro1p, ro2p, mu)
+    signature = (m, user_state.zet, 
+                    user_state.zet1, 
+                    user_state.zet2, om, omp, ro, ro1p, ro2p, mu)
+    
     return signature
 
 def BL_check_signature(params, issuer_pub, signature):
     (G, q, g, h, z, hs) = params
-    y = issuer_pub
+    (y,) = issuer_pub
     (m, zet, zet1, zet2, om, omp, ro, ro1p, ro2p, mu) = signature
 
     lhs = (om + omp) % q
@@ -167,27 +207,43 @@ def BL_check_signature(params, issuer_pub, signature):
     else:
         return False
 
+def BL_cred_proof(user_state):
+    (G, q, g, h, z, hs) = user_state.params
+    gam = user_state.gam
+
+    assert user_state.zet == user_state.gam * z
+    gam_hs = [gam * hsi for hsi in hs]
+    gam_g = gam * g
+
+    Cnew = user_state.rnd * gam_g + user_state.R * gam_hs[0]
+    for i, attr in enumerate(user_state.attributes):
+        Cnew = Cnew + attr * gam_hs[1+i]
+
+    assert Cnew == user_state.zet1
+
 def test_modular():
     # Establish the global parameters
     params = BL_setup()
 
     # Generate a key pair (inc. public key) for the issuer
-    key_pair = BL_issuer_keys(params)
-    _, issuer_pub = key_pair
+    LT_issuer_state, issuer_pub = BL_issuer_keys(params)
+    LT_user_state, user_commit = BL_user_setup(params, [10, 20])
 
     # Preparation phase
-    user_commit = BL_user_setup(params, [10, 20])
-    issuer_private_state, user_state = BL_issuer_preparation(params, user_commit, key_pair)
-    user_private_state = BL_user_preparation(params, user_state, user_commit)
+    msg_to_user = BL_issuer_preparation(LT_issuer_state, user_commit)
+    BL_user_preparation(LT_user_state, msg_to_user)
 
     # Validation phase
-    issuer_val_private, user_val_state = BL_issuer_validation(params, issuer_private_state)
-    user_val_private, epsilon = BL_user_validation(params, issuer_pub, user_val_state, user_private_state)
-    to_user = BL_issuer_validation_2(params, key_pair, issuer_val_private, epsilon)
-    signature = BL_user_validation2(params, user_private_state, user_val_private, to_user)
+    msg_to_user = BL_issuer_validation(LT_issuer_state)
+    msg_to_issuer = epsilon = BL_user_validation(LT_user_state, issuer_pub, msg_to_user)
+    
+    msg_to_user = BL_issuer_validation_2(LT_issuer_state, msg_to_issuer)
+    signature = BL_user_validation2(LT_user_state, msg_to_user)
 
     # Check signature
     assert BL_check_signature(params, issuer_pub, signature) != False
+    BL_cred_proof(LT_user_state)
+
 
 def test_protocol():
     # Parameters of the BL schemes
