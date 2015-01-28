@@ -4,15 +4,15 @@
 #   Proceedings of the 2013 ACM SIGSAC conference on Computer & communications security. 
 #  ACM, 2013.
 
+from hashlib import sha256
+from base64 import b64encode
+
+import pytest
+
 from petlib.bn import Bn
 from petlib.ec import EcGroup, EcPt
 
-from hashlib import sha256
-
-from base64 import b64encode
-
-
-import pytest
+from genzkp import *
 
 class StateHolder(object):
     pass
@@ -221,6 +221,35 @@ def BL_cred_proof(user_state):
 
     assert Cnew == user_state.zet1
 
+def BL_show_zk_proof(params, num_attrib):
+    (G, _, _, _, _, _) = params
+
+    # Contruct the proof
+    zk = ZKProof(G)
+
+    ## The variables
+
+    gam, rnd, R = zk.get(Sec, ["gam", "rnd", "R"])
+    z, zet = zk.get(ConstGen, ["z", "zet", "zet1"])
+    hs = zk.get_array(ConstGen, "hs", num_attrib+1, 0)
+    attrib = zk.get_array(Sec, "attrib", num_attrib, 0)
+
+    zk.add_proof(zet, gam * zet)
+
+    gam_g = zk.get(Gen, ["gamg"])
+    gam_hs = zk.get_array(Gen, "gamhs", num_attrib+1, 0)
+
+    for gam_hsi, hsi in zip(gam_hs, hs):
+        zk.add_proof(gam_hsi, gam * hsi)
+    
+    Cnew = rnd * gam_g + R * gam_hs[0]
+    for i, attr in enumerate(attrib):
+        Cnew = Cnew + attr * gam_hs[1+i]
+
+    zk.add_proof(zet1, Cnew)
+
+    return zk
+
 def test_modular():
     # Establish the global parameters
     params = BL_setup()
@@ -244,6 +273,7 @@ def test_modular():
     assert BL_check_signature(params, issuer_pub, signature) != False
     BL_cred_proof(LT_user_state)
 
+    zk = BL_show_zk_proof(params, 2)
 
 def test_protocol():
     # Parameters of the BL schemes
