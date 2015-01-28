@@ -230,13 +230,16 @@ def BL_show_zk_proof(params, num_attrib):
     ## The variables
 
     gam, rnd, R = zk.get(Sec, ["gam", "rnd", "R"])
-    z, zet = zk.get(ConstGen, ["z", "zet", "zet1"])
-    hs = zk.get_array(ConstGen, "hs", num_attrib+1, 0)
     attrib = zk.get_array(Sec, "attrib", num_attrib, 0)
 
-    zk.add_proof(zet, gam * zet)
+    g, z, zet, zet1 = zk.get(ConstGen, ["g", "z", "zet", "zet1"])
+    hs = zk.get_array(ConstGen, "hs", num_attrib+1, 0)
+    
+    zk.add_proof(zet, gam * z)
 
-    gam_g = zk.get(Gen, ["gamg"])
+    gam_g = zk.get(Gen, "gamg")
+    zk.add_proof(gam_g, gam * g)
+
     gam_hs = zk.get_array(Gen, "gamhs", num_attrib+1, 0)
 
     for gam_hsi, hsi in zip(gam_hs, hs):
@@ -247,8 +250,61 @@ def BL_show_zk_proof(params, num_attrib):
         Cnew = Cnew + attr * gam_hs[1+i]
 
     zk.add_proof(zet1, Cnew)
-
     return zk
+
+def BL_user_prove_cred(user_state):
+    (G, q, g, h, z, hs) = user_state.params
+    zk = BL_show_zk_proof(user_state.params, len(user_state.attributes))
+
+    env = ZKEnv(zk)
+
+    # The secrets
+    env.gam = user_state.gam
+    env.rnd = user_state.rnd
+    env.R   = user_state.R
+    env.attrib = user_state.attributes
+
+    # Constants
+    env.g = g
+    env.z = z
+    env.zet = user_state.zet
+    env.zet1 = user_state.zet1
+    env.hs = hs[:len(user_state.attributes) + 1]
+
+    # The stored generators
+    env.gamg = user_state.gam * g
+    env.gamhs = gam_hs = [user_state.gam * hsi for hsi in hs[:len(user_state.attributes) + 1]]
+
+    ## Extract the proof
+    sig = zk.build_proof(env.get())
+    if __debug__:
+        assert zk.verify_proof(env.get(), sig, strict=False)
+
+    return sig
+
+def BL_verify_cred(params, issuer_pub, num_attributes, signature, sig):
+    m = BL_check_signature(params, issuer_pub, signature)    
+    assert m != False
+
+    (G, q, g, h, z, hs) = params
+    (m, zet, zet1, zet2, om, omp, ro, ro1p, ro2p, mu) = signature
+
+    zk = BL_show_zk_proof(params, num_attributes)
+
+    env = ZKEnv(zk)
+
+    # Constants
+    env.g = g
+    env.z = z
+    env.zet = zet
+    env.zet1 = zet1
+    env.hs = hs[:num_attributes + 1]
+
+    ## Extract the proof
+    res = zk.verify_proof(env.get(), sig)
+    assert res
+
+    return m
 
 def test_modular():
     # Establish the global parameters
@@ -269,11 +325,13 @@ def test_modular():
     msg_to_user = BL_issuer_validation_2(LT_issuer_state, msg_to_issuer)
     signature = BL_user_validation2(LT_user_state, msg_to_user)
 
-    # Check signature
-    assert BL_check_signature(params, issuer_pub, signature) != False
-    BL_cred_proof(LT_user_state)
+    # Build a ZK proof of a valid signature
+    sig = BL_user_prove_cred(LT_user_state)
 
-    zk = BL_show_zk_proof(params, 2)
+    # Check signature and ZK proof
+    m = BL_verify_cred(params, issuer_pub, 2, signature, sig)
+    assert m != False
+
 
 def test_protocol():
     # Parameters of the BL schemes

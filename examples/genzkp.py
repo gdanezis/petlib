@@ -311,7 +311,7 @@ class ZKProof(object):
             responses[w] = (witnesses[w] - c * env[w]) % order
          
         for v in self.Const:
-            del responses[v]
+           del responses[v]
 
         return (c, responses)
 
