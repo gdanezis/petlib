@@ -2,6 +2,7 @@ from .bindings import _FFI, _C
 
 from functools import wraps
 from copy import copy, deepcopy
+from binascii import hexlify, unhexlify
 
 # Py2/3 compatibility
 try:
@@ -118,10 +119,17 @@ class Bn(object):
 
     @staticmethod
     def from_binary(sbin):
-        """Creates a Big Number from a binary string. Only positive values can be represented as byte strings, and the library user should store the sign bit separately.
+        """Creates a Big Number from a byte sequence representing the number in Big-endian 8 byte atoms. Only positive values can be represented as byte sequence, and the library user should store the sign bit separately.
         
         Args:
             sbin (string): a byte sequence. 
+
+        Example:
+            >>> byte_seq = unhexlify(b"010203")
+            >>> Bn.from_binary(byte_seq)
+            66051
+            >>> (1 * 256**2) + (2 * 256) + 3
+            66051
         """
         ret = Bn()
         _C.BN_bin2bn(sbin, len(sbin), ret.bn)
@@ -263,8 +271,14 @@ class Bn(object):
         return s.decode("utf8")
 
     def binary(self):
-        """Returns the binary representation of the absolute value of the Big 
-        Number. You need to extact the sign separately."""
+        """Returns a byte sequence storing the absolute value of the Big 
+        Number in Big-Endian format (with 8 bit atoms). You need to extact the sign separately.
+
+        Example:
+            >>> bin = Bn(66051).binary()
+            >>> hexlify(bin) == b'010203'
+            True
+        """
         if self < 0:
                 raise Exception("Cannot represent negative numbers")
         size = _C.bn_num_bytes(self.bn)
