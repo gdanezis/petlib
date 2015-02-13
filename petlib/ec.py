@@ -119,7 +119,8 @@ class EcGroup(object):
         return int(_C.EC_GROUP_get_curve_name(self.ecg))
 
     def __del__(self):
-        _C.EC_GROUP_free(self.ecg)
+        if _C:
+            _C.EC_GROUP_free(self.ecg)
 
     def check_point(self, pt):
         """Ensures the point is on the curve.
@@ -274,7 +275,8 @@ class EcPt(object):
         return not self.__eq__(other)
 
     def __del__(self):
-        _C.EC_POINT_clear_free(self.pt)
+        if _C:
+            _C.EC_POINT_clear_free(self.pt)
 
     def __hash__(self):
         return self.export().__hash__()
