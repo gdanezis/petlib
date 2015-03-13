@@ -5,8 +5,11 @@ import cffi
 
 
 if os.name == "nt":
-    # WIN: libraries=["libeay32"], include_dirs=[r"...\pyopenssl"]
-    # Ensure you compile with a 64bit lib (run vcvarsx86_amd64.bat)
+    # Windows building instructions:
+    # * Ensure you compile with a 64bit lib and toolchain 
+    #   (run vcvarsx86_amd64.bat)
+    # * Ensure the OpenSSL 64 bit lib is on the path.
+    #   (PATH=C:\OpenSSL-Win64\bin;%PATH%)
     libraries=["libeay32"]
     include_dirs=[r"."]
     extra_compile_args = []
@@ -22,10 +25,11 @@ if os.name == "nt":
     openssl_base, bin_name = os.path.split(openssl_bin)
     assert bin_name == "bin"
     include_dirs += [os.path.join(openssl_base, "include")]
-    library_dirs = [openssl_base, os.path.join(openssl_base, "lib")]
+    library_dirs = [openssl_base, os.path.join(openssl_base, "lib"), os.path.join(openssl_base, "bin")]
 
-    print("Windows Library directories")
-    print(library_dirs)
+    # print("Windows Library directories:")
+    # print(library_dirs)
+
 
 else:
     ## Asume we are running on a posix system
