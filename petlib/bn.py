@@ -231,6 +231,10 @@ class Bn(object):
         # 'Turn into boolean' 
         return not (self == Bn(0))
 
+    # Python 2 compatibility
+    def __nonzero__(self):
+        return self.__bool__()
+
     ## Export in different representations
 
     def repr(self):
