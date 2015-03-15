@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import platform
 import cffi
 
 
@@ -30,14 +31,19 @@ if os.name == "nt":
     # print("Windows Library directories:")
     # print(library_dirs)
 
-
 else:
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
     libraries=["crypto"]
     extra_compile_args=['-Wno-deprecated-declarations']
-    include_dirs=[]
-    library_dirs=[]
+    if platform.system() == "Darwin":
+        include_dirs=['/opt/local/include']
+        # FIXME(ben): not entirely clear to me why I don't seem to
+        # have to include /opt/local/lib.
+        library_dirs=[]
+    else:
+        include_dirs=[]
+        library_dirs=[]
 
 _FFI = cffi.FFI()
 
