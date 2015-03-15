@@ -7,9 +7,11 @@ A python library that implements a number of Privacy Enhancing Technolgies (PETs
 Pre-requisites
 --------------
 
-On MacOS, install OpenSSL 1.0.2 in /opt/local.
+* On Ubuntu / debian use `apt-get` to install package `libssl-dev`.
 
-On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure "libeay32.dll" is on the system PATH. (https://www.openssl.org/related/binaries.html)
+* On MacOS, install OpenSSL 1.0.2 in /opt/local.
+
+* On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure "libeay32.dll" is on the system PATH (https://www.openssl.org/related/binaries.html).
 Configure Microsoft VS compilers for 32 bit or 64 bit architectures, by executing in your environment the command "vcvars32.bat" or "vcvarsx86_amd64.bat".
  
 Quick install
