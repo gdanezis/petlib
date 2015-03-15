@@ -1,7 +1,7 @@
 petlib
 ======
 
-A python library that implements a number of Privacy Enhancing Technolgies (PETs)
+A python library that implements a number of Privacy Enhancing Technologies (PETs)
 
 
 Pre-requisites
