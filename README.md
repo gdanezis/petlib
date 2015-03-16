@@ -21,6 +21,10 @@ If you have `pip` installed the following command should install `petlib`
 
 	pip install petlib
 
+Test your installation:
+
+	python -c "import petlib; petlib.run_tests()"
+
 Build
 -----
 
