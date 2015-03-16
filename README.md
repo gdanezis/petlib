@@ -12,7 +12,7 @@ Pre-requisites
 * On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
 
 * On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure `libeay32.dll` is on the system `PATH` (https://www.openssl.org/related/binaries.html).
-Configure Microsoft VS compilers for 32 bit or 64 bit architectures, by executing in your environment the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
+Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
  
 
 Quick install
