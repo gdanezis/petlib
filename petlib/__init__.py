@@ -10,11 +10,11 @@ def run_tests():
     # List all petlib files in the directory
     petlib_dir = dir = os.path.dirname(os.path.realpath(__file__))
     pyfiles = glob.glob(os.path.join(petlib_dir, '*.py'))
-    pyfiles = " ".join(pyfiles)
+    # pyfiles = " ".join(pyfiles)
 
     # Run the test suite
     print("Directory: %s" % pyfiles)
-    res = pytest.main("-v -x %s" % pyfiles)
+    res = pytest.main(["-v", "-x"] + pyfiles)
     print("Result: %s" % res)
 
     # Return exit result
