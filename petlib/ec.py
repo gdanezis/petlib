@@ -403,9 +403,13 @@ def test_affine_inf():
 
     
 
+import platform
 
+@pytest.mark.xfail(platform.system() in ["Windows", "Darwin"],
+                    reason="No const time mult in Win / OS X OpenSSL")
 def test_p224_const_timing():
     import time
+    print("Platform: " + platform.system())
 
     ## Note: NIST / SECG p224 is nid: 713/712 (p192 is nid:711)
     G = EcGroup(713)
