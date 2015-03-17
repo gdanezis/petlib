@@ -5,7 +5,7 @@ import platform
 import cffi
 
 
-if os.name == "nt":
+if platform.system() == "Windows":
     # Windows building instructions:
     # * Ensure you compile with a 64bit lib and toolchain 
     #   (run vcvarsx86_amd64.bat)
