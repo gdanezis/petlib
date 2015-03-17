@@ -2,7 +2,7 @@ from .bindings import _FFI, _C
 
 from functools import wraps
 from copy import copy, deepcopy
-from binascii import hexlify, unhexlify
+from binascii import hexlify, unhexlify # pylint: disable=unused-import
 
 # Py2/3 compatibility
 try:

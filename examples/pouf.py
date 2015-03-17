@@ -55,6 +55,7 @@ def test_mac():
 
     ai, yi = POUF_blind(params, [b"1", b"2"])
     zi = POUF_mac(params, k, yi)
+    assert len(zi) == len(ai)
 
 def test_unblind():
     params = POUF_setup()

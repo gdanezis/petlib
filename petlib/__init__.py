@@ -8,7 +8,7 @@ def run_tests():
     import glob
 
     # List all petlib files in the directory
-    petlib_dir = dir = os.path.dirname(os.path.realpath(__file__))
+    petlib_dir = os.path.dirname(os.path.realpath(__file__))
     pyfiles = glob.glob(os.path.join(petlib_dir, '*.py'))
     
     # Run the test suite
