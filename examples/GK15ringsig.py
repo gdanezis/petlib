@@ -2,6 +2,17 @@ from petlib.ec import EcGroup
 from petlib.bn import Bn
 
 from hashlib import sha256
+import math
+
+## ######################################################
+## An implementation of the ring signature scheme in
+## 
+##    Jens Groth and Markulf Kohlweiss. "One-out-of-Many Proofs: 
+##    Or How to Leak a Secret and Spend a Coin"
+##    Cryptology ePrint Archive: Report 2014/764
+##
+## https://eprint.iacr.org/2014/764
+## ######################################################
 
 def challenge(elements):
     """Packages a challenge in a bijective way"""
@@ -14,6 +25,7 @@ def challenge(elements):
     return Bn.from_binary(H.digest())
 
 def setup():
+    """ Generates parameters for Commitments """
     G = EcGroup()
     g = G.hash_to_point(b'g')
     h = G.hash_to_point(b'h')
@@ -27,6 +39,7 @@ def Com(ck, m, k):
 
 
 def ProveZeroOne(ck, c, m, r):
+    """ Simple proof that a Commitment c = Com(m,r) is either 0 or 1 """
     assert Com(ck, m, r) == c
     (G, g, h, o) = ck
     a, s, t = o.random(), o.random(), o.random()
@@ -39,8 +52,10 @@ def ProveZeroOne(ck, c, m, r):
     return (x, f, za, zb)
 
 def VerifyZeroOne(ck, c, proof):
+    """ Verify that a Commitment c = Com(m,r) is either 0 or 1 """
     (G, g, h, o) = ck
     (x, f, za, zb) = proof
+
     assert 0 < x < o
     assert 0 < f < o
     assert 0 < za < o
@@ -52,12 +67,16 @@ def VerifyZeroOne(ck, c, proof):
     return xp == x
 
 
-def ProveOneOfN(ck, cis, el, r, n = 8):
+def ProveOneOfN(ck, cis, el, r, message = ""):
+    """ NIZK Proof that Com(0; r) is within Cis. 
+        The fact that it is the el'th commitmtnet is not revealed. 
+        + Ring signature on "message". """
+    n = int(math.ceil(math.log(len(cis)) / math.log(2)))
     assert Com(ck, 0, r) == cis[el]
     (G, g, h, o) = ck
 
     ## Commit to the bits of the index
-    el = Bn(el) # +1
+    el = Bn(el)
     eli = [Bn(int(el.is_bit_set(i))) for i in range(n)]
     
     ri  = [o.random() for i in range(n)]
@@ -67,11 +86,11 @@ def ProveOneOfN(ck, cis, el, r, n = 8):
 
     Celi = [Com(ck, elix, rix) for elix, rix in zip(eli, ri)]
     Cai = [Com(ck, a, s) for a, s in zip(ai, si)]
-    Cbi = [Com(ck, l * a , s) for l, a, s in zip(eli, ai, si)]
+    Cbi = [Com(ck, l * a , s) for l, a, s in zip(eli, ai, ti)]
 
     # Compute p_idxi(x)
     p_idx_i = []
-    for idx in range(2**n):
+    for idx in range(len(cis)):
         idx = Bn(idx)
         idxi = [Bn(int(idx.is_bit_set(i))) for i in range(n)]
 
@@ -83,7 +102,7 @@ def ProveOneOfN(ck, cis, el, r, n = 8):
                 p = poly_mul(o, p, [ ai[j] , eli[j] ])
 
         p_idx_i += [p]
-
+        
     # Compute all Cdi's
     roi = []
     cdi = []
@@ -96,12 +115,74 @@ def ProveOneOfN(ck, cis, el, r, n = 8):
 
         cdi += [ cdi_i ]
 
-    
+    ## The challenge
+    x = challenge(list(ck) + cis + Celi + Cai + Cbi + cdi + [ message ])
 
-    #for i in range(0, n):
-    #    k = (i + 1) - 1
-    #
-    #    idxi = [Bn(int(el.is_bit_set(i))) for i in range(n)]
+    ## The responses
+    fi = [(elj * x + aj) % o for elj, aj in zip(eli, ai)]
+    zai = [(rj * x + sj) % o for rj, sj in zip(ri, si)]
+    zbi = [(rj * (x - fj) + tj) % o for rj, fj, tj in zip(ri, fi, ti)]
+
+    zd = r * pow(x, n, o) % o
+    for k in range(n):
+        zd = (zd - roi[k] * pow(x, k, o)) % o
+
+    proof = (Celi, Cai, Cbi, cdi, fi, zai, zbi, zd)
+
+    return proof
+
+def VerifyOneOfN(ck, cis, proof, message = ""):
+    """ Verify the ring signature on message """
+    n = int(math.ceil(math.log(len(cis)) / math.log(2)))
+    (G, g, h, o) = ck
+
+    (Celi, Cai, Cbi, cdi, fi, zai, zbi, zd) = proof
+
+    ## Check all parts of the proof are in the right groups
+    assert 0 <= zd < o
+    for k in range(n):
+        assert 0 <= fi[k] < o
+        assert 0 <= zai[k] < o
+        assert 0 <= zbi[k] < o
+        
+        assert G.check_point(Celi[k])
+        assert G.check_point(Cai[k])
+        assert G.check_point(Cbi[k])
+        assert G.check_point(cdi[k])
+
+    # Recompute the challenge
+    x = challenge(list(ck) + cis + Celi + Cai + Cbi + cdi + [ message ])
+
+
+    ret = True
+
+    for i in range(n):
+        ret &= x * Celi[i] + Cai[i] == Com(ck, fi[i], zai[i])
+        ret &= (x - fi[i]) * Celi[i] + Cbi[i] == Com(ck, Bn(0), zbi[i])
+
+    acc = G.infinite()
+    for idx, ci in enumerate(cis):
+        idx = Bn(idx)
+        idxi = [Bn(int(idx.is_bit_set(i))) for i in range(n)]
+
+        acc_exp = Bn(1)
+        for k, ij in enumerate(idxi):
+            if ij == 0:
+                acc_exp = acc_exp.mod_mul(x - fi[k], o)
+            else:
+                acc_exp = acc_exp.mod_mul(fi[k], o)
+        acc = acc + acc_exp * ci
+
+    for k in range(n):
+        acc = acc + (- pow(x,k,o)) * cdi[k]
+
+    ret &= acc == Com(ck, 0, zd)
+
+    return ret
+
+
+## ######################################
+## Naive polynomial arithmetic
 
 def poly_expand(o, poly, size):
     assert len(poly) <= size
@@ -129,7 +210,6 @@ def poly_mul(o, poly1, poly2):
         p2 = ([zero] * i) + [(c1 * c2) % o for c2 in poly2]
         p = poly_add(o, p2, p)
     return p
-
 
 ###################################################
 # ----------------  TESTS ----------------------- #
@@ -188,11 +268,12 @@ def test_prove_n():
     ck = setup()
     (G, g, h, o) = ck
     c0 = Com(ck, 1, o.random())
-    c1 = Com(ck,1, o.random())
-    c2 = Com(ck,1, o.random())
-    c3 = Com(ck,1, o.random())
+    c1 = Com(ck, 1, o.random())
+    c2 = Com(ck, 1, o.random())
+    c3 = Com(ck, 1, o.random())
     r = o.random()
     cr = Com(ck,0, r)
 
     cis = [c0, c1, c2, c3, cr]
-    proof = ProveOneOfN(ck, cis, 4, r)
+    proof = ProveOneOfN(ck, cis, 4, r, message="Hello World!")
+    assert VerifyOneOfN(ck, cis, proof, message="Hello World!")
