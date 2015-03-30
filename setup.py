@@ -1,6 +1,30 @@
 #!/usr/bin/env python
 
+
+import os, sys
 from distutils.core import setup
+from setuptools.command.install import install as _install
+
+## Post-installation runninf of the core test-suite 
+## Thanks to: 
+
+def _post_install(dir):
+    try:
+        import petlib
+        petlib.run_tests()
+    except Exception as e:
+        print "Tests failed."
+        import traceback
+        traceback.print_exc()
+
+
+
+class install(_install):
+    def run(self):
+        _install.run(self)
+        self.execute(_post_install, (self.install_lib,),
+                     msg="Running post install task")
+
 
 ## Need to import the CFFI module during installation to ensure it 
 ## builds the packages, and places them in the right context.
@@ -34,4 +58,6 @@ setup(name='petlib',
       ],
       zip_safe=False,
       ext_modules=deps,
+      # Custom install with post processing
+      cmdclass={'install': install},
 )
