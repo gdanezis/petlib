@@ -25,12 +25,14 @@ def tell(x):
 
 @task
 def unit_tests():
+    """ Run all the unit tests in a Python 2.7 py.test context, and produce coverage report. """
     tell("Unit tests")
     files = " ".join(match_files())
     sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
 
 @task
 def test3():
+    """ Run all the unit tests in a Python 3.4 py.test context, and produce coverage report. """
     tell("Unit tests for python 3")
     files = " ".join(match_files())
     sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib ' + files)
@@ -49,16 +51,19 @@ def testf(options):
 
 @task
 def build(quiet=True):
+    """ Builds the petlib distribution, ready to be uploaded to pypi. """
     tell("Build dist")
     sh('python setup.py sdist', capture=quiet)
 
 @task
 def upload(quiet=False):
+    """ Uploads the latest distribution to pypi. """
     tell("upload dist")
     sh('python setup.py sdist upload', capture=quiet)
 
 @task
 def lintlib(quiet=False):
+    """ Run the python linter on petlib with project specific options (see pylintrc petlib). """
     tell("Run pylint on the library")
     sh('pylint --rcfile=pylintrc petlib', capture=quiet)
 
@@ -66,6 +71,7 @@ def lintlib(quiet=False):
 @task
 @virtualenv(dir=r"test_env/pltest")
 def lintexamples(quiet=True):
+    """ Run the python linter on the petlib examples. """
     tell("Run Lint on example code")
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     files = " ".join(match_files("examples", "*.py"))
@@ -74,16 +80,19 @@ def lintexamples(quiet=True):
 @needs("lintlib", "lintexamples")
 @task
 def lint():
+    """ Lint all petlib library code and examples. """
     pass
 
 @task
 def make_docs(quiet=True):
+    """ Build the petlib documentation. """
     tell("Making Docs")
     with pushd('docs') as old_dir:
         sh('make html', capture=quiet)
 
 @task
 def wc(quiet=False):
+    """ Count the petlib library and example code lines. """
     tell("Counting code lines")
     sh('wc -l examples/*.py', capture=quiet)
     sh('wc -l petlib/*.py', capture=quiet)
@@ -96,6 +105,7 @@ def get_latest_dist():
 @needs('build')
 @task
 def make_env(quiet=True):
+    """ Build a virtual environment with petlib installed. """
     tell("Make a virtualenv")
     if os.path.exists("test_env"):
         return
@@ -108,6 +118,7 @@ def make_env(quiet=True):
 @task
 @virtualenv(dir=os.path.join(r"test_env",r"pltest"))
 def big_tests(quiet=True):
+    """ Run all example unit_tests in a fresh python 2.7 context. """
     tell("Run acceptance tests (big examples)")
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     files = " ".join(match_files("examples", "*.py"))
@@ -115,6 +126,7 @@ def big_tests(quiet=True):
 
 @task
 def local_big_tests(quiet=True):
+    """ Run example tests using local install. """
     tell("Run acceptance tests (big examples) using local install.")
     files = " ".join(match_files("examples", "*.py"))
     sh("py.test-2.7 -v " + files)
@@ -123,10 +135,12 @@ def local_big_tests(quiet=True):
 @needs('unit_tests', 'big_tests')
 @task
 def test():
+    """ Run all tests. """
     pass
 
 
 @needs('unit_tests', 'test3', 'build', 'make_docs', 'make_env', 'big_tests')
 @task
 def default():
+    """ Run all default tasks to test, and build lib and docs. """
     pass
