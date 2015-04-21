@@ -45,8 +45,8 @@ def testf(options):
     """Test a specific file for Python 2/3 with all flags turned on."""
     tell("Unit tests for specific file")
     print(options)
-    sh('py.test-3.4 -v --doctest-modules --cov %s %s' % (options.file, options.file))
-    sh('py.test-2.7 -v --doctest-modules --cov %s %s' % (options.file, options.file))
+    sh('py.test-3.4 -vs --doctest-modules --cov %s %s' % (options.file, options.file))
+    sh('py.test-2.7 -vs --doctest-modules --cov %s %s' % (options.file, options.file))
 
 
 @task
@@ -94,8 +94,16 @@ def make_docs(quiet=True):
 def wc(quiet=False):
     """ Count the petlib library and example code lines. """
     tell("Counting code lines")
-    sh('wc -l examples/*.py', capture=quiet)
+
+    print("\nLibrary code:")
     sh('wc -l petlib/*.py', capture=quiet)
+
+    print("\nExample code:")
+    sh('wc -l examples/*.py', capture=quiet)
+
+    print("\nAdministration code:")
+    sh('wc -l pavement.py setup.py docs/conf.py utils/ignoretest.py', capture=quiet)
+
 
 def get_latest_dist():
     lib = file(os.path.join("petlib", "__init__.py")).read()

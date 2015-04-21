@@ -47,6 +47,13 @@ else:
 
 _FFI = cffi.FFI()
 
+# Store constants
+class Const:
+    POINT_CONVERSION_COMPRESSED = 2,
+    POINT_CONVERSION_UNCOMPRESSED = 4,
+    POINT_CONVERSION_HYBRID = 6
+
+
 _FFI.cdef("""
 
 /* 
@@ -58,17 +65,17 @@ void OPENSSL_free(void*);
  // The constant-time compare functions
  int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
+typedef enum foo {
+     /* values as defined in X9.62 (ECDSA) and elsewhere */
+     POINT_CONVERSION_COMPRESSED = 2,
+     POINT_CONVERSION_UNCOMPRESSED = 4,
+     POINT_CONVERSION_HYBRID = 6
+} point_conversion_form_t;
+
 
 /* 
     ECC OpenSSL functions.
 */
-
-typedef enum {
-    /* values as defined in X9.62 (ECDSA) and elsewhere */
-    POINT_CONVERSION_COMPRESSED = 2,
-    POINT_CONVERSION_UNCOMPRESSED = 4,
-    POINT_CONVERSION_HYBRID = 6
-} point_conversion_form_t;
 
 typedef ... EC_GROUP;
 typedef ... EC_POINT;
@@ -335,6 +342,16 @@ typedef ... EC_KEY;
  int            ECDSA_do_verify(const unsigned char *dgst, int dgst_len,
                                                 const ECDSA_SIG *sig, EC_KEY* eckey);
  int            ECDSA_size(const EC_KEY *eckey);
+
+
+ECDSA_SIG*     ECDSA_do_sign_ex(const unsigned char *dgst, int dgstlen, 
+                        const BIGNUM *kinv, const BIGNUM *rp,
+                        EC_KEY *eckey);
+
+ int            ECDSA_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
+                        BIGNUM **kinv, BIGNUM **rp);
+
+
 
 
 EC_KEY *EC_KEY_new(void);

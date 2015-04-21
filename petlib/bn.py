@@ -155,9 +155,10 @@ class Bn(object):
 
     ## -- methods
 
+    _upper_bound = 2**(64-1)
     def __init__(self, num=0):
         'Allocate a Big Number structure, initialized with num or zero'
-        _check( 0 <= abs(num) <= 2**(64-1) )
+        _check( 0 <= abs(num) <= self._upper_bound )
         _check( isinstance(num, int) )
         self.bn = _C.BN_new()
 

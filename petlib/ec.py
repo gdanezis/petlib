@@ -1,4 +1,4 @@
-from .bindings import _FFI, _C
+from .bindings import _FFI, _C, Const
 from .bn import Bn, force_Bn
 
 from copy import copy
