@@ -56,6 +56,12 @@ def build(quiet=True):
     sh('python setup.py sdist', capture=quiet)
 
 @task
+def win(quiet=True):
+    """ Builds the petlib binary distribution for windows. """
+    tell("Build windows distribution")
+    sh('python setup.py build bdist_wininst', capture=quiet)
+
+@task
 def upload(quiet=False):
     """ Uploads the latest distribution to pypi. """
     tell("upload dist")
