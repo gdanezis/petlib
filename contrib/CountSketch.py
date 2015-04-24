@@ -1,5 +1,3 @@
-import AHEG
-
 from array import array
 from struct import pack
 from hashlib import sha512
