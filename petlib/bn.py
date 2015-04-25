@@ -29,14 +29,15 @@ def force_Bn(n):
             if not n < len(args):
                 return f(*args, **kwargs)
 
-            if isinstance(args[n], Bn):
-                return f(*args, **kwargs)
-            
-            if isinstance(args[n], int):
-                r = Bn(args[n])
-                new_args = list(args)
-                new_args[n] = r
-                return f(*tuple(new_args), **kwargs)
+            try:
+                if args[n].bn: #isinstance(args[n], Bn):
+                    return f(*args, **kwargs)
+            except:
+                if isinstance(args[n], int):
+                    r = Bn(args[n])
+                    new_args = list(args)
+                    new_args[n] = r
+                    return f(*tuple(new_args), **kwargs)
 
             return NotImplemented
         return new_f
@@ -44,12 +45,32 @@ def force_Bn(n):
 
 def _check(return_val):
         """Checks the return code of the C calls"""
-        if isinstance(return_val, int) and return_val == 1:
-            return
-        if isinstance(return_val, bool) and return_val == True:
+        if __debug__:
+            if isinstance(return_val, int) and return_val == 1:
+                return
+            if isinstance(return_val, bool) and return_val == True:
+                return
+
+        if return_val == True and return_val == 1:
             return
 
         raise Exception("BN exception") 
+
+class BnCtx:
+    """ A Bn Context for use by the petlib library """
+
+    __slots__ = ['bnctx']
+
+    def __init__(self):
+        self._C = _C
+        self.bnctx = self._C.BN_CTX_new()
+        _check( self.bnctx != _FFI.NULL )
+
+    def __del__(self):
+        self._C.BN_CTX_free(self.bnctx)
+
+_ctx = BnCtx()
+
 
 @python_2_unicode_compatible
 class Bn(object):
@@ -157,10 +178,15 @@ class Bn(object):
 
     _upper_bound = 2**(64-1)
     def __init__(self, num=0):
-        'Allocate a Big Number structure, initialized with num or zero'
-        _check( 0 <= abs(num) <= self._upper_bound )
-        _check( isinstance(num, int) )
+        'Allocate a Big Number structure, initialized with num or zero'        
         self.bn = _C.BN_new()
+
+        if num == 0:
+            return
+
+        if __debug__:
+            _check( 0 <= abs(num) <= self._upper_bound )
+            _check( isinstance(num, int) )
 
         # Assign
         if num != 0:
@@ -394,12 +420,16 @@ class Bn(object):
 
     @force_Bn(1)
     def __mul__(self, other):
-        try:
-            bnctx = _C.BN_CTX_new()
-            r = Bn()
-            _check(_C.BN_mul(r.bn, self.bn, other.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    r = Bn()
+        #    _check(_C.BN_mul(r.bn, self.bn, other.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        r = Bn()
+        _check(_C.BN_mul(r.bn, self.bn, other.bn, _ctx.bnctx))
+        
         return r
 
 # ------------------ Mod arithmetic -------------------------
@@ -417,12 +447,17 @@ class Bn(object):
             1
 
         """
-        try:
-            bnctx = _C.BN_CTX_new()
-            r = Bn()
-            _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    r = Bn()
+        #    _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
+        #    # _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _FFI.NULL))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        r = Bn()
+        _check( _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx) )
+            
         return r
 
     @force_Bn(1)
@@ -438,12 +473,16 @@ class Bn(object):
             8
 
         """
-        try:
-            bnctx = _C.BN_CTX_new()
-            r = Bn()
-            _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    r = Bn()
+        #    _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        r = Bn()
+        _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx))
+
         return r
 
     @force_Bn(1)
@@ -459,12 +498,17 @@ class Bn(object):
             9
 
         """
-        try:
-            bnctx = _C.BN_CTX_new()
-            r = Bn()
-            _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    r = Bn()
+        #    _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        r = Bn()
+        _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx))
+
+
         return r
 
 
@@ -483,14 +527,20 @@ class Bn(object):
 
         """
 
-        try:
-            bnctx = _C.BN_CTX_new()
-            res = Bn()
-            err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, bnctx)
-            if err == _FFI.NULL:
-                raise Exception("No inverse")
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    res = Bn()
+        #    err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, bnctx)
+        #    if err == _FFI.NULL:
+        #        raise Exception("No inverse")
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+        
+        res = Bn()
+        err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, _ctx.bnctx)
+        if err == _FFI.NULL:
+            raise Exception("No inverse")
+
         return res
 
 
@@ -516,13 +566,17 @@ class Bn(object):
 
     @force_Bn(1)
     def __divmod__(self, other):
-        try:
-            bnctx = _C.BN_CTX_new()
-            dv = Bn()
-            rem = Bn()
-            _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    dv = Bn()
+        #    rem = Bn()
+        #    _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        dv = Bn()
+        rem = Bn()
+        _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, _ctx.bnctx))
         return (dv, rem)
 
     def int_div(self, other):
@@ -571,12 +625,15 @@ class Bn(object):
 
     @force_Bn(1)
     def __mod__(self, other):
-        try:
-            bnctx = _C.BN_CTX_new()
-            rem = Bn()
-            _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    rem = Bn()
+        #    _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        rem = Bn()
+        _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, _ctx.bnctx))
         return rem
 
     def __rtruediv__(self, other):
@@ -619,21 +676,28 @@ class Bn(object):
     @force_Bn(1)
     @force_Bn(2)
     def __pow__(self, other, modulo=None):
-        try:
-            bnctx = _C.BN_CTX_new()
-            res = Bn()
-            if modulo is None:
-                _check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
-            else:
-                _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
-        finally:
-            _C.BN_CTX_free(bnctx)
+        #try:
+        #    bnctx = _C.BN_CTX_new()
+        #    res = Bn()
+        #    if modulo is None:
+        #        _check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
+        #    else:
+        #        _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
+        #finally:
+        #    _C.BN_CTX_free(bnctx)
+
+        res = Bn()
+        if modulo is None:
+            _check(_C.BN_exp(res.bn, self.bn, other.bn, _ctx.bnctx))
+        else:
+            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, _ctx.bnctx))
+
         return res
 
     def is_prime(self):
         """Returns True if the number is prime, with negligible prob. of error."""
         
-        res = int(_C.BN_is_prime_ex(self.bn, 0, _FFI.NULL, _FFI.NULL))
+        res = int(_C.BN_is_prime_ex(self.bn, 0, _ctx.bnctx, _FFI.NULL))
         if res == 0:
             return False
         if res == 1:

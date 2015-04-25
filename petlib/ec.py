@@ -1,5 +1,5 @@
 from .bindings import _FFI, _C, Const
-from .bn import Bn, force_Bn
+from .bn import Bn, force_Bn, _ctx
 
 from copy import copy
 from binascii import hexlify
@@ -19,11 +19,17 @@ except Exception as e:              # pylint: disable=broad-except
 
 import pytest
 
+_debug = True
+
 def _check(return_val):
         """Checks the return code of the C calls"""
-        if isinstance(return_val, int) and return_val == 1:
-            return
-        if isinstance(return_val, bool) and return_val == True:
+        if __debug__:
+            if isinstance(return_val, int) and return_val == 1:
+                return
+            if isinstance(return_val, bool) and return_val == True:
+                return
+
+        if return_val == 1 or return_val == True:
             return
 
         raise Exception("EC exception") 
@@ -55,7 +61,7 @@ class EcGroup(object):
         """Build an EC group from the Open SSL nid. By default use NIST p224, which in OpenSSL 64bit supports constant-time operations."""
         self.ecg = _C.EC_GROUP_new_by_curve_name(nid)
         if optimize_mult:
-            _check( _C.EC_GROUP_precompute_mult(self.ecg, _FFI.NULL) )
+            _check( _C.EC_GROUP_precompute_mult(self.ecg, _ctx.bnctx) )
 
     def parameters(self):
         """Returns a dictionary with the parameters (a,b and p) of the curve.
@@ -71,7 +77,7 @@ class EcGroup(object):
 
         """
         p, a, b = Bn(), Bn(), Bn()
-        _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _FFI.NULL) )
+        _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _ctx.bnctx) )
         return {"p":p, "a":a, "b":b}
 
     def generator(self):
@@ -104,11 +110,11 @@ class EcGroup(object):
 
         """
         o = Bn()
-        _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _FFI.NULL) )
+        _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _ctx.bnctx) )
         return o
 
     def __eq__(self, other):
-        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _FFI.NULL)
+        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _ctx.bnctx)
         return res == 0
 
     def __ne__(self, other):
@@ -133,7 +139,7 @@ class EcGroup(object):
             True
 
         """
-        res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _FFI.NULL))
+        res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _ctx.bnctx))
         return res == 1
 
     def hash_to_point(self, hinput):
@@ -148,7 +154,7 @@ class EcGroup(object):
         while ret == 0:
             xhash = sha512(xhash).digest()
             x = Bn.from_binary(xhash) % p
-            ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, _FFI.NULL)
+            ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, _ctx.bnctx)
 
         assert self.check_point(pt)
         _check( ret )
@@ -173,7 +179,7 @@ class EcPt(object):
 
         """
         new_pt = EcPt(group)
-        _check( _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _FFI.NULL) )
+        _check( _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _ctx.bnctx) )
         return new_pt
 
     def __init__(self, group):
@@ -196,16 +202,21 @@ class EcPt(object):
         return self.__add__(other)
 
     def __add__(self, other):
-        _check( type(other) == EcPt )
-        _check( other.group == self.group )
+        if __debug__:
+            _check( type(other) == EcPt )
+            _check( other.group == self.group )
         result = EcPt(self.group)
-        _check( _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _FFI.NULL) )
+        err = _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _ctx.bnctx)
+        
+        if __debug__:
+            _check( err )
+
         return result
 
     def pt_double(self):
         """Doubles the point. equivalent to "self + self"."""
         result = EcPt(self.group)
-        _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _FFI.NULL) )
+        _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _ctx.bnctx) )
         return result
 
     def pt_neg(self):
@@ -228,7 +239,7 @@ class EcPt(object):
 
     def __neg__(self):
         result = copy(self)
-        _check( _C.EC_POINT_invert(self.group.ecg, result.pt, _FFI.NULL) )
+        _check( _C.EC_POINT_invert(self.group.ecg, result.pt, _ctx.bnctx) )
         return result
 
     def pt_mul(self, scalar):
@@ -248,7 +259,7 @@ class EcPt(object):
     @force_Bn(1)
     def __rmul__(self, other):
         result = EcPt(self.group)
-        _check( _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL) )
+        _check( _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _ctx.bnctx) )
         return result
 
     def pt_eq(self, other):
@@ -268,7 +279,7 @@ class EcPt(object):
     def __eq__(self, other):
         _check( type(other) == EcPt )
         _check( other.group == self.group )
-        r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _FFI.NULL))
+        r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _ctx.bnctx))
         return r == 0
 
     def __ne__(self, other):
@@ -292,10 +303,10 @@ class EcPt(object):
 
         """
         size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED, 
-                             _FFI.NULL, 0, _FFI.NULL)
+                             _FFI.NULL, 0, _ctx.bnctx)
         buf = _FFI.new("unsigned char[]", size)
         _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED,
-                             buf, size, _FFI.NULL)
+                             buf, size, _ctx.bnctx)
         output = bytes(_FFI.buffer(buf)[:])
         return output
 
@@ -329,7 +340,7 @@ class EcPt(object):
         x = Bn()
         y = Bn()
         _check( _C.EC_POINT_get_affine_coordinates_GFp(self.group.ecg,
-self.pt, x.bn, y.bn, _FFI.NULL))
+self.pt, x.bn, y.bn, _ctx.bnctx))
         return (x,y)
 
     def __str__(self):
