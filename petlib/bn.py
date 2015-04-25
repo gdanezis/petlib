@@ -59,7 +59,7 @@ def _check(return_val):
 class BnCtx:
     """ A Bn Context for use by the petlib library """
 
-    __slots__ = ['bnctx']
+    __slots__ = ['bnctx', '_C']
 
     def __init__(self):
         self._C = _C
@@ -79,6 +79,8 @@ class Bn(object):
          arithmetic operations (+, -, %, /, divmod, pow) 
          and copy operations (copy and deep copy). The right-hand 
          side operand may be a small native python integer (<2^64). """
+
+    __C = _C
 
     # We know this class will keep minimal state
     __slots__ = ['bn']
@@ -217,7 +219,7 @@ class Bn(object):
 
     def __del__(self):
         # 'Deallocate all resources of the big number'
-        _C.BN_clear_free(self.bn)
+        self.__C.BN_clear_free(self.bn)
 
     @force_Bn(1)
     def __inner_cmp__(self, other):

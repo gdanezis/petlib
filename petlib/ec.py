@@ -60,6 +60,11 @@ class EcGroup(object):
     def __init__(self, nid=713, optimize_mult=True):
         """Build an EC group from the Open SSL nid. By default use NIST p224, which in OpenSSL 64bit supports constant-time operations."""
         self.ecg = _C.EC_GROUP_new_by_curve_name(nid)
+
+        self.gen = None
+        self.ord = None
+        self.inf = None
+
         if optimize_mult:
             _check( _C.EC_GROUP_precompute_mult(self.ecg, _ctx.bnctx) )
 
@@ -82,10 +87,14 @@ class EcGroup(object):
 
     def generator(self):
         """Returns the generator of the EC group."""
-        g = EcPt(self)
-        internal_g = _C.EC_GROUP_get0_generator(self.ecg)
-        _check( _C.EC_POINT_copy(g.pt, internal_g) )
-        return g
+
+        if self.gen is None:
+            g = EcPt(self)
+            internal_g = _C.EC_GROUP_get0_generator(self.ecg)
+            _check( _C.EC_POINT_copy(g.pt, internal_g) )
+            self.gen = g
+        
+        return self.gen
 
     def infinite(self):
         """Returns a point at infinity.
@@ -96,9 +105,11 @@ class EcGroup(object):
             True
 
         """
-        zero = EcPt(self)
-        _check( _C.EC_POINT_set_to_infinity(self.ecg, zero.pt) )
-        return zero
+        if self.inf is None:
+            zero = EcPt(self)
+            _check( _C.EC_POINT_set_to_infinity(self.ecg, zero.pt) )
+            self.inf = zero
+        return self.inf
 
     def order(self):
         """Returns the order of the group as a Big Number.
@@ -109,9 +120,13 @@ class EcGroup(object):
             True
 
         """
-        o = Bn()
-        _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _ctx.bnctx) )
-        return o
+
+        if self.ord is None:
+            o = Bn()
+            _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _ctx.bnctx) )
+            self.ord = o
+
+        return self.ord
 
     def __eq__(self, other):
         res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _ctx.bnctx)
@@ -179,7 +194,9 @@ class EcPt(object):
 
         """
         new_pt = EcPt(group)
-        _check( _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _ctx.bnctx) )
+        err = _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _ctx.bnctx)
+        _check( err )
+
         return new_pt
 
     def __init__(self, group):
@@ -188,7 +205,9 @@ class EcPt(object):
 
     def __copy__(self):
         new_point = EcPt(self.group)
-        _check( _C.EC_POINT_copy(new_point.pt, self.pt) )
+        err = _C.EC_POINT_copy(new_point.pt, self.pt)
+        if __debug__:
+            _check( err )
         return new_point
 
     def pt_add(self, other):
@@ -205,6 +224,7 @@ class EcPt(object):
         if __debug__:
             _check( type(other) == EcPt )
             _check( other.group == self.group )
+
         result = EcPt(self.group)
         err = _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _ctx.bnctx)
         
@@ -238,8 +258,16 @@ class EcPt(object):
         return self + (-other)
 
     def __neg__(self):
-        result = copy(self)
-        _check( _C.EC_POINT_invert(self.group.ecg, result.pt, _ctx.bnctx) )
+        # result = copy(self)
+
+        result = EcPt(self.group)
+        err = _C.EC_POINT_copy(result.pt, self.pt)
+        if __debug__:
+            _check( err )
+
+        err = _C.EC_POINT_invert(self.group.ecg, result.pt, _ctx.bnctx)
+        if __debug__:
+            _check( err )
         return result
 
     def pt_mul(self, scalar):
@@ -259,7 +287,9 @@ class EcPt(object):
     @force_Bn(1)
     def __rmul__(self, other):
         result = EcPt(self.group)
-        _check( _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _ctx.bnctx) )
+        err = _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _ctx.bnctx)
+        if __debug__:    
+            _check( err )
         return result
 
     def pt_eq(self, other):
@@ -277,8 +307,9 @@ class EcPt(object):
         return self.__eq__(other)
 
     def __eq__(self, other):
-        _check( type(other) == EcPt )
-        _check( other.group == self.group )
+        if __debug__:
+            _check( type(other) == EcPt )
+            _check( other.group == self.group )
         r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _ctx.bnctx))
         return r == 0
 

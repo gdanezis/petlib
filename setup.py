@@ -13,7 +13,7 @@ def _post_install(dir):
         import petlib
         petlib.run_tests()
     except Exception as e:
-        print "Tests failed."
+        print("Tests failed.")
         import traceback
         traceback.print_exc()
 
