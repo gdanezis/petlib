@@ -2,6 +2,7 @@ from array import array
 from struct import pack
 from hashlib import sha512
 from copy import copy
+import time
 
 from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
@@ -161,6 +162,28 @@ class CountSketchCt(object):
         self.d, self.w = d, w
         self.store = [ [Ct.enc(pub, 0)] * w for _ in range(d) ]
 
+
+    def dump(self):
+        from cStringIO import StringIO
+        from struct import pack
+
+        dst = StringIO()
+        dst.write(pack("II", self.d, self.w))
+
+        for di in range(self.d):
+            for wi in range(self.w):
+                ba = self.store[di][wi].a.export()
+                dst.write(pack("I", len(ba)))
+                dst.write(ba)
+                
+                bb = self.store[di][wi].b.export()
+                dst.write(pack("I", len(bb)))
+                dst.write(bb)
+
+        return dst.getvalue()
+                
+
+
     def insert(self, item):
         """ Insert an element into the encrypted count sketch """
 
@@ -211,6 +234,53 @@ class CountSketchCt(object):
                 cs.store[di][wi] = Ct.sum(elist)
 
         return cs
+
+
+def get_median(cs, min_b = 0, max_b = 1000, steps = 20):
+    L, R = 0, 0
+    bounds = [min_b, max_b]
+    total = None
+
+    for _ in range(steps):
+        old_bounds = copy(bounds)
+        # print(bounds)
+
+        cand_median = int((bounds[1] + bounds[0]) / 2)
+
+        if bounds[0] == cand_median:
+            yield cand_median
+            return
+
+        EL = Ct.sum([ cs.estimate(i)[0] for i in range(bounds[0], cand_median) ])
+        newl = yield EL # EL.dec(sec)
+        
+        if total is None:
+            ER = Ct.sum([ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
+            newr = yield ER # ER.dec(sec)
+
+            total = newl + newr
+            # print("total: %s" % total)
+
+        else:
+            newr = total - newl
+            if __debug__:
+                ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
+                newrx = yield ER # ER.dec(sec)
+                assert newrx == newr
+
+        if newl + L > newr + R:
+            R = R + newr
+            bounds[1] = cand_median
+            total = newl
+        else:
+            L = L + newl
+            bounds[0] = cand_median
+            total = newr
+
+        if bounds == old_bounds:
+            yield cand_median
+            return 
+
 
 #### ------------- TESTS ------------------
 
@@ -270,8 +340,11 @@ def test_median():
     import time
 
     # Get some test data
-    vals = [gauss(300, 25) for _ in range (1000)]
-    vals += [gauss(300, 200) for _ in range (200)]
+    narrow_vals = 1000
+    wide_vals = 200
+    
+    vals = [gauss(300, 25) for _ in range (narrow_vals)]
+    vals += [gauss(300, 200) for _ in range (wide_vals)]
     vals = sorted([int(v) for v in vals])
 
     median = vals[int(len(vals) / 2)]
@@ -292,64 +365,36 @@ def test_median():
         all_cs += [ cs_temp ]
 
     toc = time.clock()
-    print("Build Sketches: %s" % (toc - tic) )
+    print("Build Sketches: %2.4f (for %s)\tPer Sketch: %2.4f" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
 
     # Aggregate all sketches
     tic = time.clock()
     cs = CountSketchCt.aggregate(all_cs)
 
     toc = time.clock()
-    print("Aggregate Sketches: %s" % (toc - tic) )
+    dt = (toc - tic)
+    print("Aggregate Sketches: %2.4f (for %s)\tPer Sketch: %2.4f" % (dt, len(vals), dt / len(vals)) )
 
-    # Implement a divide and conquer algo. for median
-    L, R = 0, 0
-    bounds = [0, 1000]
-    total = None
+    # Now use test the median function
+    proto = get_median(cs)
 
-    for _ in range(20):
-        old_bounds = copy(bounds)
-        # print(bounds)
+    tic = time.clock()
 
-        tic = time.clock()
-        cand_median = int((bounds[1] + bounds[0]) / 2)
-
-        if bounds[0] == cand_median:
+    plain = None
+    while True:
+        v = proto.send(plain)
+        if isinstance(v, int):
             break
+        plain = v.dec(sec)
 
-        EL = Ct.sum([ cs.estimate(i)[0] for i in range(bounds[0], cand_median) ])
-        newl = EL.dec(sec)
-        
-        if total is None:
-            ER = Ct.sum([ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
-            newr = ER.dec(sec)
+    toc = time.clock()
+    print( "Find Median. Pivot: % 5d\ttime: %2.4f" % (v, toc - tic) )
 
-            total = newl + newr
-            # print("total: %s" % total)
+    # Measure the size of the sketch
+    bin_cs = cs.dump()
+    print("Sketch size: %s bytes" % len(bin_cs))    
 
-        else:
-            newr = total - newl
-            if __debug__:
-                ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
-                newrx = ER.dec(sec)
-                assert newrx == newr
-
-        if newl + L > newr + R:
-            R = R + newr
-            bounds[1] = cand_median
-            total = newl
-        else:
-            L = L + newl
-            bounds[0] = cand_median
-            total = newr
-
-        toc = time.clock()
-        print( "Pivot: % 5d\tEL: % 5d\tER: % 5d\ttime: %2.4f" % (cand_median, newl + L, newr + R, toc - tic) )
-        # print( "Timing: %s" % (toc - tic))
-
-        if bounds == old_bounds:
-            break
-
-    print("Estimated median: %s" % cand_median)
+    print("Estimated median: %s" % v)
 
 if __name__ == "__main__":
 
