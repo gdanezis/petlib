@@ -224,7 +224,8 @@ class Bn(object):
     @force_Bn(1)
     def __inner_cmp__(self, other):
         # 'Internal comparison function' 
-        _check( type(other) == Bn )
+        if __debug__:
+            _check( type(other) == Bn )
         sig = int(_C.BN_cmp(self.bn, other.bn))
         return sig
 
@@ -331,7 +332,9 @@ class Bn(object):
 
         """
         rnd = Bn()
-        _check( _C.BN_rand_range(rnd.bn, self.bn) )
+        err = _C.BN_rand_range(rnd.bn, self.bn)
+        if __debug__:
+            _check( err )
         return rnd
 
 
@@ -373,7 +376,10 @@ class Bn(object):
     @force_Bn(1)
     def __add__(self, other):
         r = Bn()
-        _check(_C.BN_add(r.bn, self.bn, other.bn))
+        err = _C.BN_add(r.bn, self.bn, other.bn)
+        
+        if __debug__:
+            _check( err )
         return r
 
     def int_sub(self, other):
@@ -398,7 +404,11 @@ class Bn(object):
     @force_Bn(1)
     def __sub__(self, other):
         r = Bn()
-        _check(_C.BN_sub(r.bn, self.bn, other.bn))
+        err = _C.BN_sub(r.bn, self.bn, other.bn)
+        
+        if __debug__:
+            _check( err )
+
         return r
 
     def int_mul(self, other):
@@ -430,7 +440,10 @@ class Bn(object):
         #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
-        _check(_C.BN_mul(r.bn, self.bn, other.bn, _ctx.bnctx))
+        err = _C.BN_mul(r.bn, self.bn, other.bn, _ctx.bnctx)
+
+        if __debug__:
+            _check( err )
         
         return r
 
@@ -458,7 +471,9 @@ class Bn(object):
         #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
-        _check( _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx) )
+        err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
+        if __debug__:
+            _check( err )
             
         return r
 
@@ -483,7 +498,10 @@ class Bn(object):
         #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
-        _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx))
+        err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
+
+        if __debug__:
+            _check( err )
 
         return r
 
@@ -508,8 +526,10 @@ class Bn(object):
         #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
-        _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx))
+        err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
 
+        if __debug__:
+            _check( err )
 
         return r
 
@@ -635,7 +655,11 @@ class Bn(object):
         #    _C.BN_CTX_free(bnctx)
 
         rem = Bn()
-        _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, _ctx.bnctx))
+
+        err = _C.BN_nnmod(rem.bn, self.bn, other.bn, _ctx.bnctx)
+
+        if __debug__:
+            _check( err )
         return rem
 
     def __rtruediv__(self, other):

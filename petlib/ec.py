@@ -128,6 +128,38 @@ class EcGroup(object):
 
         return self.ord
 
+    def sum(self, elems):
+        """ Sum efficiently a number of elements """
+
+        result = copy(elems[0]) # EcPt(self)
+
+        for e in elems[1:]:
+            err = _C.EC_POINT_add(self.ecg, result.pt, result.pt, e.pt, _ctx.bnctx)
+
+            if __debug__:
+                _check( err )
+
+        return result
+    
+    def wsum(self, weights, elems):
+        #int EC_POINTs_mul(const EC_GROUP *, EC_POINT *r, const BIGNUM *, 
+        #    size_t num, const EC_POINT *[], const BIGNUM *[], BN_CTX *);
+        res = EcPt(self)
+
+        if __debug__:
+            assert len(weights) == len(elems)
+            assert all(isinstance(e, Bn) for e in weights)
+            assert all(isinstance(e, EcPt) for e in elems)
+
+        all_ws = [e.bn for e in weights]
+        all_es = [e.pt for e in elems]
+        err = _C.EC_POINTs_mul(self.ecg, res.pt, _FFI.NULL, len(all_es), all_es, all_ws, _ctx.bnctx)
+
+        if __debug__:
+            _check( err )
+
+        return res
+
     def __eq__(self, other):
         res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _ctx.bnctx)
         return res == 0
@@ -434,6 +466,16 @@ def test_ec_io():
     assert len(i.export()) == 1
     assert EcPt.from_binary(g.export(), G) == g
     assert EcPt.from_binary(i.export(), G) == i
+
+def test_sum():
+    G = EcGroup(713)
+    g = G.generator()
+    assert G.sum( [g]*10) == (10 * g)
+
+    order = G.order()
+    h = order.random() * g
+    assert G.wsum([Bn(10), Bn(20)], [g, h]) == 10 * g + 20 * h 
+
 
 def test_affine_inf():
     G = EcGroup(713)
