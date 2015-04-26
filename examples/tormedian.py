@@ -337,18 +337,19 @@ def test_CountSketchCt():
 
 def test_median():
 
-    import time
+    d, w = 25, 7
+    print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
 
     # Get some test data
-    narrow_vals = 1000
-    wide_vals = 200
+    narrow_vals = 100
+    wide_vals = 20
     
     vals = [gauss(300, 25) for _ in range (narrow_vals)]
-    vals += [gauss(300, 200) for _ in range (wide_vals)]
+    vals += [gauss(500, 200) for _ in range (wide_vals)]
     vals = sorted([int(v) for v in vals])
 
     median = vals[int(len(vals) / 2)]
-    print("Correct sample median: %s" % median)
+    print("Correct sample median: %s (No. items: %s)" % (median, len(vals)))
 
     # Setup the crypto
     G = EcGroup()
@@ -360,12 +361,12 @@ def test_median():
 
     all_cs = []
     for x in vals:
-        cs_temp = CountSketchCt(50, 7, y)
+        cs_temp = CountSketchCt(d, w, y)
         cs_temp.insert("%s" % x)
         all_cs += [ cs_temp ]
 
     toc = time.clock()
-    print("Build Sketches: %2.4f (for %s)\tPer Sketch: %2.4f" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
+    print("Build Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
 
     # Aggregate all sketches
     tic = time.clock()
@@ -373,28 +374,30 @@ def test_median():
 
     toc = time.clock()
     dt = (toc - tic)
-    print("Aggregate Sketches: %2.4f (for %s)\tPer Sketch: %2.4f" % (dt, len(vals), dt / len(vals)) )
+    print("Aggregate Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % (dt, len(vals), dt / len(vals)) )
 
     # Now use test the median function
-    proto = get_median(cs)
+    proto = get_median(cs, min_b = 0, max_b = 1000, steps = 20)
 
     tic = time.clock()
 
     plain = None
+    no_decryptions = 0
     while True:
         v = proto.send(plain)
         if isinstance(v, int):
             break
+        no_decryptions += 1
         plain = v.dec(sec)
 
     toc = time.clock()
-    print( "Find Median. Pivot: % 5d\ttime: %2.4f" % (v, toc - tic) )
+    print( "Find Median. Pivot: % 5d\tNo. Decryptions: %s\ttime: %2.4f sec" % (v, no_decryptions, toc - tic) )
 
     # Measure the size of the sketch
     bin_cs = cs.dump()
     print("Sketch size: %s bytes" % len(bin_cs))    
 
-    print("Estimated median: %s" % v)
+    print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
 
 if __name__ == "__main__":
 
@@ -410,10 +413,11 @@ if __name__ == "__main__":
     if args.time:
         test_median()
 
+
     if args.cprof:
-        import cProfile    
+        import cProfile
         cProfile.run("test_median()", sort="tottime")
-        # test_median()
+        
 
     if args.lprof:
         from line_profiler import LineProfiler
