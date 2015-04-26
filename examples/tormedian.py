@@ -324,16 +324,14 @@ def test_median():
             newr = ER.dec(sec)
 
             total = newl + newr
-            print("total: %s" % total)
+            # print("total: %s" % total)
+
         else:
             newr = total - newl
             if __debug__:
                 ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
                 newrx = ER.dec(sec)
                 assert newrx == newr
-
-        print( "Pivot: %s EL: %s ER: %s" % (cand_median, newl + L, newr + R) )
-
 
         if newl + L > newr + R:
             R = R + newr
@@ -345,7 +343,8 @@ def test_median():
             total = newr
 
         toc = time.clock()
-        print( "Timing: %s" % (toc - tic))
+        print( "Pivot: % 5d\tEL: % 5d\tER: % 5d\ttime: %2.4f" % (cand_median, newl + L, newr + R, toc - tic) )
+        # print( "Timing: %s" % (toc - tic))
 
         if bounds == old_bounds:
             break
