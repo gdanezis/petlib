@@ -276,4 +276,111 @@ def test_prove_n():
 
     cis = [c0, c1, c2, c3, cr]
     proof = ProveOneOfN(ck, cis, 4, r, message="Hello World!")
-    assert VerifyOneOfN(ck, cis, proof, message="Hello World!")
+    ret = VerifyOneOfN(ck, cis, proof, message="Hello World!")
+    assert ret
+
+def notest_timing():
+    ck = setup()
+    (G, g, h, o) = ck
+    c0 = Com(ck, 1, o.random())
+    
+    r = o.random()
+    cr = Com(ck,0, r)
+
+    import time
+
+     
+    repeats = 10
+
+    all_sizes = range(10, 101, 10)
+    prove_time = []
+    verify_time = []
+    for size in all_sizes:
+        cis = [c0] * (size + 1) + [cr]   
+
+        t0 = time.clock() 
+        for _ in range(repeats):
+            proof = ProveOneOfN(ck, cis, len(cis)-1, r, message="Hello World!")
+        t1 = time.clock()
+
+        dt = (t1-t0) / repeats
+        prove_time += [ dt ]
+        print( "Proof time: %s - %2.4f" % (size, dt) )
+
+        t0 = time.clock() 
+        for _ in range(repeats):
+            ret = VerifyOneOfN(ck, cis, proof, message="Hello World!")
+            assert ret
+        t1 = time.clock()
+
+        dt = (t1-t0) / repeats
+        verify_time += [ dt ]
+        print( "Verify time: %s - %2.4f" % (size, dt) )
+
+    return all_sizes, prove_time, verify_time
+
+
+if __name__ == "__main__":
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Test and time the Tor median statistics.')
+    parser.add_argument('--time', action='store_true', help='Run timing tests')
+    parser.add_argument('--lprof', action='store_true', help='Run the line profiler')
+    parser.add_argument('--cprof', action='store_true', help='Run the c profiler')
+    parser.add_argument('--plot', action='store_true', help='Upload time plot to plotly')
+
+
+    args = parser.parse_args()
+
+    if args.time:
+        notest_timing()
+
+
+    if args.cprof:
+        import cProfile
+        cProfile.run("notest_timing()", sort="tottime")
+        
+
+    if args.lprof:
+        from line_profiler import LineProfiler
+
+        profile = LineProfiler(VerifyOneOfN, ProveOneOfN)
+        profile.run("notest_timing()")
+        profile.print_stats()
+
+    
+    if args.plot:
+
+        all_sizes, prove_time, verify_time = notest_timing()
+
+        import plotly.plotly as py
+        from plotly.graph_objs import *
+
+        trace0 = Scatter(
+            x=all_sizes,
+            y=prove_time,
+            name='Proving',
+        )
+        trace1 = Scatter(
+            x=all_sizes,
+            y=verify_time,
+            name='Verification',
+        )
+        data = Data([trace0, trace1])
+        
+        layout = Layout(
+            title='Timing for GK15 Proof and Verification using petlib',
+            xaxis=XAxis(
+                title='Size of ring (no. commits)',
+                showgrid=False,
+                zeroline=False
+            ),
+            yaxis=YAxis(
+                title='time (sec)',
+                showline=False
+            )
+        )
+        fig = Figure(data=data, layout=layout)
+
+        unique_url = py.plot(fig, filename = 'GK15-petlib-timing')

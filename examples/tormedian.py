@@ -341,8 +341,8 @@ def test_median():
     print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
 
     # Get some test data
-    narrow_vals = 100
-    wide_vals = 20
+    narrow_vals = 1000
+    wide_vals = 200
     
     vals = [gauss(300, 25) for _ in range (narrow_vals)]
     vals += [gauss(500, 200) for _ in range (wide_vals)]
