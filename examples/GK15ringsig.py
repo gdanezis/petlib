@@ -109,9 +109,16 @@ def ProveOneOfN(ck, cis, el, r, message = ""):
     for i in range(n):
         roi_i = o.random()
         roi += [ roi_i ]
-        cdi_i = Com(ck, 0, roi_i)
+        # cdi_i = Com(ck, 0, roi_i)
+
+        wis = []
+
         for idx, cidx in enumerate(cis):
-            cdi_i += p_idx_i[idx][i] * cidx
+            wis += [ p_idx_i[idx][i] ]
+            # cdi_i += p_idx_i[idx][i] * cidx
+
+        # assert G.wsum(wis, cis) + Com(ck, 0, roi_i) == cdi_i
+        cdi_i = G.wsum(wis, cis) + Com(ck, 0, roi_i)
 
         cdi += [ cdi_i ]
 
@@ -133,6 +140,7 @@ def ProveOneOfN(ck, cis, el, r, message = ""):
 
 def VerifyOneOfN(ck, cis, proof, message = ""):
     """ Verify the ring signature on message """
+
     n = int(math.ceil(math.log(len(cis)) / math.log(2)))
     (G, g, h, o) = ck
 
@@ -160,7 +168,11 @@ def VerifyOneOfN(ck, cis, proof, message = ""):
         ret &= x * Celi[i] + Cai[i] == Com(ck, fi[i], zai[i])
         ret &= (x - fi[i]) * Celi[i] + Cbi[i] == Com(ck, Bn(0), zbi[i])
 
-    acc = G.infinite()
+    # acc = G.infinite()
+
+    bases = []
+    expons = []
+
     for idx, ci in enumerate(cis):
         idx = Bn(idx)
         idxi = [Bn(int(idx.is_bit_set(i))) for i in range(n)]
@@ -171,10 +183,20 @@ def VerifyOneOfN(ck, cis, proof, message = ""):
                 acc_exp = acc_exp.mod_mul(x - fi[k], o)
             else:
                 acc_exp = acc_exp.mod_mul(fi[k], o)
-        acc = acc + acc_exp * ci
+
+        bases += [ ci ]
+        expons += [ acc_exp ]
+
+        # acc = acc + acc_exp * ci
 
     for k in range(n):
-        acc = acc + (- pow(x,k,o)) * cdi[k]
+        expi = (- pow(x,k,o))
+        # acc = acc + expi * cdi[k]
+        bases += [ cdi[k] ]
+        expons += [ expi ]
+
+    # assert G.wsum(expons, bases) == acc
+    acc = G.wsum(expons, bases)
 
     ret &= acc == Com(ck, 0, zd)
 
@@ -183,10 +205,13 @@ def VerifyOneOfN(ck, cis, proof, message = ""):
 
 ## ######################################
 ## Naive polynomial arithmetic
+zero = Bn(0)
 
 def poly_expand(o, poly, size):
+    global zero
+
     assert len(poly) <= size
-    zero = Bn(0)
+    # zero = Bn(0)
     new_poly = [zero for _ in range(size)]
     for i in range(len(poly)):
         new_poly[i] = poly[i]
@@ -199,15 +224,15 @@ def poly_add(o, poly1, poly2):
 
     pout = poly_expand(o, [], size)
     for i, (c1, c2) in enumerate(zip(p1, p2)):
-        pout[i] = (c1 + c2) % o
+        pout[i] = c1.mod_add( c2,  o)
 
     return pout
 
 def poly_mul(o, poly1, poly2):
-    zero = Bn(0)
-    p = [zero]
+    global zero
+    p = [ zero ]
     for i, c1 in enumerate(poly1):
-        p2 = ([zero] * i) + [(c1 * c2) % o for c2 in poly2]
+        p2 = ([ zero ] * i) + [(c1.mod_mul(c2, o)) for c2 in poly2]
         p = poly_add(o, p2, p)
     return p
 
@@ -279,7 +304,7 @@ def test_prove_n():
     ret = VerifyOneOfN(ck, cis, proof, message="Hello World!")
     assert ret
 
-def notest_timing():
+def notest_timing(upper=101):
     ck = setup()
     (G, g, h, o) = ck
     c0 = Com(ck, 1, o.random())
@@ -292,7 +317,7 @@ def notest_timing():
      
     repeats = 10
 
-    all_sizes = range(10, 101, 10)
+    all_sizes = range(10, upper, 10)
     prove_time = []
     verify_time = []
     for size in all_sizes:
@@ -334,19 +359,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.time:
-        notest_timing()
+        notest_timing(31)
 
 
     if args.cprof:
         import cProfile
-        cProfile.run("notest_timing()", sort="tottime")
+        cProfile.run("notest_timing(51)", sort="tottime")
         
 
     if args.lprof:
         from line_profiler import LineProfiler
 
-        profile = LineProfiler(VerifyOneOfN, ProveOneOfN)
-        profile.run("notest_timing()")
+        profile = LineProfiler(VerifyOneOfN, ProveOneOfN, Bn.__init__, Bn.__del__)
+        profile.run("notest_timing(31)")
         profile.print_stats()
 
     

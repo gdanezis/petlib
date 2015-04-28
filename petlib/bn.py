@@ -26,13 +26,14 @@ def force_Bn(n):
         # pylint: disable=star-args
         @wraps(f)  
         def new_f(*args, **kwargs):
-            if not n < len(args):
-                return f(*args, **kwargs)
 
             try:
                 if args[n].bn: #isinstance(args[n], Bn):
                     return f(*args, **kwargs)
             except:
+                if not n < len(args):
+                    return f(*args, **kwargs)
+
                 if isinstance(args[n], int):
                     r = Bn(args[n])
                     new_args = list(args)
@@ -432,12 +433,6 @@ class Bn(object):
 
     @force_Bn(1)
     def __mul__(self, other):
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    r = Bn()
-        #    _check(_C.BN_mul(r.bn, self.bn, other.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
         err = _C.BN_mul(r.bn, self.bn, other.bn, _ctx.bnctx)
@@ -462,13 +457,6 @@ class Bn(object):
             1
 
         """
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    r = Bn()
-        #    _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, bnctx))
-        #    # _check(_C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _FFI.NULL))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
         err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
@@ -490,12 +478,6 @@ class Bn(object):
             8
 
         """
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    r = Bn()
-        #    _check(_C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
         err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
@@ -518,12 +500,6 @@ class Bn(object):
             9
 
         """
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    r = Bn()
-        #    _check(_C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         r = Bn()
         err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
@@ -549,15 +525,6 @@ class Bn(object):
 
         """
 
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    res = Bn()
-        #    err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, bnctx)
-        #    if err == _FFI.NULL:
-        #        raise Exception("No inverse")
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
-        
         res = Bn()
         err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, _ctx.bnctx)
         if err == _FFI.NULL:
@@ -588,13 +555,6 @@ class Bn(object):
 
     @force_Bn(1)
     def __divmod__(self, other):
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    dv = Bn()
-        #    rem = Bn()
-        #    _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         dv = Bn()
         rem = Bn()
@@ -647,12 +607,6 @@ class Bn(object):
 
     @force_Bn(1)
     def __mod__(self, other):
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    rem = Bn()
-        #    _check(_C.BN_nnmod(rem.bn, self.bn, other.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         rem = Bn()
 
@@ -702,15 +656,6 @@ class Bn(object):
     @force_Bn(1)
     @force_Bn(2)
     def __pow__(self, other, modulo=None):
-        #try:
-        #    bnctx = _C.BN_CTX_new()
-        #    res = Bn()
-        #    if modulo is None:
-        #        _check(_C.BN_exp(res.bn, self.bn, other.bn, bnctx))
-        #    else:
-        #        _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, bnctx))
-        #finally:
-        #    _C.BN_CTX_free(bnctx)
 
         res = Bn()
         if modulo is None:
