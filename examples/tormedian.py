@@ -423,7 +423,7 @@ def no_test_DP_median():
 
     plt.xlabel(r'Differential Privacy parameter (epsilon)')
     plt.ylabel('Absolute Error (mean & std. of mean)')
-    plt.title(r'Quality vs. Differential Privacy Protection')
+    plt.title(r'Median Estimation - Quality vs. Protection')
     # plt.axis([1, 10, 0, 1700])
     plt.grid(True)
 
