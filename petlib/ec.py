@@ -214,6 +214,10 @@ class EcPt(object):
     """
     __slots__ = ["pt", "group"]
     
+    # Class constants
+    POINT_CONVERSION_UNCOMPRESSED = _C.POINT_CONVERSION_UNCOMPRESSED
+    POINT_CONVERSION_COMPRESSED = _C.POINT_CONVERSION_COMPRESSED
+
     @staticmethod
     def from_binary(sbin, group):
         """Create a point from a byte sequence.
@@ -355,7 +359,7 @@ class EcPt(object):
     def __hash__(self):
         return self.export().__hash__()
 
-    def export(self):
+    def export(self, form=_C.POINT_CONVERSION_COMPRESSED):
         """Returns a string binary representation of the point in compressed coordinates.
 
         Example:
@@ -365,10 +369,10 @@ class EcPt(object):
             02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
 
         """
-        size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED, 
+        size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, form, 
                              _FFI.NULL, 0, _ctx.bnctx)
         buf = _FFI.new("unsigned char[]", size)
-        _C.EC_POINT_point2oct(self.group.ecg, self.pt, _C.POINT_CONVERSION_COMPRESSED,
+        _C.EC_POINT_point2oct(self.group.ecg, self.pt, form,
                              buf, size, _ctx.bnctx)
         output = bytes(_FFI.buffer(buf)[:])
         return output
@@ -467,7 +471,7 @@ def test_ec_io():
     assert EcPt.from_binary(g.export(), G) == g
     assert EcPt.from_binary(i.export(), G) == i
 
-def test_sum():
+def test_ec_sum():
     G = EcGroup(713)
     g = G.generator()
     assert G.sum( [g]*10) == (10 * g)
@@ -477,7 +481,7 @@ def test_sum():
     assert G.wsum([Bn(10), Bn(20)], [g, h]) == 10 * g + 20 * h 
 
 
-def test_affine_inf():
+def test_ec_affine_inf():
     G = EcGroup(713)
     inf = G.infinite()
 
@@ -485,7 +489,34 @@ def test_affine_inf():
         inf.get_affine()
     assert 'EC Infinity' in str(excinfo.value)
 
-    
+def test_ec_bin_translation():
+    from timeit import default_timer as timer
+
+    G = EcGroup()
+    o = G.order()
+    g = G.generator()
+    pt1000 = [o.random() * g for _ in range(1000)]
+
+    exp = []
+    for pt in pt1000:
+        exp += [ pt.export() ]
+
+    t0 = timer()
+    for ept in exp:
+        EcPt.from_binary(ept, G)
+    t1 = timer()
+    print("\nParsed compressed Pt: %2.4f" % (t1-t0))
+
+    exp = []
+    for pt in pt1000:
+        exp += [ pt.export(EcPt.POINT_CONVERSION_UNCOMPRESSED) ]
+
+    t0 = timer()
+    for ept in exp:
+        EcPt.from_binary(ept, G)
+    t1 = timer()
+    print("\nParsed uncompressed Pt: %2.4f" % (t1-t0))
+
 
 import platform
 

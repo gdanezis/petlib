@@ -4,6 +4,8 @@ from hashlib import sha512
 from copy import copy
 import time
 
+import math
+
 from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
 
@@ -151,6 +153,12 @@ def hashes(item, d):
 class CountSketchCt(object):
     """ A Count Sketch of Encrypted values """
 
+    @staticmethod
+    def CM_epsilondelta(epsilon, delta, pub):
+        w = int(math.ceil(math.e / epsilon))
+        d = int(math.ceil(math.log(1.0 / delta)))
+        return CountSketchCt(w, d, pub)
+
     def __init__(self, w, d, pub):
         """ Initialize a w * d Count Sketch under a public key """
 
@@ -266,7 +274,7 @@ def get_median(cs, min_b = 0, max_b = 1000, steps = 20):
             if __debug__:
                 ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
                 newrx = yield ER # ER.dec(sec)
-                assert newrx == newr
+                # assert newrx == newr
 
         if newl + L > newr + R:
             R = R + newr
@@ -334,6 +342,96 @@ def test_CountSketchCt():
     # print(est)
     assert est == d
 
+
+def no_test_DP_median():
+    d, w = 25, 7
+    print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
+
+    # Setup the crypto
+    G = EcGroup()
+    sec = G.order().random()
+    y = sec * G.generator()
+
+    # Get some test data
+    narrow_vals = 1000
+    wide_vals = 200
+
+    from numpy.random import laplace    
+    from collections import defaultdict
+
+    
+    datapoints = defaultdict(list)
+
+    eps = ["Inf", 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001]
+    for epsilon in eps:
+        print epsilon
+
+        for _ in range(40):
+            vals = [gauss(300, 25) for _ in range (narrow_vals)]
+            vals += [gauss(500, 200) for _ in range (wide_vals)]
+            vals = sorted([int(v) for v in vals])
+
+            median = vals[int(len(vals) / 2)]
+
+            # Add each sample to the sketch
+            cs = CountSketchCt(d, w, y)
+            for x in vals:
+                cs.insert("%s" % x)
+
+            # Now use test the median function
+            proto = get_median(cs, min_b = 0, max_b = 1000, steps = 20)
+
+            plain = None
+            no_decryptions = 0
+            while True:
+                v = proto.send(plain)
+                if isinstance(v, int):
+                    break
+                no_decryptions += 1
+
+                noise = 0
+                if isinstance(epsilon, float):
+                    scale = float(w) / epsilon
+                    noise = int(round(laplace(0, scale)))
+
+                plain = v.dec(sec) + noise
+
+            print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
+            datapoints[epsilon] += [ abs(v - median) ] 
+
+    import matplotlib.pyplot as plt
+    from numpy import mean, std
+
+    upper_err = []
+    core_err = []
+    lower_err = []
+
+    for e in eps:
+        samples = sorted(datapoints[e])
+        core_err.append(mean(samples))
+        upper_err.append(mean(samples) + std(samples) / (len(samples)**0.5))
+        lower_err.append(mean(samples) - std(samples) / (len(samples)**0.5))
+
+
+    eps_lab = range(len(eps))
+
+    plt.plot(eps_lab, core_err, label="Absolute Error")
+    plt.yscale('log')
+    # v = v_issue / (len(cnt_issue)**0.5)
+    plt.fill_between(x=eps_lab, y1=lower_err, y2=upper_err, alpha=0.2, color="b")
+    plt.xticks(eps_lab, eps)
+
+    plt.xlabel(r'Differential Privacy parameter (epsilon)')
+    plt.ylabel('Absolute Error (mean & std. of mean)')
+    plt.title(r'Quality vs. Differential Privacy Protection')
+    # plt.axis([1, 10, 0, 1700])
+    plt.grid(True)
+
+    plt.savefig("Quality.pdf")
+
+    plt.show()
+    plt.close()
+    # print core_err
 
 def test_median():
 
@@ -411,6 +509,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.time:
+        no_test_DP_median()
         test_median()
 
 

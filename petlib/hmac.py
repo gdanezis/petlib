@@ -51,6 +51,8 @@ class Hmac(object):
         >>> h.update(b"what do ya want ")
         >>> h.update(b"for nothing?")
         >>> d = h.digest()
+        >>> len(d)
+        64
         >>> hexlify(d)[:10] == b"164b7a7bfc"
         True
 
@@ -91,6 +93,7 @@ class Hmac(object):
         """
         if not self.active:
             raise Exception("HMAC already finalized!")
+
         self.active = False
         out_md = _FFI.new("unsigned char[]", self.outsize)
         out_len = _FFI.new("unsigned int *")
@@ -99,7 +102,7 @@ class Hmac(object):
         if int(out_len[0]) != self.outsize:
             raise Exception("HMAC Unexpected length")
 
-        return bytes(_FFI.buffer(out_md))
+        return bytes(_FFI.buffer(out_md)[:])
 
     def __del__(self):
         if self.mac_ctx != None:
@@ -111,6 +114,7 @@ def test_init():
     h.update(b"hello")
     d = h.digest()
     assert d
+    assert len(d) == 128 / 8
 
 def test_vectors():
     """
@@ -132,6 +136,7 @@ def test_vectors():
     """
 
     h = Hmac(b"sha512", b"Jefe")
+    assert 512 / 8 == h.outsize
     h.update(b"what do ya want ")
     h.update(b"for nothing?")
     d = h.digest()
@@ -148,7 +153,11 @@ def test_vectors():
         h = Hmac(b"sha999", b"Jefe")
     assert 'Error' in str(excinfo.value)
 
-    assert hexlify(d) == b"164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
+    ans1 = hexlify(d)
+    ans2 = b"164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
+
+    assert len(ans1) == len(ans2)
+    assert ans1 == ans2 
 
 def test_cmp():
     assert secure_compare(b"Hello", b"Hello")
