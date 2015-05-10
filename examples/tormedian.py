@@ -154,7 +154,7 @@ class CountSketchCt(object):
     """ A Count Sketch of Encrypted values """
 
     @staticmethod
-    def CM_epsilondelta(epsilon, delta, pub):
+    def epsilondelta(epsilon, delta, pub):
         w = int(math.ceil(math.e / epsilon))
         d = int(math.ceil(math.log(1.0 / delta)))
         return CountSketchCt(w, d, pub)
@@ -330,6 +330,24 @@ def test_Decrypt():
         assert E.dec(x) == i
     
 
+
+def analyze_series(eps, datapoints):
+    import matplotlib.pyplot as plt
+    from numpy import mean, std
+
+    upper_err = []
+    core_err = []
+    lower_err = []
+
+    for e in eps:
+        samples = sorted(datapoints[e])
+        core_err.append(mean(samples))
+        upper_err.append(mean(samples) + std(samples) / (len(samples)**0.5))
+        lower_err.append(mean(samples) - std(samples) / (len(samples)**0.5))
+
+    return lower_err, core_err, upper_err
+
+
 def test_CountSketchCt():
     G = EcGroup()
     x = G.order().random()
@@ -341,6 +359,97 @@ def test_CountSketchCt():
     est = c.dec(x)
     # print(est)
     assert est == d
+
+
+def size_vs_error():
+    #d, w = 25, 7
+    #print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
+
+    # Setup the crypto
+    G = EcGroup()
+    sec = G.order().random()
+    y = sec * G.generator()
+
+    # Get some test data
+    narrow_vals = 1000
+    wide_vals = 200
+
+    from numpy.random import laplace    
+    from collections import defaultdict
+
+    
+    datapoints = defaultdict(list)
+    sizes = defaultdict(list)
+
+    eps = [0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.025, 0.01]  #, 0.005, 0.001]
+    for epsilon in eps:
+        print epsilon
+
+        for _ in range(40):
+            vals = [gauss(300, 25) for _ in range (narrow_vals)]
+            vals += [gauss(500, 200) for _ in range (wide_vals)]
+            vals = sorted([int(v) for v in vals])
+
+            median = vals[int(len(vals) / 2)]
+
+            # Add each sample to the sketch
+            # cs = CountSketchCt(d, w, y)
+            cs = CountSketchCt.epsilondelta(epsilon, epsilon, y)
+            sizes[epsilon] += [ float(100*cs.d*cs.w) / 1000 ]
+            for x in vals:
+                cs.insert("%s" % x)
+
+            # Now use test the median function
+            proto = get_median(cs, min_b = 0, max_b = 1000, steps = 20)
+
+            plain = None
+            no_decryptions = 0
+            while True:
+                v = proto.send(plain)
+                if isinstance(v, int):
+                    break
+                no_decryptions += 1
+
+                noise = 0
+                plain = v.dec(sec) + noise
+
+            print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
+            datapoints[epsilon] += [ 100 * float(abs(v - median)) / median ] 
+
+    lower_err, core_err, upper_err = analyze_series(eps, datapoints)
+    lower_siz, core_siz, upper_siz = analyze_series(eps, sizes)
+
+    import matplotlib.pyplot as plt
+
+    eps_lab = range(len(eps))
+
+
+    plt.plot(eps, core_err, label="Error (%)")
+    plt.xscale('log')
+    # v = v_issue / (len(cnt_issue)**0.5)
+    plt.fill_between(x=eps, y1=lower_err, y2=upper_err, alpha=0.2, color="b")
+    plt.xticks(eps, eps)
+
+
+    plt.plot(eps, core_siz, label=r"Size (%)")
+    # plt.yscale('log')
+    # v = v_issue / (len(cnt_issue)**0.5)
+    plt.fill_between(x=eps, y1=lower_siz, y2=upper_siz, alpha=0.2, color="b")
+    # plt.xticks(eps_lab, eps)
+
+
+    plt.xlabel(r'(epsilon, delta) parameter of Count-Sketch')
+    plt.ylabel(r'%')
+    plt.title(r'Median Estimation - Error vs. Size')
+    # plt.axis([1, 10, 0, 1700])
+    plt.grid(True)
+    plt.legend(loc="upper center")
+
+    plt.savefig("Size.pdf")
+
+    # plt.show()
+    plt.close()
+    # print core_err
 
 
 def no_test_DP_median():
@@ -374,7 +483,7 @@ def no_test_DP_median():
             median = vals[int(len(vals) / 2)]
 
             # Add each sample to the sketch
-            cs = CountSketchCt(d, w, y)
+            cs = CountSketchCt.epsilondelta(0.05, 0.05, y) # CountSketchCt(d, w, y)
             for x in vals:
                 cs.insert("%s" % x)
 
@@ -391,7 +500,7 @@ def no_test_DP_median():
 
                 noise = 0
                 if isinstance(epsilon, float):
-                    scale = float(w) / epsilon
+                    scale = float(d) / epsilon
                     noise = int(round(laplace(0, scale)))
 
                 plain = v.dec(sec) + noise
@@ -415,6 +524,8 @@ def no_test_DP_median():
 
     eps_lab = range(len(eps))
 
+    eps = ["Inf"] + [e * 10 for e in eps][1:]
+
     plt.plot(eps_lab, core_err, label="Absolute Error")
     plt.yscale('log')
     # v = v_issue / (len(cnt_issue)**0.5)
@@ -429,14 +540,11 @@ def no_test_DP_median():
 
     plt.savefig("Quality.pdf")
 
-    plt.show()
+    # plt.show()
     plt.close()
     # print core_err
 
 def test_median():
-
-    d, w = 25, 7
-    print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
 
     # Get some test data
     narrow_vals = 1000
@@ -454,12 +562,17 @@ def test_median():
     sec = G.order().random()
     y = sec * G.generator()
     
+
+    xx = CountSketchCt.epsilondelta(0.05, 0.05, y)
+    d, w = xx.d, xx.w
+    print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
+
     # Add each sample to the sketch
     tic = time.clock()    
 
     all_cs = []
     for x in vals:
-        cs_temp = CountSketchCt(d, w, y)
+        cs_temp = CountSketchCt.epsilondelta(0.05, 0.05, y) # CountSketchCt(d, w, y)
         cs_temp.insert("%s" % x)
         all_cs += [ cs_temp ]
 
@@ -503,14 +616,21 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Test and time the Tor median statistics.')
     parser.add_argument('--time', action='store_true', help='Run timing tests')
+    parser.add_argument('--quality', action='store_true', help='Run DP quality tests')
+    parser.add_argument('--size', action='store_true', help='Run size tests')
     parser.add_argument('--lprof', action='store_true', help='Run the line profiler')
     parser.add_argument('--cprof', action='store_true', help='Run the c profiler')
 
     args = parser.parse_args()
 
     if args.time:
-        no_test_DP_median()
         test_median()
+
+    if args.size:
+        size_vs_error()
+    
+    if args.quality:
+        no_test_DP_median()
 
 
     if args.cprof:
