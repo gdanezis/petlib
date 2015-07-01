@@ -1,4 +1,4 @@
-## An example of the simple Schnor sigma protocol
+## An example of the simple Schnorr sigma protocol
 ## to prove that one knows x, such that h = g^x for 
 ## a public generator h and g.
 
@@ -16,45 +16,51 @@ def challenge(elements):
     H = sha256()
     H.update(state.encode("utf8"))
     return H.digest()
+    
 
-def prove(G, h, g, x, m=""):
-    """Schnor proof of the statement ZK(x ; h = g^x)"""
-    assert x * g == h
+def setup():
+    G = EcGroup(713)
+    g = G.generator()
     o = G.order()
+    return G, g, o
+
+def prove(params, h, g, x, m=""):
+    """Schnorr proof of the statement ZK(x ; h = g^x)"""
+    assert x * g == h
+    G, _, o = params
     w = o.random()
     W = w * g
 
-    state = ['schnor', G.nid(), g, h, m, W]
+    state = ['schnorr', G.nid(), g, h, m, W]
     hash_c = challenge(state)
     c = Bn.from_binary(hash_c) % o
     r = (w - c * x) % o
     return (c, r)
 
-def verify(G, h, g, proof, m=""):
+def verify(params, h, g, proof, m=""):
     """Verify the statement ZK(x ; h = g^x)"""
+    G, _, o = params
     c, r = proof
     W = (r * g + c * h)
-    o = G.order()
 
-    state = ['schnor', G.nid(), g, h, m, W]
+    state = ['schnorr', G.nid(), g, h, m, W]
     hash_c = challenge(state)
     c2 = Bn.from_binary(hash_c) % o
     return c == c2
 
 
 def test_zkp():
-    G = EcGroup(713)
-    g = G.generator()
-    o = G.order()
+    params = setup()
+    G, g, o = params
     x = o.random()
     h = x * g
 
     ## Use it as a Zk proof
-    proof = prove(G, h, g, x)
-    assert verify(G, h, g, proof)
-    assert not verify(G, g, h, proof)
+    proof = prove(params, h, g, x)
+    assert verify(params, h, g, proof)
+    assert not verify(params, g, h, proof)
 
     ## Use it as a signature scheme
-    proofm = prove(G, h, g, x, m = "Hello World!")
-    assert verify(G, h, g, proofm, m = "Hello World!")
-    assert not verify(G, h, g, proofm, m = "Other String")
+    proofm = prove(params, h, g, x, m = "Hello World!")
+    assert verify(params, h, g, proofm, m = "Hello World!")
+    assert not verify(params, h, g, proofm, m = "Other String")
