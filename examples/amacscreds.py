@@ -415,7 +415,7 @@ def cred_show_proof(params, n):
 
     return zk
 
-def cred_show(params, publics, mac, sig, messages):
+def cred_show(params, publics, mac, sig, messages, cred_show_proof=cred_show_proof, xenv=None):
     ## Parse and re-randomize
     G, g, h, o = params
     Cx0, iparams = publics
@@ -454,6 +454,9 @@ def cred_show(params, publics, mac, sig, messages):
     env.Xi = iparams
     env.Cmi = Cmis
 
+    if xenv:
+        xenv(env)
+
     sig = zk.build_proof(env.get())
     ## Just a sanity check
     if __debug__:
@@ -461,7 +464,7 @@ def cred_show(params, publics, mac, sig, messages):
 
     return cred, sig
 
-def cred_show_check(params, publics, secrets, creds, sig):
+def cred_show_check(params, publics, secrets, creds, sig, cred_show_proof=cred_show_proof, xenv={}):
 
     # Parse the inputs
     G, g, h, _ = params
@@ -487,6 +490,9 @@ def cred_show_check(params, publics, secrets, creds, sig):
 
     env.Xi = iparams
     env.Cmi = Cmis
+
+    if xenv:
+        xenv(env)
 
     # Return the result of the verification
     return zk.verify_proof(env.get(), sig)
@@ -596,6 +602,51 @@ def test_creds():
     ## The show protocol
     (creds, sig) = cred_show(params, ipub, mac, sig, [10, 20])
     assert cred_show_check(params, ipub, isec, creds, sig)
+
+
+def test_creds_custom_show():
+    ## Test attaching custom proofs to the show prototcol
+    #  for the credential scheme. This should work with both
+    #  all public and partly secret attributes.
+
+    ## Setup from credential issuer. Can also setup with secrets (see test_secret_creds)
+    params = cred_setup()
+    ipub, isec = cred_CredKeyge(params, 2)
+
+    ## Credential issuing and checking
+    mac, sig = cred_issue(params, ipub, isec, [10, 20])
+    assert cred_issue_check(params, ipub, mac, sig, [10, 20])
+
+    ## Custom proofs require two things:
+    #   - cred_show_proof_custom: a custom "cred_show_proof" with additional statements 
+    #     to prove on the Commitements Cmi = mi * u + zi * h
+    #   - xenv: a custom function that instanciates the values of the proof, either
+    #     public secret or constant.
+
+    # Example: Prove that the second attribute is double the first
+    def cred_show_proof_custom(params, n):
+        zk = cred_show_proof(params, n)
+
+        u, g, h = zk.get(ConstGen, ["u", "g", "h"])
+    
+        zis = zk.get_array(Sec, "zi", n)
+        mis = zk.get_array(Sec, "mi", n)
+    
+        Cmis = zk.get_array(ConstGen, "Cmi", n)
+        twou = zk.get(ConstGen, "twou")
+        
+        # Statement that proves Cmi1 = (2 * m0) * u + z1 * h
+        zk.add_proof(Cmis[1], mis[0]*twou + zis[1]*h)
+        return zk
+
+    def xenv(env):
+        # Ensure the constant 2u is correct, both ends.
+        env.twou = 2 * env.u
+
+    ## The show protocol -- note the use of "cred_show_proof_custom" and "xenv"
+    (creds, sig) = cred_show(params, ipub, mac, sig, [10, 20], cred_show_proof_custom, xenv)
+    assert cred_show_check(params, ipub, isec, creds, sig, cred_show_proof_custom, xenv)
+
 
 
 def test_secret_creds():

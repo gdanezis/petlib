@@ -195,22 +195,40 @@ class ZKProof(object):
 
     def get(self, vtype, name, ignore_check = False):
         """Returns a number of proof variables of a certain type"""
-        assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
+        assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub]
+
         if isinstance(name, str):
             assert self._check_name_ok(name) or ignore_check
-            return vtype(self, name)
+            return self._get(vtype, name, ignore_check)
+
         if isinstance(name, list):
             assert all(map(self._check_name_ok, name)) or ignore_check
-            return [vtype(self, n) for n in name]
+            return [self._get(vtype, n, ignore_check) for n in name]
 
         raise Exception("Wrong type of names: str or list(str)")
+
+
+    def _get(self, vtype, name, ignore_check = False):
+        assert isinstance(name, str)
+
+        for D in [self.Const, self.Pub, self.Sec]:
+            if name in D:
+                assert isinstance(D[name], vtype)
+                return D[name]
+
+        return vtype(self, name)
+
 
     def get_array(self, vtype, name, number, start=0):
         """Returns an array of variables"""
         assert vtype in [Gen, ConstGen, Sec, Pub, ConstPub] 
         assert isinstance(name, str)
         assert self._check_name_ok(name)
-        self.arrays[name] = (number, start)
+
+        if name in self.arrays:
+            assert self.arrays[name] == (number, start)
+        else:
+            self.arrays[name] = (number, start)
 
         names = ["%s[%i]" % (name,i) for i in range(start, start+number)]
         return self.get(vtype, names, True)
@@ -388,6 +406,11 @@ class ZKEnv(object):
             raise Exception("Variable name '%s' not known." % name)
         self.env[name] = value
 
+    def __getattr__(self, name):
+        if not name in self.zkp.all_vars():
+            raise Exception("Variable name '%s' not known." % name)
+        return self.env[name]
+
     def get(self):
         """ Get the environement. """
         return self.env
@@ -418,6 +441,18 @@ def test_basic():
     zk = ZKProof(None)
 
     g = zk.get(ConstGen, "g")
+
+    # Test: ok to call twice
+    g2 = zk.get(ConstGen, "g")
+    # return same object
+    assert g == g2
+
+    # Test: need to be of same type!
+    with pytest.raises(Exception) as excinfo:
+        zk.get(Pub, "g")
+    assert "isinstance" in str(excinfo.value)
+
+
     h = zk.get(ConstGen, "h")
     Gone = zk.get(ConstGen, "d1")
     x = zk.get(Sec, "x")
