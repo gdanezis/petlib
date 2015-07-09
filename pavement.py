@@ -28,14 +28,16 @@ def unit_tests():
     """ Run all the unit tests in a Python 2.7 py.test context, and produce coverage report. """
     tell("Unit tests")
     files = " ".join(match_files())
-    sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    # sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    sh('py.test-2.7 -v --doctest-modules ' + files)
 
 @task
 def test3():
     """ Run all the unit tests in a Python 3.4 py.test context, and produce coverage report. """
     tell("Unit tests for python 3")
     files = " ".join(match_files())
-    sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    # sh('py.test-3.4 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    sh('py.test-3.4 -v --doctest-modules ' + files)
 
 @task
 @cmdopts([

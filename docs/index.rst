@@ -14,20 +14,42 @@ Contents
 
    index
 
+Pre-requisites
+--------------
 
-Installation and Dependences
-----------------------------
+* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`.
 
-petlib requires a number of packages, including:
-  * A working installation of OpenSSL > 1.0.1.
-  * A working instalation of python packages cffi, pytest, paver.
+	sudo apt-get install python-dev
+	sudo apt-get install libssl-dev
+	sudo apt-get install libffi-dev
 
-To install pelib and the python dependencies you may use the pip package manager::
+* On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
 
-  pip install petlib
+* On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure `libeay32.dll` is on the system `PATH` (https://www.openssl.org/related/binaries.html).
+Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
+ 
+
+Quick install
+-------------
+
+If you have `pip` installed the following command should install `petlib`
+
+	pip install petlib
+
+Test your installation:
+
+	python -c "import petlib; petlib.run_tests()"
+
 
 Testing and Packaging
 ---------------------
+
+You will need a working Python 2.7 and 3.4 environemnt with pytest:
+	
+	sudo apt-get install python-pytest
+	sudo apt-get install python3-pytest
+	sudo apt-get install python-sphinx
+	sudo pip install Mock
 
 To build the distribution, create a venv for tests and run all tests (including the examples)::
 

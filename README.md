@@ -7,7 +7,11 @@ A python library that implements a number of Privacy Enhancing Technologies (PET
 Pre-requisites
 --------------
 
-* On Ubuntu / debian use `apt-get` to install package `libssl-dev`.
+* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`.
+
+	sudo apt-get install python-dev
+	sudo apt-get install libssl-dev
+	sudo apt-get install libffi-dev
 
 * On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
 
