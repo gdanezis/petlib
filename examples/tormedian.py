@@ -168,7 +168,7 @@ class CountSketchCt(object):
 
         self.pub = pub
         self.d, self.w = d, w
-        self.store = [ [Ct.enc(pub, 0)] * w for _ in range(d) ]
+        self.store = [ [Ct.enc(pub, 0) for i in range(w)] for j in range(d) ]
 
 
     def dump(self):
