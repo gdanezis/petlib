@@ -67,7 +67,7 @@ class EcGroup(object):
 
         if optimize_mult:
             _check( _C.EC_GROUP_precompute_mult(self.ecg, _ctx.bnctx) )
-
+            
     def parameters(self):
         """Returns a dictionary with the parameters (a,b and p) of the curve.
 

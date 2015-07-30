@@ -360,6 +360,7 @@ void EC_KEY_free(EC_KEY *key);
 int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group);
 int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
 int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
+int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
 
 #define SSLEAY_VERSION ...
 const char *SSLeay_version(int type);

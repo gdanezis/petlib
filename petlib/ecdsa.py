@@ -1,6 +1,6 @@
 from .bindings import _C, _FFI
 from .ec import EcGroup, _check
-from .bn import Bn
+from .bn import Bn, _ctx
 
 def do_ecdsa_setup(G, priv):
     """ Compute the parameters kinv and rp to (optionally) speed up ECDSA signing. """
@@ -12,7 +12,7 @@ def do_ecdsa_setup(G, priv):
     ptr_kinv = _FFI.new("BIGNUM **")
     ptr_rp = _FFI.new("BIGNUM **")
 
-    _check( _C.ECDSA_sign_setup(ec_key, _FFI.NULL, ptr_kinv, ptr_rp) )
+    _check( _C.ECDSA_sign_setup(ec_key, _ctx.bnctx, ptr_kinv, ptr_rp) )
 
     kinv = Bn()
     _C.BN_copy(kinv.bn, ptr_kinv[0])
@@ -74,6 +74,7 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
     _check( _C.EC_KEY_set_private_key(ec_key, priv.bn) )
+    # _check( _C.EC_KEY_precompute_mult(ec_key, _FFI.NULL) )
 
     if kinv_rp is None:
         ecdsa_sig = _C.ECDSA_do_sign(data, len(data), ec_key)
@@ -111,6 +112,7 @@ def do_ecdsa_verify(G, pub, sig, data):
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
     _check( _C.EC_KEY_set_public_key(ec_key, pub.pt) )
+    _check( _C.EC_KEY_precompute_mult(ec_key, _ctx.bnctx) )
 
     ec_sig = _C.ECDSA_SIG_new()
 
