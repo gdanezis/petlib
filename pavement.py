@@ -32,6 +32,15 @@ def unit_tests():
     sh('py.test-2.7 -v --doctest-modules ' + files)
 
 @task
+def generic_unit_tests():
+    """ Run all the unit tests in a generic py.test context. """
+    tell("Generic Unit tests")
+    files = " ".join(match_files())
+    # sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    sh('py.test ' + files)
+
+
+@task
 def test3():
     """ Run all the unit tests in a Python 3.4 py.test context, and produce coverage report. """
     tell("Unit tests for python 3")

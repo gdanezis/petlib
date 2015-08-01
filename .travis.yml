@@ -11,4 +11,4 @@ before_install:
 # command to install dependencies
 install: "pip install -r requirements.txt"
 # command to run tests
-script: paver unit_tests
+script: paver generic_unit_tests

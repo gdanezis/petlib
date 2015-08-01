@@ -220,7 +220,9 @@ class CipherOperation(object):
         outl = _FFI.new("int *")
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
+        
         _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)))
+        
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
@@ -243,7 +245,7 @@ class CipherOperation(object):
         """Processes some GCM associated data, and returns nothing."""
         outl = _FFI.new("int *")
         _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
-
+        _check( outl[0] == len(data) )
 
     def get_tag(self, tag_len = 16):
         """Get the GCM authentication tag. Execute after finalizing the encryption.
