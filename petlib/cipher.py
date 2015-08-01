@@ -202,8 +202,9 @@ class Cipher(object):
         dec = self.dec(key, iv)
         if assoc:
             dec.update_associated(assoc)
-        plain = dec.update(cip)
+        
         dec.set_tag(tag)
+        plain = dec.update(cip)
         
         try:
             plain += dec.finalize()
