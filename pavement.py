@@ -18,9 +18,9 @@ from paver.virtual import *
 
 
 def tell(x):
-    print 
-    print "-"*10, x, "-"*10
-    print 
+    print()
+    print(("-"*10)+ str(x) + ("-"*10))
+    print()
 
 
 @task
