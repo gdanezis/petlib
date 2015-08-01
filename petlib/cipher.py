@@ -216,12 +216,12 @@ class CipherOperation(object):
     def update(self, data):
         """Processes some data, and returns a partial result."""
         block_len = self.cipher.len_block()
-        alloc_len = len(data) + block_len - 1
+        alloc_len = len(data) + block_len + 1
         outl = _FFI.new("int *")
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
         
-        _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)))
+        _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)) )
         
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
