@@ -17,11 +17,13 @@ Contents
 Pre-requisites
 --------------
 
-* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`.
+* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`::
 
-	sudo apt-get install python-dev
-	sudo apt-get install libssl-dev
-	sudo apt-get install libffi-dev
+.. code-block:: none
+
+  sudo apt-get install python-dev
+  sudo apt-get install libssl-dev
+  sudo apt-get install libffi-dev
 
 * On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
 
@@ -32,24 +34,24 @@ Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit arch
 Quick install
 -------------
 
-If you have `pip` installed the following command should install `petlib`
+If you have `pip` installed the following command should install `petlib`::
 
-	pip install petlib
+  pip install petlib
 
-Test your installation:
+Test your installation::
 
-	python -c "import petlib; petlib.run_tests()"
+  python -c "import petlib; petlib.run_tests()"
 
 
 Testing and Packaging
 ---------------------
 
-You will need a working Python 2.7 and 3.4 environemnt with pytest:
-	
-	sudo apt-get install python-pytest
-	sudo apt-get install python3-pytest
-	sudo apt-get install python-sphinx
-	sudo pip install Mock
+You will need a working Python 2.7 and 3.4 environemnt with pytest::
+
+  sudo apt-get install python-pytest
+  sudo apt-get install python3-pytest
+  sudo apt-get install python-sphinx
+  sudo pip install Mock
 
 To build the distribution, create a venv for tests and run all tests (including the examples)::
 
