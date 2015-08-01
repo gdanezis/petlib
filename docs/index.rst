@@ -6,6 +6,13 @@
 Welcome to petlib's documentation!
 ==================================
 
+.. image:: https://travis-ci.org/gdanezis/petlib.svg?branch=master
+    :target: https://travis-ci.org/gdanezis/petlib
+
+.. image:: https://readthedocs.org/projects/petlib/badge/?version=latest
+    :target: https://readthedocs.org/projects/petlib/?badge=latest
+    :alt: Documentation Status
+
 Pre-requisites
 --------------
 
