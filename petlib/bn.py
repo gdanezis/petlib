@@ -68,7 +68,8 @@ class BnCtx:
         _check( self.bnctx != _FFI.NULL )
 
     def __del__(self):
-        self._C.BN_CTX_free(self.bnctx)
+        if self.bnctx != None:
+            self._C.BN_CTX_free(self.bnctx)
 
 _ctx = BnCtx()
 
