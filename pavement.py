@@ -37,7 +37,7 @@ def generic_unit_tests():
     tell("Generic Unit tests")
     files = " ".join(match_files())
     # sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
-    sh('py.test ' + files)
+    sh('py.test -vs ' + files)
 
 
 @task

@@ -177,8 +177,9 @@ class Cipher(object):
         if assoc:
             enc.update_associated(assoc)
         ciphertext = enc.update(msg)
-        enc.finalize()
+        ciphertext += enc.finalize()
         tag = enc.get_tag(tagl)
+
         return (ciphertext, tag)
 
     def quick_gcm_dec(self, key, iv, cip, tag, assoc=None):
@@ -197,8 +198,9 @@ class Cipher(object):
             dec.update_associated(assoc)
         plain = dec.update(cip)
         dec.set_tag(tag)
+        
         try:
-            dec.finalize()
+            plain += dec.finalize()
         except:
             raise Exception("Cipher: decryption failed.")
         return plain
