@@ -83,7 +83,7 @@ class Cipher(object):
             enc (int): set to 1 to perform encryption, or 0 to perform decryption.
 
         """
-        c_op = CipherOperation()
+        c_op = CipherOperation(enc)
         _check( len(key) == self.len_key())
         _check( enc in [0,1] )
        
@@ -91,7 +91,10 @@ class Cipher(object):
             _check( len(iv) == self.len_IV())
             _check( _C.EVP_CipherInit_ex(c_op.ctx, 
                 self.alg,  _FFI.NULL, key, iv, enc) )
+
         else:
+            
+
             _check( _C.EVP_CipherInit_ex(c_op.ctx, 
                 self.alg,  _FFI.NULL, _FFI.NULL, _FFI.NULL, enc) )
 
@@ -99,6 +102,9 @@ class Cipher(object):
 
             _check( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, 
                 _C.EVP_CTRL_GCM_SET_IVLEN, len(iv), _FFI.NULL))
+
+            _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_SET_IV_FIXED, -1, iv);
+            _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_IV_GEN, 0, iv)
 
             _check( _C.EVP_CipherInit_ex(c_op.ctx, 
                 _FFI.NULL,  _FFI.NULL, key, iv, enc) )
@@ -208,12 +214,13 @@ class Cipher(object):
 
 class CipherOperation(object):
 
-    __slots__ = ["ctx", "cipher"]
+    __slots__ = ["ctx", "cipher", "xenc"]
 
-    def __init__(self):
+    def __init__(self, xenc):
         self.ctx = _C.EVP_CIPHER_CTX_new()
         _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
+        self.xenc = xenc
             
     def update(self, data):
         """Processes some data, and returns a partial result."""
@@ -245,6 +252,10 @@ class CipherOperation(object):
 
     def update_associated(self, data):
         """Processes some GCM associated data, and returns nothing."""
+
+        if self.xenc == 0:
+            self.set_tag(b"\00" * 16)
+
         outl = _FFI.new("int *")
         _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
         _check( outl[0] == len(data) )
