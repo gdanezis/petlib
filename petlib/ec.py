@@ -142,8 +142,8 @@ class EcGroup(object):
         return result
     
     def wsum(self, weights, elems):
-        #int EC_POINTs_mul(const EC_GROUP *, EC_POINT *r, const BIGNUM *, 
-        #    size_t num, const EC_POINT *[], const BIGNUM *[], BN_CTX *);
+        """ Sum efficiently a number of elements each multiplied by a bn in weights """
+
         res = EcPt(self)
 
         if __debug__:
@@ -363,7 +363,9 @@ class EcPt(object):
         return self.export().__hash__()
 
     def export(self, form=_C.POINT_CONVERSION_COMPRESSED):
-        """Returns a string binary representation of the point in compressed coordinates.
+        """export(form=_C.POINT_CONVERSION_COMPRESSED)
+
+        Returns a string binary representation of the point in compressed coordinates.
 
         Example:
             >>> G = EcGroup()
