@@ -167,6 +167,9 @@ class EcGroup(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __repr__(self):
+        return "EcGroup(%s)" % self.nid()
+
     def nid(self):
         """Returns the Open SSL group ID"""
         return int(_C.EC_GROUP_get_curve_name(self.ecg))
@@ -412,6 +415,10 @@ self.pt, x.bn, y.bn, _ctx.bnctx))
 
     def __str__(self):
         return hexlify(self.export()).decode("utf8")
+
+    def __repr__(self):
+        return "EcPt(%s)" % self.__str__()
+
 
 ## Ignore some lint warning in tests
 # pylint: disable=unused-variable
