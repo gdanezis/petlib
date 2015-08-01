@@ -437,6 +437,7 @@ class InitCiphers(object):
     def __init__(self):
         global _inited
         self.on = False
+        self._C = _C
         if not _inited:
             _C.init_ciphers()
             _inited = True
@@ -444,9 +445,9 @@ class InitCiphers(object):
 
     def __del__(self):
         global _inited
-        if _inited and self.on and _C:
+        if _inited and self.on and self._C:
             _inited = False
-            _C.cleanup_ciphers()
+            self._C.cleanup_ciphers()
 
 _ciphers = InitCiphers()
 
