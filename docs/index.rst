@@ -17,7 +17,7 @@ Contents
 Pre-requisites
 --------------
 
-* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`::
+* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`:
 
 .. code-block:: none
 
@@ -27,8 +27,7 @@ Pre-requisites
 
 * On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
 
-* On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure `libeay32.dll` is on the system `PATH` (https://www.openssl.org/related/binaries.html).
-Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
+* On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure `libeay32.dll` is on the system `PATH` (https://www.openssl.org/related/binaries.html). Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
  
 
 Quick install
@@ -153,6 +152,8 @@ Module petlib.hmac
 
 Module petlib.ecdsa
 -------------------
+
+.. autofunction:: petlib.ecdsa.do_ecdsa_setup
 
 .. autofunction:: petlib.ecdsa.do_ecdsa_sign
 

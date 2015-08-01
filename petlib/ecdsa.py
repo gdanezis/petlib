@@ -2,8 +2,9 @@ from .bindings import _C, _FFI
 from .ec import EcGroup, _check
 from .bn import Bn, _ctx
 
+
 def do_ecdsa_setup(G, priv):
-    """ Compute the parameters kinv and rp to (optionally) speed up ECDSA signing. """
+    """Compute the parameters kinv and rp to (optionally) speed up ECDSA signing."""
 
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
