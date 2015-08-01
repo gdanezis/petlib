@@ -547,8 +547,8 @@ def no_test_DP_median():
 def test_median():
 
     # Get some test data
-    narrow_vals = 1000
-    wide_vals = 200
+    narrow_vals = 100
+    wide_vals = 20
     
     vals = [gauss(300, 25) for _ in range (narrow_vals)]
     vals += [gauss(500, 200) for _ in range (wide_vals)]

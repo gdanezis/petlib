@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 import os, sys
 from distutils.core import setup
 from setuptools.command.install import install as _install
@@ -39,6 +38,13 @@ except Exception as e:
 
 import petlib
 
+
+#from pip.req import parse_requirements
+# parse_requirements() returns generator of pip.req.InstallRequirement objects
+#install_reqs = parse_requirements("requirements.txt")
+# reqs is a list of requirement
+#reqs = [str(ir.req) for ir in install_reqs]
+
 setup(name='petlib',
       version=petlib.VERSION,
       description='A library implementing a number of Privacy Enhancing Technologies (PETs)',
@@ -49,6 +55,7 @@ setup(name='petlib',
       ext_package='petlib',
       license="2-clause BSD",
       long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
+      # install_requires=reqs,
       install_requires=[
             "cffi >= 0.8.2",
             "pycparser >=  2.10",

@@ -1,0 +1,14 @@
+language: python
+
+python:
+  - "2.7"
+  - "3.4" 
+
+before_install:
+	- sudo apt-get update -qq
+	- sudo apt-get install -qq python-dev libssl-dev libffi-dev
+
+# command to install dependencies
+install: "pip install -r requirements.txt"
+# command to run tests
+script: paver unit_tests

@@ -136,6 +136,7 @@ def make_env(quiet=True):
 def big_tests(quiet=True):
     """ Run all example unit_tests in a fresh python 2.7 context. """
     tell("Run acceptance tests (big examples)")
+    sh("pip install -r requirements.txt", capture=quiet)
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     files = " ".join(match_files("examples", "*.py"))
     sh("py.test-2.7 -v " + files)
