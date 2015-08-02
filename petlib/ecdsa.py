@@ -1,3 +1,38 @@
+""" A library providing signature and verification functions for the ECDSA scheme.
+
+Example:
+    How to use ``do_ecdsa_sign`` and ``do_ecdsa_verify`` to sign and verify a string:
+
+    >>> from hashlib import sha1
+    >>> # Generate a signature / verification key pair.
+    >>> G = EcGroup()
+    >>> sig_key = G.order().random()
+    >>> ver_key = sig_key * G.generator()
+    >>> # Hash the (potentially long) message into a short digest.
+    >>> digest = sha1(b"Hello World!").digest()
+    >>> # Sign and verify signature
+    >>> sig = do_ecdsa_sign(G, sig_key, digest)
+    >>> do_ecdsa_verify(G, ver_key, sig, digest)
+    True
+
+    Fast signatures can be constructed using ``do_ecdsa_setup``:
+
+    >>> from hashlib import sha1
+    >>> # Generate a signature / verification key pair.
+    >>> G = EcGroup()
+    >>> sig_key = G.order().random()
+    >>> ver_key = sig_key * G.generator()
+    >>> # Hash the (potentially long) message into a short digest.
+    >>> digest = sha1(b"Hello World!").digest()
+    >>> # Sign and verify signature
+    >>> kinv_rp = do_ecdsa_setup(G, sig_key)
+    >>> sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp = kinv_rp)
+    >>> do_ecdsa_verify(G, ver_key, sig, digest)
+    True
+
+"""
+
+
 from .bindings import _C, _FFI
 from .ec import EcGroup, _check
 from .bn import Bn, _ctx
@@ -38,38 +73,6 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
 
     Returns:
         Bn, Bn: The (r, s) signature
-
-    Example:
-        How to use ``do_ecdsa_sign`` and ``do_ecdsa_verify`` to sign and verify a string:
-
-        >>> from hashlib import sha1
-        >>> # Generate a signature / verification key pair.
-        >>> G = EcGroup()
-        >>> sig_key = G.order().random()
-        >>> ver_key = sig_key * G.generator()
-        >>> # Hash the (potentially long) message into a short digest.
-        >>> digest = sha1(b"Hello World!").digest()
-        >>> # Sign and verify signature
-        >>> sig = do_ecdsa_sign(G, sig_key, digest)
-        >>> do_ecdsa_verify(G, ver_key, sig, digest)
-        True
-
-        Fast signatures can be constructed using a setup:
-
-        >>> from hashlib import sha1
-        >>> # Generate a signature / verification key pair.
-        >>> G = EcGroup()
-        >>> sig_key = G.order().random()
-        >>> ver_key = sig_key * G.generator()
-        >>> # Hash the (potentially long) message into a short digest.
-        >>> digest = sha1(b"Hello World!").digest()
-        >>> # Sign and verify signature
-        >>> kinv_rp = do_ecdsa_setup(G, sig_key)
-        >>> sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp = kinv_rp)
-        >>> do_ecdsa_verify(G, ver_key, sig, digest)
-        True
-
-
 
     """
     ec_key = _C.EC_KEY_new()

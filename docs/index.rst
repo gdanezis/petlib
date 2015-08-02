@@ -152,6 +152,8 @@ Module petlib.hmac
 Module petlib.ecdsa
 -------------------
 
+.. automodule:: petlib.ecdsa
+
 .. autofunction:: petlib.ecdsa.do_ecdsa_setup
 
 .. autofunction:: petlib.ecdsa.do_ecdsa_sign
