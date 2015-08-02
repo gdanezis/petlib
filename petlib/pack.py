@@ -15,11 +15,13 @@ def default(obj):
             data = obj.binary()
         return msgpack.ExtType(0, neg + data)
 
+    # Serialize EcGroup objects
     elif isinstance(obj, EcGroup):
         nid = obj.nid()
         packed_nid = msgpack.packb(nid)
         return msgpack.ExtType(1, packed_nid)
 
+    # Serialize EcPt objects
     elif isinstance(obj, EcPt):
         nid = obj.group.nid()
         data = obj.export()
@@ -28,6 +30,17 @@ def default(obj):
 
     raise TypeError("Unknown type: %r" % (obj,))
 
+def make_encoder(out_encoder=None):
+    if out_encoder is None:
+        return default
+    else:
+        def new_encoder(obj):
+            try:
+                encoded = default(obj)
+                return encoded
+            except:
+                return out_encoder(obj)
+        return new_encoder
 
 def ext_hook(code, data):
 
@@ -52,14 +65,28 @@ def ext_hook(code, data):
     # Other
     return msgpack.ExtType(code, data)
 
-def encode(structure):
+def make_decoder(custom_decoder=None):
+    if custom_decoder is None:
+        return ext_hook
+    else:
+        def new_decoder(code, data):
+            out = ext_hook(code, data)
+            if not isinstance(out, msgpack.ExtType):
+                return out
+            else:
+                return custom_decoder(code, data)
+        return new_decoder
+
+def encode(structure, custom_encoder=None):
     """ Encode a structure containing petlib objects to a binary format """
-    packed_data = msgpack.packb(structure, default=default, use_bin_type=True)
+    encoder = make_encoder(custom_encoder)
+    packed_data = msgpack.packb(structure, default=encoder, use_bin_type=True)
     return packed_data
     
-def decode(packed_data):
+def decode(packed_data, custom_decoder=None):
     """ Decode a binary byte sequence into a structure containing pelib objects """
-    structure = msgpack.unpackb(packed_data, ext_hook=ext_hook, encoding='utf-8')
+    decoder = make_decoder(custom_decoder)
+    structure = msgpack.unpackb(packed_data, ext_hook=decoder, encoding='utf-8')
     return structure
 
 # --- TESTS ---
@@ -111,3 +138,26 @@ def test_enc_dec_dict():
     packed = encode(test_data)
     x = decode(packed)
     assert x[G.order()] == test_data[G.order()]
+
+def test_enc_dec_custom():
+    G = EcGroup()
+    class XX:
+        def __eq__(self, other):
+            return isinstance(other, XX)
+
+    x = XX()
+    def enc_xx(obj):
+        if isinstance(obj, XX):
+            return msgpack.ExtType(10, b'')
+        raise TypeError("Unknown type: %r" % (obj,))
+
+    def dec_xx(code, data):
+        if code == 10:
+            return XX()
+
+        return msgpack.ExtType(code, data)
+
+    test_data = [G, G.generator(), G.order(), x]
+    packed = encode(test_data, enc_xx)
+    x = decode(packed, dec_xx)
+    assert x == test_data
