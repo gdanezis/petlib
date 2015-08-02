@@ -78,13 +78,13 @@ def make_decoder(custom_decoder=None):
         return new_decoder
 
 def encode(structure, custom_encoder=None):
-    """ Encode a structure containing petlib objects to a binary format """
+    """ Encode a structure containing petlib objects to a binary format. May define a custom encoder for user classes. """
     encoder = make_encoder(custom_encoder)
     packed_data = msgpack.packb(structure, default=encoder, use_bin_type=True)
     return packed_data
     
 def decode(packed_data, custom_decoder=None):
-    """ Decode a binary byte sequence into a structure containing pelib objects """
+    """ Decode a binary byte sequence into a structure containing pelib objects. May define a custom decoder for custom classes. """
     decoder = make_decoder(custom_decoder)
     structure = msgpack.unpackb(packed_data, ext_hook=decoder, encoding='utf-8')
     return structure
@@ -140,24 +140,29 @@ def test_enc_dec_dict():
     assert x[G.order()] == test_data[G.order()]
 
 def test_enc_dec_custom():
-    G = EcGroup()
-    class XX:
-        def __eq__(self, other):
-            return isinstance(other, XX)
 
-    x = XX()
-    def enc_xx(obj):
-        if isinstance(obj, XX):
+    # Define a custom class, encoder and decoder
+    class CustomClass:
+        def __eq__(self, other):
+            return isinstance(other, CustomClass)
+
+    def enc_CustomClass(obj):
+        if isinstance(obj, CustomClass):
             return msgpack.ExtType(10, b'')
         raise TypeError("Unknown type: %r" % (obj,))
 
-    def dec_xx(code, data):
+    def dec_CustomClass(code, data):
         if code == 10:
-            return XX()
+            return CustomClass()
 
         return msgpack.ExtType(code, data)
 
-    test_data = [G, G.generator(), G.order(), x]
-    packed = encode(test_data, enc_xx)
-    x = decode(packed, dec_xx)
+    # Define a structure
+    G = EcGroup()
+    custom_obj = CustomClass()
+    test_data = [G, G.generator(), G.order(), custom_obj]
+    
+    # Encode and decode custom structure
+    packed = encode(test_data, enc_CustomClass)
+    x = decode(packed, dec_CustomClass)
     assert x == test_data
