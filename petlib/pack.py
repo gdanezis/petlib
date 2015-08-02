@@ -1,17 +1,17 @@
 import msgpack
 
-from petlib.ec import EcGroup, EcPt
-from petlib.bn import Bn
+from .ec import EcGroup, EcPt
+from .bn import Bn
 
 
 def default(obj):
     # Serialize Bn objects
     if isinstance(obj, Bn):
         if obj < 0:
-            neg = "B"
+            neg = b"-"
             data = (-obj).binary()
         else:
-            neg = "A"
+            neg = b"+"
             data = obj.binary()
         return msgpack.ExtType(0, neg + data)
 
@@ -34,7 +34,8 @@ def ext_hook(code, data):
     # Decode Bn types
     if code == 0:
         num = Bn.from_binary(data[1:])
-        if data[0] == "B":
+        # Accomodate both Python 2 and Python 3
+        if data[0] == ord("-") or data[0] == "-":
             return -num
         return num
 
@@ -57,7 +58,7 @@ def encode(structure):
     return packed_data
     
 def decode(packed_data):
-    """ Decode a binary byte seqeunce into a structure that of pelib objects """
+    """ Decode a binary byte sequence into a structure containing pelib objects """
     structure = msgpack.unpackb(packed_data, ext_hook=ext_hook, encoding='utf-8')
     return structure
 

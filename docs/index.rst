@@ -158,6 +158,14 @@ Module petlib.ecdsa
 
 .. autofunction:: petlib.ecdsa.do_ecdsa_verify
 
+Module petlib.pack
+------------------
+
+.. autofunction:: petlib.pack.encode
+
+.. autofunction:: petlib.pack.decode
+
+
 
 Indices and tables
 ==================
