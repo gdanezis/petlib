@@ -552,6 +552,6 @@ def test_p224_const_timing():
             dud = y * h
         t += [time.clock() - t0]
         print(x, t[-1] / repreats)
-    assert abs(t[0] - t[-1]) < 1.0 / 100
+    assert abs(t[0] - t[-1]) < 5.0 / 100
 
 # pylint: enable=unused-variable
