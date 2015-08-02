@@ -161,6 +161,8 @@ Module petlib.ecdsa
 Module petlib.pack
 ------------------
 
+.. automodule:: petlib.pack
+
 .. autofunction:: petlib.pack.encode
 
 .. autofunction:: petlib.pack.decode

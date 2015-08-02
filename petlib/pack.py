@@ -1,3 +1,34 @@
+"""The module provides functions to pack and unpack petlib Bn, EcGroup, and EcPt
+strucures.
+
+Example:
+    >>> # Define a custom class, encoder and decoder
+    >>> class CustomClass:
+    ...     def __eq__(self, other):
+    ...         return isinstance(other, CustomClass)
+    >>> 
+    >>> def enc_CustomClass(obj):
+    ...     if isinstance(obj, CustomClass):
+    ...         return msgpack.ExtType(10, b'')
+    ...     raise TypeError("Unknown type: %r" % (obj,))
+    >>>
+    >>> def dec_CustomClass(code, data):
+    ...     if code == 10:
+    ...         return CustomClass()
+    ...     return msgpack.ExtType(code, data)
+    >>> 
+    >>> # Define a structure
+    >>> G = EcGroup()
+    >>> custom_obj = CustomClass()
+    >>> test_data = [G, G.generator(), G.order(), custom_obj]
+    >>> 
+    >>> # Encode and decode custom structure
+    >>> packed = encode(test_data, enc_CustomClass)
+    >>> x = decode(packed, dec_CustomClass)
+    >>> assert x == test_data
+
+"""
+
 import msgpack
 
 from .ec import EcGroup, EcPt
