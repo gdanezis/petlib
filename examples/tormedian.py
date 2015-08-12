@@ -170,6 +170,8 @@ class CountSketchCt(object):
         self.d, self.w = d, w
         self.store = [ [Ct.enc(pub, 0) for i in range(w)] for j in range(d) ]
 
+        # zero = Ct.enc(pub, 0)
+        #self.store = [ [zero for i in range(w)] for j in range(d) ]
 
     def dump(self):
         from cStringIO import StringIO
@@ -437,7 +439,6 @@ def size_vs_error():
     plt.fill_between(x=eps, y1=lower_siz, y2=upper_siz, alpha=0.2, color="b")
     # plt.xticks(eps_lab, eps)
 
-
     plt.xlabel(r'(epsilon, delta) parameter of Count-Sketch')
     plt.ylabel(r'%')
     plt.title(r'Median Estimation - Error vs. Size')
@@ -544,18 +545,15 @@ def no_test_DP_median():
     plt.close()
     # print core_err
 
-def test_median():
+
+def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
 
     # Get some test data
-    narrow_vals = 100
-    wide_vals = 20
-    
-    vals = [gauss(300, 25) for _ in range (narrow_vals)]
-    vals += [gauss(500, 200) for _ in range (wide_vals)]
     vals = sorted([int(v) for v in vals])
 
     median = vals[int(len(vals) / 2)]
-    print("Correct sample median: %s (No. items: %s)" % (median, len(vals)))
+    if verbose:
+        print("Correct sample median: %s (No. items: %s)" % (median, len(vals)))
 
     # Setup the crypto
     G = EcGroup()
@@ -563,21 +561,23 @@ def test_median():
     y = sec * G.generator()
     
 
-    xx = CountSketchCt.epsilondelta(0.05, 0.05, y)
+    xx = CountSketchCt.epsilondelta(err, err, y)
     d, w = xx.d, xx.w
-    print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/1000)))
+    if verbose:
+        print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/(vrange[1] - vrange[0]))))
 
     # Add each sample to the sketch
     tic = time.clock()    
 
     all_cs = []
     for x in vals:
-        cs_temp = CountSketchCt.epsilondelta(0.05, 0.05, y) # CountSketchCt(d, w, y)
+        cs_temp = CountSketchCt.epsilondelta(err, err, y) # CountSketchCt(d, w, y)
         cs_temp.insert("%s" % x)
         all_cs += [ cs_temp ]
 
     toc = time.clock()
-    print("Build Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
+    if verbose:
+        print("Build Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
 
     # Aggregate all sketches
     tic = time.clock()
@@ -585,10 +585,11 @@ def test_median():
 
     toc = time.clock()
     dt = (toc - tic)
-    print("Aggregate Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % (dt, len(vals), dt / len(vals)) )
+    if verbose:
+        print("Aggregate Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % (dt, len(vals), dt / len(vals)) )
 
     # Now use test the median function
-    proto = get_median(cs, min_b = 0, max_b = 1000, steps = 20)
+    proto = get_median(cs, min_b = vrange[0], max_b = vrange[1], steps = 20)
 
     tic = time.clock()
 
@@ -602,13 +603,28 @@ def test_median():
         plain = v.dec(sec)
 
     toc = time.clock()
-    print( "Find Median. Pivot: % 5d\tNo. Decryptions: %s\ttime: %2.4f sec" % (v, no_decryptions, toc - tic) )
+    if verbose:
+        print( "Find Median. Pivot: % 5d\tNo. Decryptions: %s\ttime: %2.4f sec" % (v, no_decryptions, toc - tic) )
 
     # Measure the size of the sketch
     bin_cs = cs.dump()
-    print("Sketch size: %s bytes" % len(bin_cs))    
+    if verbose:
+        print("Sketch size: %s bytes" % len(bin_cs))    
+        print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
+    return v
 
-    print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
+
+def test_median():
+
+    # Get some test data
+    narrow_vals = 100
+    wide_vals = 20
+    
+    vals = [gauss(300, 25) for _ in range (narrow_vals)]
+    vals += [gauss(500, 200) for _ in range (wide_vals)]
+
+    do_median(vals, err=0.05)
+
 
 if __name__ == "__main__":
 
@@ -620,8 +636,48 @@ if __name__ == "__main__":
     parser.add_argument('--size', action='store_true', help='Run size tests')
     parser.add_argument('--lprof', action='store_true', help='Run the line profiler')
     parser.add_argument('--cprof', action='store_true', help='Run the c profiler')
+    parser.add_argument('--data', action='store_true', help='Analysis on csv data')
 
     args = parser.parse_args()
+
+    if args.data:
+        # Read the csv file
+        # Data currated from http://data.london.gov.uk/dataset/ward-profiles-and-atlas
+        # Under UK Open Government Licence (http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+        import pandas as pd
+        data = pd.read_csv('LondonData.csv' , thousands=",")
+        # print data.shape
+
+
+        num = -1
+        d = []
+        for i in range(3, data.shape[1]):
+            try:
+                vals = sorted([float(f) for f in data.iloc[0:num, i]])
+                med_gt = vals[len(vals)/2]
+                
+                MX = 100
+                vmin = min(vals) - 10
+                vmax = max(vals) + 10
+                xvals = [MX * (v - vmin) / (vmax - vmin) for v in vals]
+
+                xmed = do_median(xvals, err=0.25, vrange=[0, MX], verbose=True)
+                med1 = xmed * (vmax - vmin) / MX + vmin
+                err1 = abs(med1 - med_gt) / float(med_gt)
+
+                xmed = do_median(xvals, err=0.05, vrange=[0, MX], verbose=True)
+                med2 = xmed * (vmax - vmin) / MX + vmin
+                err2 = abs(med2 - med_gt) / float(med_gt)
+
+                print data.columns.values[i], med1, err1* 100, med2, err2* 100, med_gt 
+                d += [(data.columns.values[i], [med1, err1* 100, med2, err2* 100, med_gt])]
+
+            except:
+                pass 
+                # print data.iloc[0:num, i]
+
+        frame = pd.DataFrame.from_items(d, orient="index", columns=["Median (0.25)", "Error (%)", "Median (0.05)", "Error (%)", "Truth"])
+        print frame.to_latex(float_format=(lambda x: u"%1.1f" % x))
 
     if args.time:
         test_median()

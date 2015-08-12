@@ -197,3 +197,37 @@ def test_enc_dec_custom():
     packed = encode(test_data, enc_CustomClass)
     x = decode(packed, dec_CustomClass)
     assert x == test_data
+
+def test_streaming():
+
+    # Define a custom class, encoder and decoder
+    class CustomClass:
+        def __eq__(self, other):
+            return isinstance(other, CustomClass)
+
+    def enc_CustomClass(obj):
+        if isinstance(obj, CustomClass):
+            return msgpack.ExtType(10, b'')
+        raise TypeError("Unknown type: %r" % (obj,))
+
+    def dec_CustomClass(code, data):
+        if code == 10:
+            return CustomClass()
+
+        return msgpack.ExtType(code, data)
+
+    # Define a structure
+    G = EcGroup()
+    custom_obj = CustomClass()
+    test_data = [G, G.generator(), G.order(), custom_obj]
+    packed1 = encode(test_data, enc_CustomClass)
+    packed2 = encode(test_data, enc_CustomClass)
+
+    data = packed1 + packed2
+    
+    decoder = make_decoder(dec_CustomClass)
+    Up = msgpack.Unpacker(ext_hook=decoder)
+    Up.feed(data)
+    for o in Up:
+        print(o)
+        assert o == test_data
