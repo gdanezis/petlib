@@ -365,9 +365,12 @@ int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
 #define SSLEAY_VERSION ...
 const char *SSLeay_version(int type);
 
+unsigned long ERR_get_error(void);
+
 """)
 
 _C = _FFI.verify("""
+#include <openssl/err.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -431,6 +434,14 @@ _inited = False
 def version():
     return str(_FFI.string(_C.SSLeay_version(_C.SSLEAY_VERSION)))
 
+def get_errors():
+    errors = []
+    err = _C.ERR_get_error()
+    while err != 0:
+        errors += [ err ]
+        err = _C.ERR_get_error()
+    return errors
+
 class InitCiphers(object):
     # pylint: disable=global-statement
 
@@ -459,3 +470,6 @@ def test_double_load():
 def test_version():
     print (version())
     assert version()
+
+def test_errors():
+    assert get_errors() == []

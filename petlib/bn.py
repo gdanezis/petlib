@@ -1,4 +1,4 @@
-from .bindings import _FFI, _C
+from .bindings import _FFI, _C, get_errors
 
 from functools import wraps
 from copy import copy, deepcopy
@@ -55,7 +55,8 @@ def _check(return_val):
         if return_val == True and return_val == 1:
             return
 
-        raise Exception("BN exception") 
+        errs = get_errors()
+        raise Exception("BN exception: %s" % errs) 
 
 class BnCtx:
     """ A Bn Context for use by the petlib library """
@@ -133,8 +134,6 @@ class Bn(object):
         ptr = _FFI.new("BIGNUM **")
         read_bytes = _C.BN_hex2bn(ptr, shex.encode("utf8"))
         if read_bytes != len(shex):
-            #print(bytes(shex, "utf8"), shex)
-            #print(read_bytes, len(shex))
             raise Exception("BN Error")
 
         ret = Bn()
@@ -529,7 +528,12 @@ class Bn(object):
         res = Bn()
         err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, _ctx.bnctx)
         if err == _FFI.NULL:
-            raise Exception("No inverse")
+            errs = get_errors()
+            
+            if errs == [ 50770023 ]:
+                raise Exception("No inverse")
+            else:
+                _check( False )
 
         return res
 
