@@ -443,7 +443,7 @@ def size_vs_error():
     plt.ylabel(r'%')
     plt.title(r'Median Estimation - Error vs. Size')
     # plt.axis([1, 10, 0, 1700])
-    plt.grid(True)
+    #plt.grid(True)
     plt.legend(loc="upper center")
 
     plt.savefig("Size.pdf")
@@ -537,7 +537,7 @@ def no_test_DP_median():
     plt.ylabel('Absolute Error (mean & std. of mean)')
     plt.title(r'Median Estimation - Quality vs. Protection')
     # plt.axis([1, 10, 0, 1700])
-    plt.grid(True)
+    # plt.grid(True)
 
     plt.savefig("Quality.pdf")
 
