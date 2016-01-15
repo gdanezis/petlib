@@ -244,8 +244,12 @@ class CipherOperation(object):
         Example:
             Example of the exception thrown when an invalid tag is provided.
             
+            >>> from os import urandom
+            >>> invalid_tag = urandom(16)               # an invalid tag
+            >>> inv = urandom(16)
+            >>> key = urandom(16)
             >>> aes = Cipher.aes_128_gcm()              # Define an AES-GCM cipher
-            >>> dec = aes.dec(key, iv)                               # Get a decryption CipherOperation
+            >>> dec = aes.dec(key, iv)                  # Get a decryption CipherOperation
             >>> dec.update_associated(b"Hello")         # Feed in the non-secret assciated data.
             >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
             >>> dec.set_tag(invalid_tag)                # Provide an invalid tag.
