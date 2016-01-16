@@ -251,8 +251,8 @@ class CipherOperation(object):
             >>> ciphertext, tag = aes.quick_gcm_enc(key, iv, b"Hello")
             >>>
             >>> dec = aes.dec(key, iv)                  # Get a decryption CipherOperation
-            >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
             >>> dec.set_tag(urandom(len(tag)))                # Provide an invalid tag.
+            >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
             >>> try:
             ...    dec.finalize()                          # Check and Finalize.
             ... except:

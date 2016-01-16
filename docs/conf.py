@@ -17,6 +17,12 @@ import os
 
 from mock import Mock as MagicMock
 
+try:
+  import alabaster
+except:
+  print("No alabaster theme found?")
+  pass
+
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
@@ -44,6 +50,7 @@ import petlib
 try:
   import sphinxcontrib.napoleon
   extensions = [
+      'alabaster',
       'sphinx.ext.autodoc',
       'sphinx.ext.coverage',
       'sphinx.ext.mathjax',
@@ -52,6 +59,7 @@ try:
   ]
 except:
   extensions = [
+      'alabaster',
       'sphinx.ext.autodoc',
       'sphinx.ext.coverage',
       'sphinx.ext.mathjax',
