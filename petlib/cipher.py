@@ -190,6 +190,7 @@ class Cipher(object):
 
     def quick_gcm_dec(self, key, iv, cip, tag, assoc=None):
         """One operation GCM decrypt. See usage example in "quick_gcm_enc". 
+        Throws an exception on failure of decryption
 
         Args:
             key (str): the AES symmetric key. Length depends on block cipher choice.
@@ -237,19 +238,47 @@ class CipherOperation(object):
         return ret
 
     def finalize(self):
-        """Finalizes the operation and may return some additional data"""
+        """Finalizes the operation and may return some additional data. 
+        Throws an exception if the authenticator tag is different from the expected value.
+        
+        Example:
+            Example of the exception thrown when an invalid tag is provided.
+            
+            >>> from os import urandom
+            >>> aes = Cipher.aes_128_gcm()              # Define an AES-GCM cipher
+            >>> iv = urandom(16)
+            >>> key = urandom(16)
+            >>> ciphertext, tag = aes.quick_gcm_enc(key, iv, b"Hello")
+            >>>
+            >>> dec = aes.dec(key, iv)                  # Get a decryption CipherOperation
+            >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
+            >>> dec.set_tag(urandom(len(tag)))                # Provide an invalid tag.
+            >>> try:
+            ...    dec.finalize()                          # Check and Finalize.
+            ... except:
+            ...    print("Failure")
+            Failure
+            
+            Throws an exception since integrity check fails due to the invalid tag.
+            
+        
+        
+        """
         block_len = self.cipher.len_block()
         alloc_len = block_len
         outl = _FFI.new("int *")
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
 
-        _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
-        if outl[0] == 0:
-            return b''
+        try:
+            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+            if outl[0] == 0:
+                return b''
 
-        ret = bytes(_FFI.buffer(out)[:int(outl[0])])
-        return ret
+            ret = bytes(_FFI.buffer(out)[:int(outl[0])])
+            return ret
+        except:
+            raise Exception("Cipher: decryption failed.")
 
     def update_associated(self, data):
         """Processes some GCM associated data, and returns nothing."""
@@ -296,7 +325,7 @@ class CipherOperation(object):
             >>> dec = aes.dec(key=b"A"*16, iv=b"A"*16)  # Get a decryption CipherOperation
             >>> dec.update_associated(b"Hello")         # Feed in the non-secret assciated data.
             >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
-            >>> dec.set_tag(tag)                        # Provide the AES-GCM tag for integrity.
+            >>> dec.set_tag(tag)                        # Provide the AES-GCM tag for integrity. 
             >>> nothing = dec.finalize()                # Check and finalize.
             >>> assert plaintext == b'World!'
 
