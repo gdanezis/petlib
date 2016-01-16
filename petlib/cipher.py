@@ -245,16 +245,19 @@ class CipherOperation(object):
             Example of the exception thrown when an invalid tag is provided.
             
             >>> from os import urandom
-            >>> invalid_tag = urandom(16)               # an invalid tag
-            >>> inv = urandom(16)
-            >>> key = urandom(16)
             >>> aes = Cipher.aes_128_gcm()              # Define an AES-GCM cipher
+            >>> iv = urandom(16)
+            >>> key = urandom(16)
+            >>> ciphertext, tag = aes.quick_gcm_enc(key, iv, b"Hello")
+            >>>
             >>> dec = aes.dec(key, iv)                  # Get a decryption CipherOperation
-            >>> dec.update_associated(b"Hello")         # Feed in the non-secret assciated data.
             >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
-            >>> dec.set_tag(invalid_tag)                # Provide an invalid tag.
-            >>> dec.finalize()                          # Check and Finalize. 
-            Exception: Cipher exception: Unknown type <type 'int'> or value 0
+            >>> dec.set_tag(urandom(len(tag)))                # Provide an invalid tag.
+            >>> try:
+            ...    dec.finalize()                          # Check and Finalize.
+            ... except:
+            ...    print("Failure")
+            Failure
             
             Throws an exception since integrity check fails due to the invalid tag.
             
@@ -267,12 +270,15 @@ class CipherOperation(object):
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
 
-        _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
-        if outl[0] == 0:
-            return b''
+        try:
+            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+            if outl[0] == 0:
+                return b''
 
-        ret = bytes(_FFI.buffer(out)[:int(outl[0])])
-        return ret
+            ret = bytes(_FFI.buffer(out)[:int(outl[0])])
+            return ret
+        except:
+            raise Exception("Cipher: decryption failed.")
 
     def update_associated(self, data):
         """Processes some GCM associated data, and returns nothing."""
