@@ -251,17 +251,15 @@ class CipherOperation(object):
             >>> ciphertext, tag = aes.quick_gcm_enc(key, iv, b"Hello")
             >>>
             >>> dec = aes.dec(key, iv)                  # Get a decryption CipherOperation
-            >>> dec.set_tag(urandom(len(tag)))                # Provide an invalid tag.
+            >>> dec.set_tag(urandom(len(tag)))          # Provide an invalid tag.
             >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
             >>> try:
-            ...    dec.finalize()                          # Check and Finalize.
+            ...    dec.finalize()                       # Check and Finalize.
             ... except:
             ...    print("Failure")
             Failure
             
             Throws an exception since integrity check fails due to the invalid tag.
-            
-        
         
         """
         block_len = self.cipher.len_block()
