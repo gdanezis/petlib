@@ -293,6 +293,10 @@ class EcPt(object):
         result = EcPt(self.group)
         _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _ctx.bnctx) )
         return result
+    
+    def pt_double_inplace(self):
+        """Doubles the point. equivalent to "self + self"."""
+        _check( _C.EC_POINT_dbl(self.group.ecg, self.pt, self.pt, _ctx.bnctx) )
 
     def pt_neg(self):
         """Returns the negative of the point. Synonym with -self.
@@ -446,7 +450,7 @@ class EcPt(object):
 
         Example:
             >>> G = EcGroup()
-            >>> byte_string = G.generator().export()
+            >>> byte_string = G.generator().sized.export(200)
             >>> print(hexlify(byte_string).decode("utf8"))
             02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
 
@@ -564,6 +568,77 @@ def test_ec_sum():
     h = order.random() * g
     assert G.wsum([Bn(10), Bn(20)], [g, h]) == 10 * g + 20 * h 
 
+def test_pt_add_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_add_inplace add correctly?
+    """
+    a = g.pt_add(g)
+    g.pt_add_inplace(g)
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_add_inplace(a)
+    assert id(b) == id(a)
+    
+def test_pt_double_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_double_inplace double correctly?
+    """
+    a = g.pt_double(g)
+    g.pt_double_inplace(g)
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_double_inplace(a)
+    assert id(b) == id(a)
+
+def test_pt_mul_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_mul_inplace multiply correctly?
+    """
+    a = g.pt_mul(5)
+    g.pt_mul_inplace(5)
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_mul_inplace(5)
+    assert id(b) == id(a)
+    
+def test_pt_neg_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_neg_inplace negate correctly?
+    """
+    a = g.pt_neg()
+    g.pt_neg_inplace()
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_neg_inplace()
+    assert id(b) == id(a)
 
 def test_ec_affine_inf():
     G = EcGroup(713)
