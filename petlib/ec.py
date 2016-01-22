@@ -592,8 +592,8 @@ def test_pt_double_inplace():
     """
     Does pt_double_inplace double correctly?
     """
-    a = g.pt_double(g)
-    g.pt_double_inplace(g)
+    a = g.pt_double()
+    g.pt_double_inplace()
     assert a == g
     
     """
@@ -601,7 +601,7 @@ def test_pt_double_inplace():
     """
     a = G.generator()
     b = a
-    a.pt_double_inplace(a)
+    a.pt_double_inplace()
     assert id(b) == id(a)
 
 def test_pt_mul_inplace():
