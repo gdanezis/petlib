@@ -450,7 +450,7 @@ class EcPt(object):
 
         Example:
             >>> G = EcGroup()
-            >>> byte_string = G.generator().sized_export(200)
+            >>> byte_string, string_len = G.generator().sized_export(200)
             >>> print(hexlify(byte_string).decode("utf8"))
             02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
 
