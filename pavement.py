@@ -57,7 +57,7 @@ def testf(options):
     tell("Unit tests for specific file")
     print(options)
     sh('py.test-3.4 -vs --doctest-modules --cov %s %s' % (options.file, options.file))
-    sh('py.test-2.7 -vs --doctest-modules --cov %s %s' % (options.file, options.file))
+    sh('py.test-2.7 -vs --doctest-modules --cov-report html --cov %s %s' % (options.file, options.file))
 
 
 @task

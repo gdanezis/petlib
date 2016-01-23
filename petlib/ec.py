@@ -259,6 +259,12 @@ class EcPt(object):
         """
         return self.__add__(other)
 
+    def pt_add_inplace(self, other):
+        """Adds two points together and puts the result in self.pt.
+
+        """
+        return self.__add_inplace__(other)
+
     def __add__(self, other):
         if __debug__:
             _check( type(other) == EcPt )
@@ -272,11 +278,25 @@ class EcPt(object):
 
         return result
 
+    def __add_inplace__(self, other):
+        if __debug__:
+            _check( type(other) == EcPt )
+            _check( other.group == self.group )
+
+        err = _C.EC_POINT_add(self.group.ecg, self.pt, self.pt, other.pt, _FFI.NULL)
+        
+        if __debug__:
+            _check( err )
+
     def pt_double(self):
         """Doubles the point. equivalent to "self + self"."""
         result = EcPt(self.group)
         _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _ctx.bnctx) )
         return result
+    
+    def pt_double_inplace(self):
+        """Doubles the point and mutates it to hold the result."""
+        _check( _C.EC_POINT_dbl(self.group.ecg, self.pt, self.pt, _ctx.bnctx) )
 
     def pt_neg(self):
         """Returns the negative of the point. Synonym with -self.
@@ -291,6 +311,12 @@ class EcPt(object):
 
         """
         return self.__neg__()
+    
+    def pt_neg_inplace(self):
+        """Mutates the point to hold the negative value of the point.
+
+        """
+        return self.__neg_inplace__()
 
     def __sub__(self, other):
         # """ Simulates (abuses notation) subtraction as addition with a negative point."""
@@ -309,6 +335,13 @@ class EcPt(object):
             _check( err )
         return result
 
+    def __neg_inplace__(self):
+        # result = copy(self)
+
+        err = _C.EC_POINT_invert(self.group.ecg, self.pt, _ctx.bnctx)
+        if __debug__:
+            _check( err )
+
     def pt_mul(self, scalar):
         """Returns the product of the point with a scalar (not commutative). Synonym with scalar * self.
 
@@ -322,6 +355,12 @@ class EcPt(object):
 
         """
         return self.__rmul__(scalar)
+    
+    def pt_mul_inplace(self, scalar):
+        """ Multiplies a scalar with a point and mutates the point to hold the result.
+
+        """
+        return self.__rmul_inplace__(scalar)
 
     @force_Bn(1)
     def __rmul__(self, other):
@@ -330,6 +369,12 @@ class EcPt(object):
         if __debug__:    
             _check( err )
         return result
+    
+    @force_Bn(1)
+    def __rmul_inplace__(self, other):
+        err = _C.EC_POINT_mul(self.group.ecg, self.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
+        if __debug__:    
+            _check( err )
 
     def pt_eq(self, other):
         """Returns a boolean denoting whether the points are equal. Synonym with self == other.
@@ -381,6 +426,24 @@ class EcPt(object):
                              buf, size, _ctx.bnctx)
         output = bytes(_FFI.buffer(buf)[:])
         return output
+    
+    def sized_export(self, size = 200):
+        """Returns a string binary representation of the point in compressed coordinates. Only returns the first size bytes, or pads with zeros to reach the required length.
+
+        Example:
+            >>> G = EcGroup()
+            >>> byte_string, string_len = G.generator().sized_export(29)
+            >>> print(hexlify(byte_string).decode("utf8"))
+            02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
+
+        """
+
+        s = self.export()
+        if len(s) <= size:
+            return s[:size], size
+        else:
+            return s + ('\x00' * (size - len(s))), len(s)
+
 
     def is_infinite(self):
         """Returns True if this point is at infinity, otherwise False.
@@ -489,6 +552,77 @@ def test_ec_sum():
     h = order.random() * g
     assert G.wsum([Bn(10), Bn(20)], [g, h]) == 10 * g + 20 * h 
 
+def test_pt_add_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_add_inplace add correctly?
+    """
+    a = g.pt_add(g)
+    g.pt_add_inplace(g)
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_add_inplace(a)
+    assert id(b) == id(a)
+    
+def test_pt_double_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_double_inplace double correctly?
+    """
+    a = g.pt_double()
+    g.pt_double_inplace()
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_double_inplace()
+    assert id(b) == id(a)
+
+def test_pt_mul_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_mul_inplace multiply correctly?
+    """
+    a = g.pt_mul(5)
+    g.pt_mul_inplace(5)
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_mul_inplace(5)
+    assert id(b) == id(a)
+    
+def test_pt_neg_inplace():
+    G = EcGroup(713)
+    g = G.generator()
+    """
+    Does pt_neg_inplace negate correctly?
+    """
+    a = g.pt_neg()
+    g.pt_neg_inplace()
+    assert a == g
+    
+    """
+    Does it save the result in the same memory location?
+    """
+    a = G.generator()
+    b = a
+    a.pt_neg_inplace()
+    assert id(b) == id(a)
 
 def test_ec_affine_inf():
     G = EcGroup(713)
@@ -553,5 +687,18 @@ def test_p224_const_timing():
         t += [time.clock() - t0]
         print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 5.0 / 100
+
+def test_ec_sized_export():
+    G = EcGroup(713)
+    g = G.generator()
+
+    byte_string, string_len = g.sized_export(29)
+    assert hexlify(byte_string).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
+    assert hexlify(g.export()[:29]).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
+
+    byte_string, string_len = g.sized_export(200)
+    s = hexlify(byte_string).decode("utf8")
+    assert hexlify(g.export()[:200]).decode("utf8") + ("00" * (200 - string_len)) == s    
+
 
 # pylint: enable=unused-variable
