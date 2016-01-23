@@ -521,6 +521,8 @@ def test_Pedersen_Env():
     Cxo = zk.get(Gen, "Cxo")
     zk.add_proof(Cxo, x*g + o*h)
 
+    print(zk.render_proof_statement())
+
     # A concrete Pedersen commitment
     ec_g = G.generator()
     ec_h = order.random() * ec_g
