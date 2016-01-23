@@ -295,7 +295,7 @@ class EcPt(object):
         return result
     
     def pt_double_inplace(self):
-        """Doubles the point. equivalent to "self + self"."""
+        """Doubles the point and mutates it to hold the result."""
         _check( _C.EC_POINT_dbl(self.group.ecg, self.pt, self.pt, _ctx.bnctx) )
 
     def pt_neg(self):
@@ -313,15 +313,7 @@ class EcPt(object):
         return self.__neg__()
     
     def pt_neg_inplace(self):
-        """Returns the negative of the point. Synonym with -self.
-
-        Example:
-            >>> G = EcGroup()
-            >>> g = G.generator()
-            >>> g + (-g) == G.infinite() # Unary negative operator.
-            True
-            >>> g - g == G.infinite()    # Binary negative operator. 
-            True
+        """Mutates the point to hold the negative value of the point.
 
         """
         return self.__neg_inplace__()
@@ -365,15 +357,7 @@ class EcPt(object):
         return self.__rmul__(scalar)
     
     def pt_mul_inplace(self, scalar):
-        """Returns the product of the point with a scalar (not commutative). Synonym with scalar * self.
-
-        Example:
-            >>> G = EcGroup()
-            >>> g = G.generator()
-            >>> 100 * g == g.pt_mul(100) # Operator and function notation mean the same
-            True
-            >>> G.order() * g == G.infinite() # Scalar mul. by the order returns the identity element.
-            True
+        """ Multiplies a scalar with a point and mutates the point to hold the result.
 
         """
         return self.__rmul_inplace__(scalar)
@@ -443,10 +427,8 @@ class EcPt(object):
         output = bytes(_FFI.buffer(buf)[:])
         return output
     
-    def sized_export(self, size = 200, form=_C.POINT_CONVERSION_COMPRESSED):
-        """export(form=_C.POINT_CONVERSION_COMPRESSED)
-
-        Returns a string binary representation of the point in compressed coordinates. Only returns the first size bytes.
+    def sized_export(self, size = 200):
+        """Returns a string binary representation of the point in compressed coordinates. Only returns the first size bytes, or pads with zeros to reach the required length.
 
         Example:
             >>> G = EcGroup()
@@ -455,11 +437,13 @@ class EcPt(object):
             02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
 
         """
-        buf = _FFI.new("unsigned char[]", size)
-        length = _C.EC_POINT_point2oct(self.group.ecg, self.pt,  _C.POINT_CONVERSION_COMPRESSED, 
-                                      buf, size, _FFI.NULL);
-        output = bytes(_FFI.buffer(buf)[:])
-        return output, length
+
+        s = self.export()
+        if len(s) <= size:
+            return s[:size], size
+        else:
+            return s + ('\x00' * (size - len(s))), len(s)
+
 
     def is_infinite(self):
         """Returns True if this point is at infinity, otherwise False.
@@ -703,5 +687,18 @@ def test_p224_const_timing():
         t += [time.clock() - t0]
         print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 5.0 / 100
+
+def test_ec_sized_export():
+    G = EcGroup(713)
+    g = G.generator()
+
+    byte_string, string_len = g.sized_export(29)
+    assert hexlify(byte_string).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
+    assert hexlify(g.export()[:29]).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
+
+    byte_string, string_len = g.sized_export(200)
+    s = hexlify(byte_string).decode("utf8")
+    assert hexlify(g.export()[:200]).decode("utf8") + ("00" * (200 - string_len)) == s    
+
 
 # pylint: enable=unused-variable
