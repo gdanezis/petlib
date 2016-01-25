@@ -1,8 +1,12 @@
 petlib
 ======
 
-A python library that implements a number of Privacy Enhancing Technologies (PETs)
+A python library that implements a number of Privacy Enhancing Technologies (PETs). 
 
+* The full petlib documentation: http://petlib.readthedocs.org/en/latest/
+* Package petlib on pypi: https://pypi.python.org/pypi/petlib/
+* Git repository: https://github.com/gdanezis/petlib
+* Travis CI report: https://travis-ci.org/gdanezis/petlib
 
 Pre-requisites
 --------------
