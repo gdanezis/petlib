@@ -427,24 +427,6 @@ class EcPt(object):
         output = bytes(_FFI.buffer(buf)[:])
         return output
     
-    def sized_export(self, size = 200):
-        """Returns a string binary representation of the point in compressed coordinates. Only returns the first size bytes, or pads with zeros to reach the required length.
-
-        Example:
-            >>> G = EcGroup()
-            >>> byte_string, string_len = G.generator().sized_export(29)
-            >>> print(hexlify(byte_string).decode("utf8"))
-            02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
-
-        """
-
-        s = self.export()
-        if len(s) <= size:
-            return s[:size], size
-        else:
-            return s + ('\x00' * (size - len(s))), len(s)
-
-
     def is_infinite(self):
         """Returns True if this point is at infinity, otherwise False.
 
@@ -687,18 +669,5 @@ def test_p224_const_timing():
         t += [time.clock() - t0]
         print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 5.0 / 100
-
-def test_ec_sized_export():
-    G = EcGroup(713)
-    g = G.generator()
-
-    byte_string, string_len = g.sized_export(29)
-    assert hexlify(byte_string).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
-    assert hexlify(g.export()[:29]).decode("utf8") == "02b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21"
-
-    byte_string, string_len = g.sized_export(200)
-    s = hexlify(byte_string).decode("utf8")
-    assert hexlify(g.export()[:200]).decode("utf8") + ("00" * (200 - string_len)) == s    
-
 
 # pylint: enable=unused-variable
