@@ -84,16 +84,6 @@ def lintlib(quiet=False):
     tell("Run pylint on the library")
     sh('pylint --rcfile=pylintrc petlib', capture=quiet)
 
-@needs("make_env")
-@task
-@virtualenv(dir=r"test_env/pltest")
-def lintexamples(quiet=True):
-    """ Run the python linter on the petlib examples. """
-    tell("Run Lint on example code")
-    sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
-    files = " ".join(match_files("examples", "*.py"))
-    sh('export PYTHONPATH=$PYHTONPATH:./utils; pylint --rcfile=pylintrc --load-plugins ignoretest ' + files, capture=quiet)
-
 @needs("lintlib", "lintexamples")
 @task
 def lint():
@@ -127,6 +117,7 @@ def get_latest_dist():
     v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
     return os.path.join("dist","petlib-%s.tar.gz" % v)
 
+
 @needs('build')
 @task
 def make_env(quiet=True):
@@ -141,6 +132,35 @@ def make_env(quiet=True):
 
 @needs("make_env")
 @task
+@virtualenv(dir=r"test_env/pltest")
+def lintexamples(quiet=True):
+    """ Run the python linter on the petlib examples. """
+    tell("Run Lint on example code")
+    sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
+    files = " ".join(match_files("examples", "*.py"))
+    sh('export PYTHONPATH=$PYHTONPATH:./utils; pylint --rcfile=pylintrc --load-plugins ignoretest ' + files, capture=quiet)
+
+
+@task
+@virtualenv(dir=r"test_env/pltest")
+def venv_unit_tests(quiet=False):
+    """ Run all the unit tests in a Python 2.7 venv py.test context, and produce coverage report. """
+    tell("venv Unit tests")
+    files = " ".join(match_files())
+    # sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
+    # sh('py.test-2.7 -v --doctest-modules ' + files)
+    sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
+
+
+@needs("build", "make_env", "venv_unit_tests")
+@task
+def venvut(quiet=False):
+    pass
+    # sh("rm -rf test_env")
+
+
+@needs("make_env")
+@task
 @virtualenv(dir=os.path.join(r"test_env",r"pltest"))
 def big_tests(quiet=True):
     """ Run all example unit_tests in a fresh python 2.7 context. """
@@ -149,6 +169,7 @@ def big_tests(quiet=True):
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     files = " ".join(match_files("examples", "*.py"))
     sh("py.test-2.7 -v " + files)
+
 
 @task
 def local_big_tests(quiet=True):

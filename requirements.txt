@@ -1,4 +1,4 @@
-cffi>=0.8.2
+cffi>=1.4
 pycparser>=2.10
 future>=0.14.3
 pytest>=2.6.4
