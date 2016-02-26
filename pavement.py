@@ -150,6 +150,7 @@ def venv_unit_tests(quiet=False):
     # sh('py.test-2.7 -v --doctest-modules --cov-report html --cov petlib ' + files)
     # sh('py.test-2.7 -v --doctest-modules ' + files)
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
+    sh("paver unit_tests")
 
 
 @needs("build", "make_env", "venv_unit_tests")
@@ -159,16 +160,20 @@ def venvut(quiet=False):
     # sh("rm -rf test_env")
 
 
-@needs("make_env")
 @task
 @virtualenv(dir=os.path.join(r"test_env",r"pltest"))
-def big_tests(quiet=True):
+def big_tests(quiet=False):
     """ Run all example unit_tests in a fresh python 2.7 context. """
     tell("Run acceptance tests (big examples)")
-    sh("pip install -r requirements.txt", capture=quiet)
+    # sh("pip install -r requirements.txt", capture=quiet)
     sh("pip install %s --upgrade" % get_latest_dist(), capture=quiet)
     files = " ".join(match_files("examples", "*.py"))
     sh("py.test-2.7 -v " + files)
+
+@needs("build", "make_env", "big_tests")
+@task
+def venvbt(quiet=False):
+    pass
 
 
 @task

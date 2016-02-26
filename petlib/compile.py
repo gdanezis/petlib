@@ -425,5 +425,6 @@ unsigned long ERR_get_error(void);
 
 """)
 
-# if __name__ == "__main__":
+#def cffi_compile():
+print("Compiling petlib ...")
 _FFI.compile()
