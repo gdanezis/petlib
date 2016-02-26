@@ -1,5 +1,5 @@
 # The petlib version
-VERSION = '0.0.33'
+VERSION = '0.0.34'
 
 def run_tests():
     # These are only needed in case we test
