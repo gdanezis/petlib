@@ -65,8 +65,8 @@ class Hmac(object):
             raise Exception("HMAC Error loading function %s", name)
 
         self.outsize = _C.EVP_MD_size(md)
-        self.mac_ctx = _FFI.new("HMAC_CTX *")
-        _C.HMAC_CTX_init(self.mac_ctx)
+        self.mac_ctx = _C.HMAC_CTX_new()
+        # _C.HMAC_CTX_init(self.mac_ctx)
         _check(_C.HMAC_Init_ex(self.mac_ctx, key, len(key), md, _FFI.NULL))
         self.active = True
 
@@ -106,7 +106,7 @@ class Hmac(object):
 
     def __del__(self):
         if self.mac_ctx != None:
-            _C.HMAC_CTX_cleanup(self.mac_ctx)
+            _C.HMAC_CTX_free(self.mac_ctx)
         
 
 def test_init():

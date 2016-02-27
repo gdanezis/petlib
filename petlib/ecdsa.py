@@ -90,8 +90,10 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
     r = Bn()
     s = Bn()
 
-    _C.BN_copy(r.bn, ecdsa_sig.r)
-    _C.BN_copy(s.bn, ecdsa_sig.s)
+    _C.ECDSA_SIG_get0([r.bn], [s.bn], ecdsa_sig)
+
+    #_C.BN_copy(r.bn, ecdsa_sig.r)
+    #_C.BN_copy(s.bn, ecdsa_sig.s)
 
     _C.ECDSA_SIG_free(ecdsa_sig)
     _C.EC_KEY_free(ec_key)

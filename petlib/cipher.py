@@ -62,16 +62,18 @@ class Cipher(object):
 
     def len_IV(self):
         """Return the Initialization Vector length in bytes."""
-        return int(self.alg.iv_len)
+        return int(_C.EVP_CIPHER_iv_length(self.alg))
     def len_key(self):
         """Return the secret key length in bytes."""
-        return int(self.alg.key_len)
+        return int(_C.EVP_CIPHER_key_length(self.alg))
     def len_block(self):
         """Return the block size in bytes."""
-        return int(self.alg.block_size)
+        return int(_C.EVP_CIPHER_block_size(self.alg))
     def get_nid(self):
         """Return the OpenSSL nid of the cipher and mode."""
-        return int(self.alg.nid)
+        return int(_C.EVP_CIPHER_nid(self.alg))
+
+
 
     def op(self, key, iv, enc=1):
         """Initializes a cipher operation, either encrypt or decrypt 
@@ -220,7 +222,7 @@ class CipherOperation(object):
 
     def __init__(self, xenc):
         self.ctx = _C.EVP_CIPHER_CTX_new()
-        _C.EVP_CIPHER_CTX_init(self.ctx)
+        # _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
         self.xenc = xenc
             
@@ -331,7 +333,6 @@ class CipherOperation(object):
         _check( _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))
 
     def __del__(self):
-        _check( _C.EVP_CIPHER_CTX_cleanup(self.ctx) )
         _C.EVP_CIPHER_CTX_free(self.ctx)
 
 

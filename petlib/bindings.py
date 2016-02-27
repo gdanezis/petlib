@@ -19,7 +19,7 @@ class Const:
 _inited = False
 
 def version():
-    return str(_FFI.string(_C.SSLeay_version(_C.SSLEAY_VERSION)))
+    return str(_FFI.string(_C.OpenSSL_version(0)))
 
 def get_errors():
     errors = []

@@ -34,16 +34,18 @@ if platform.system() == "Windows":
 else:
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
-    libraries=["crypto"]
-    extra_compile_args=['-Wno-deprecated-declarations']
+    libraries=[]
+    extra_compile_args=['-Wno-deprecated-declarations ']
     if platform.system() == "Darwin":
-        include_dirs=['/opt/local/include']
+        include_dirs=['/home/george/projects/openssl/include/openssl']
         # FIXME(ben): not entirely clear to me why I don't seem to
         # have to include /opt/local/lib.
         library_dirs=[]
+        link_args = ['/home/george/projects/openssl/libcrypto.so.1.1']
     else:
-        include_dirs=[]
+        include_dirs=['/home/george/projects/openssl/include']
         library_dirs=[]
+        link_args = ['/home/george/projects/openssl/libcrypto.so.1.1']
 
 _FFI = cffi.FFI()
 
@@ -58,7 +60,7 @@ _FFI.set_source("petlib._petlib","""
 #include <openssl/hmac.h>
 #include <openssl/ecdsa.h>
 
-#define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
+// #define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
 
 int bn_num_bytes(BIGNUM * a){
@@ -69,22 +71,24 @@ int bn_is_odd(BIGNUM * a){
     return BN_is_odd(a);
 }
 
+/*
 size_t hmac_ctx_size(void){
     return sizeof(HMAC_CTX);
 }
+*/
 
 
-extern void ERR_load_crypto_strings(void);
+// extern void ERR_load_crypto_strings(void);
 extern void OPENSSL_config(void*);
 extern void ERR_free_strings(void);
 
 void init_ciphers(void){
 
     /* Load the human readable error strings for libcrypto */
-    ERR_load_crypto_strings();
+    // ERR_load_crypto_strings();
 
     /* Load all digest and cipher algorithms */
-    OpenSSL_add_all_algorithms();
+    // OpenSSL_add_all_algorithms();
 
     /* Load config file, and other important initialisation */
     OPENSSL_config(NULL);
@@ -107,7 +111,8 @@ void cleanup_ciphers(void){
     """, libraries=libraries, 
     extra_compile_args=extra_compile_args, 
     include_dirs=include_dirs,
-    library_dirs=library_dirs)
+    library_dirs=library_dirs, 
+    extra_link_args=link_args)
 
 
 _FFI.cdef("""
@@ -127,6 +132,16 @@ typedef enum foo {
      POINT_CONVERSION_UNCOMPRESSED = 4,
      POINT_CONVERSION_HYBRID = 6
 } point_conversion_form_t;
+
+
+const char *OpenSSL_version(int type);
+# define OPENSSL_VERSION          0
+# define OPENSSL_CFLAGS           1
+# define OPENSSL_BUILT_ON         2
+# define OPENSSL_PLATFORM         3
+# define OPENSSL_DIR              4
+# define OPENSSL_ENGINES_DIR      5
+
 
 
 /* 
@@ -207,7 +222,7 @@ BN_CTX *BN_CTX_new(void);
 void    BN_CTX_free(BN_CTX *c);
 
 BIGNUM* BN_new(void);
-void    BN_init(BIGNUM *);
+// void    BN_init(BIGNUM *);
 void    BN_clear_free(BIGNUM *a);
 BIGNUM* BN_copy(BIGNUM *a, const BIGNUM *b);
 void    BN_swap(BIGNUM *a, BIGNUM *b);
@@ -264,28 +279,9 @@ int BN_is_bit_set(const BIGNUM *a, int n);
 
 */
 
-typedef struct evp_cipher_st
-{
-    int nid;
-    int block_size;
-    int key_len; /* Default value for variable length ciphers */
-    int iv_len;
-    unsigned long flags; /* Various flags */
-    ...;
-} EVP_CIPHER;
+typedef ... EVP_CIPHER;
 
-typedef struct evp_cipher_ctx_st
-{
-    const EVP_CIPHER *cipher;
-    int encrypt; /* encrypt or decrypt */
-    int buf_len; /* number we have left */
-    int num; /* used by cfb/ofb/ctr mode */
-    int key_len; /* May change for variable length cipher */
-    unsigned long flags; /* Various flags */
-    int final_used;
-    int block_mask;
-    ...;
-} EVP_CIPHER_CTX;
+typedef ... EVP_CIPHER_CTX;
 
 const EVP_CIPHER * EVP_aes_128_gcm(void);
 const EVP_CIPHER * EVP_aes_192_gcm(void);
@@ -295,14 +291,25 @@ typedef ... ENGINE; // Ignore details of the engine.
 
 // Cipher context operations
 
-void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *a);
-int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *a);
+// void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *a);
+// int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *a);
 EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
 void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *a);
 int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *x, int keylen);
 int EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *c, int pad);
 int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr);
 int EVP_CIPHER_CTX_rand_key(EVP_CIPHER_CTX *ctx, unsigned char *key);
+
+int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx);
+int EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx);
+int EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx);
+int EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx);
+
+int EVP_CIPHER_nid(const EVP_CIPHER *cipher);
+int EVP_CIPHER_block_size(const EVP_CIPHER *cipher);
+int EVP_CIPHER_key_length(const EVP_CIPHER *cipher);
+int EVP_CIPHER_iv_length(const EVP_CIPHER *cipher);
+
 
 // Cipher operations
 
@@ -359,34 +366,33 @@ void cleanup_ciphers();
 // The HMAC interface
 
 
-typedef struct { ...; } HMAC_CTX;
+typedef ... HMAC_CTX;
 typedef ... EVP_MD;
 
-size_t hmac_ctx_size();
+// size_t hmac_ctx_size();
 
 int EVP_MD_size(const EVP_MD *md);
 int EVP_MD_block_size(const EVP_MD *md);
 const EVP_MD *EVP_get_digestbyname(const char *name);
 
 
- void HMAC_CTX_init(HMAC_CTX *ctx);
+// void HMAC_CTX_init(HMAC_CTX *ctx);
+HMAC_CTX* HMAC_CTX_new();
+void HMAC_CTX_free(HMAC_CTX *ctx);
+
 
  int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int key_len,
                                      const EVP_MD *md, ENGINE *impl);
  int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, int len);
  int HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
 
- void HMAC_CTX_cleanup(HMAC_CTX *ctx);
+//  void HMAC_CTX_cleanup(HMAC_CTX *ctx);
  
 
 // The ECDSA interface
 
 
-typedef struct ECDSA_SIG_st
-{
-    BIGNUM * r;
-    BIGNUM * s;
-} ECDSA_SIG;
+typedef ...  ECDSA_SIG;
 
 typedef ... EC_KEY; 
 
@@ -407,7 +413,7 @@ ECDSA_SIG*     ECDSA_do_sign_ex(const unsigned char *dgst, int dgstlen,
  int            ECDSA_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
                         BIGNUM **kinv, BIGNUM **rp);
 
-
+void ECDSA_SIG_get0(BIGNUM **pr, BIGNUM **ps, ECDSA_SIG *sig);
 
 
 EC_KEY *EC_KEY_new(void);
@@ -418,8 +424,8 @@ int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
 int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
 
-#define SSLEAY_VERSION ...
-const char *SSLeay_version(int type);
+// #define SSLEAY_VERSION ...
+// const char *SSLeay_version(int type);
 
 unsigned long ERR_get_error(void);
 
@@ -427,4 +433,4 @@ unsigned long ERR_get_error(void);
 
 #def cffi_compile():
 print("Compiling petlib ...")
-_FFI.compile()
+_FFI.compile(verbose=True)
