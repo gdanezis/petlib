@@ -32,7 +32,6 @@ Example:
 
 """
 
-
 from .bindings import _C, _FFI
 from .ec import EcGroup, _check
 from .bn import Bn, _ctx
@@ -78,7 +77,6 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
     _check( _C.EC_KEY_set_private_key(ec_key, priv.bn) )
-    # _check( _C.EC_KEY_precompute_mult(ec_key, _FFI.NULL) )
 
     if kinv_rp is None:
         ecdsa_sig = _C.ECDSA_do_sign(data, len(data), ec_key)
@@ -87,14 +85,12 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
         kinv, rp = kinv_rp
         ecdsa_sig = _C.ECDSA_do_sign_ex(data, len(data), kinv.bn, rp.bn, ec_key)
 
-
     out_len = _C.ECDSA_size(ec_key)
     out = _FFI.new("unsigned char[]", out_len)
-    
     actual_len = _C.i2d_ECDSA_SIG(ecdsa_sig, [out])
-
     ret = bytes(_FFI.buffer(out)[:actual_len])
-
+    del out 
+    
     _C.ECDSA_SIG_free(ecdsa_sig)
     _C.EC_KEY_free(ec_key)
 
