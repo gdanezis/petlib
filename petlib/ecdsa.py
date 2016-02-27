@@ -87,18 +87,18 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
         kinv, rp = kinv_rp
         ecdsa_sig = _C.ECDSA_do_sign_ex(data, len(data), kinv.bn, rp.bn, ec_key)
 
-    r = Bn()
-    s = Bn()
 
-    _C.ECDSA_SIG_get0([r.bn], [s.bn], ecdsa_sig)
+    out_len = _C.ECDSA_size(ec_key)
+    out = _FFI.new("unsigned char[]", out_len)
+    
+    actual_len = _C.i2d_ECDSA_SIG(ecdsa_sig, [out])
 
-    #_C.BN_copy(r.bn, ecdsa_sig.r)
-    #_C.BN_copy(s.bn, ecdsa_sig.s)
+    ret = bytes(_FFI.buffer(out)[:actual_len])
 
     _C.ECDSA_SIG_free(ecdsa_sig)
     _C.EC_KEY_free(ec_key)
 
-    return (r, s)
+    return ret
 
 def do_ecdsa_verify(G, pub, sig, data):
     """A quick function to ECDSA sign a hash.
@@ -113,17 +113,13 @@ def do_ecdsa_verify(G, pub, sig, data):
         bool: A Boolean indicating whether the signature verifies.
     """
 
-    r, s = sig
-
     ec_key = _C.EC_KEY_new()
     _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
     _check( _C.EC_KEY_set_public_key(ec_key, pub.pt) )
     _check( _C.EC_KEY_precompute_mult(ec_key, _ctx.bnctx) )
 
-    ec_sig = _C.ECDSA_SIG_new()
-
-    _C.BN_copy(ec_sig.r, r.bn)
-    _C.BN_copy(ec_sig.s, s.bn)
+    sig_bytes = _FFI.new("unsigned char[]", sig)
+    ec_sig = _C.d2i_ECDSA_SIG(_FFI.NULL, [sig_bytes], len(sig));
 
     try:
         result = int(_C.ECDSA_do_verify(data, len(data), ec_sig, ec_key))
