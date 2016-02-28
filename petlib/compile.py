@@ -28,9 +28,6 @@ if platform.system() == "Windows":
     include_dirs += [os.path.join(openssl_base, "include")]
     library_dirs = [openssl_base, os.path.join(openssl_base, "lib"), os.path.join(openssl_base, "bin")]
 
-    # print("Windows Library directories:")
-    # print(library_dirs)
-
 else:
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
@@ -46,8 +43,6 @@ else:
         library_dirs=[]
 
 _FFI = cffi.FFI()
-
-# _FFI.set_source(""" """, libraries=libraries, extra_compile_args=extra_compile_args, include_dirs=include_dirs, library_dirs=library_dirs, ext_package='petlib')
 
 _FFI.set_source("petlib._petlib","""
 
