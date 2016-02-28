@@ -31,7 +31,7 @@ if platform.system() == "Windows":
 else:
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
-    libraries=[ ]
+    libraries=[]
     extra_compile_args=['-Wno-deprecated-declarations ']
     if platform.system() == "Darwin":
         include_dirs=['../openssl/include']
@@ -42,7 +42,7 @@ else:
     else:
         include_dirs=['../openssl/include']
         library_dirs=['.']
-        link_args = ['../openssl/libcrypto.so']
+        link_args = ['../openssl/libcrypto.a']
 
 _FFI = cffi.FFI()
 

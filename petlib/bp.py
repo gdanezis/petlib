@@ -8,7 +8,7 @@ As an example here is an implementation of the BLS signature scheme (Boneh, Lynn
     >>> pub = private * G.gen2() # The public key
     >>>
     >>> # Signature
-    >>> message = "Hello World"
+    >>> message = b"Hello World"
     >>> sig = private * G.hashG1(message)
     >>>
     >>> # Verification
@@ -57,6 +57,8 @@ NID_fp254bnb = 1
 class BpGroup(object):
     """ A class representing all groups involved in the bilinear pairing: G1, G2, and GT. """
     
+    bpq = None
+
     def __init__(self, nid=NID_fp254bnb, optimize_mult=True):
         """Build an BP group from the Open SSL nid."""
 
@@ -107,7 +109,7 @@ class BpGroup(object):
         Example:
             >>> G = BpGroup()
             >>> g1 = G.gen1()
-            >>> g1p = G.hashG1("Hello")
+            >>> g1p = G.hashG1(b"Hello")
             >>> x = g1 + g1p
         """
 
