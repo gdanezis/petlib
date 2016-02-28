@@ -44,7 +44,7 @@ else:
         link_args = ['../openssl/']
     else:
         include_dirs=['../openssl/include']
-        library_dirs=[]
+        library_dirs=['.']
         link_args = ['../openssl/libcrypto.so']
 
 _FFI = cffi.FFI()

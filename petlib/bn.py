@@ -27,13 +27,13 @@ def force_Bn(n):
         @wraps(f)  
         def new_f(*args, **kwargs):
             try:
-                if args[n].bn: #isinstance(args[n], Bn):
-                    return f(*args, **kwargs)
-            except:
-                # assert not isinstance(args[n], Bn)
+                # Keep this for the side effects
+                args[n].bn
 
-                if not n < len(args):
-                    return f(*args, **kwargs)
+            except IndexError as e:
+                return f(*args, **kwargs)
+
+            except AttributeError as e:
 
                 if isinstance(args[n], int):
                     r = Bn(args[n])
@@ -41,8 +41,10 @@ def force_Bn(n):
                     new_args[n] = r
                     return f(*tuple(new_args), **kwargs)
 
-            # print(n, type(args[n]), args[n])
-            return NotImplemented
+                return NotImplemented
+
+            return f(*args, **kwargs)
+
         return new_f
     return convert_nth
 
@@ -512,7 +514,7 @@ class Bn(object):
         return r
 
 
-    # @force_Bn(1)
+    @force_Bn(1)
     def mod_inverse(self, m):
         """
         mod_inverse(m)
@@ -537,9 +539,9 @@ class Bn(object):
             
             if reason == no_inverse:
                 raise Exception("No inverse")
+            else:
+                raise Exception("mod_inverse error: %s" % reason)
             
-            _check( False )
-
         return res
 
 
@@ -818,7 +820,7 @@ def test_bn_arithmetic():
 
     with pytest.raises(Exception) as excinfo:
         Bn(3).mod_inverse(0)
-    assert 'No inverse' in str(excinfo.value)
+    assert '103' in str(excinfo.value)
 
 
     assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
@@ -926,5 +928,7 @@ def test_check():
 
 def test_bn_mod_inv():
     p = Bn.from_decimal("26959946667150639794667015087019630673557916260026308143510066298880")
-    i = Bn(3).mod_inverse(p)
-    assert (Bn(3) * i) % p == Bn(1)
+    with pytest.raises(Exception) as excinfo:
+        i = Bn(3).mod_inverse(p)
+    assert 'No inverse' in str(excinfo.value)
+
