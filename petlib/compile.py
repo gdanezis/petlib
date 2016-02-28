@@ -37,15 +37,15 @@ else:
     libraries=[ ]
     extra_compile_args=['-Wno-deprecated-declarations ']
     if platform.system() == "Darwin":
-        include_dirs=['/home/george/projects/openssl/include']
+        include_dirs=['../openssl/include']
         # FIXME(ben): not entirely clear to me why I don't seem to
         # have to include /opt/local/lib.
         library_dirs=[]
-        link_args = ['/home/george/projects/openssl/']
+        link_args = ['../openssl/']
     else:
-        include_dirs=['/home/george/projects/openssl/include']
+        include_dirs=['../openssl/include']
         library_dirs=[]
-        link_args = ['/home/george/projects/openssl/libcrypto.so']
+        link_args = ['../openssl/libcrypto.so']
 
 _FFI = cffi.FFI()
 
