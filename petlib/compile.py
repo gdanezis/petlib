@@ -575,6 +575,6 @@ int GT_ELEMs_pairing(const BP_GROUP *group, GT_ELEM *r, size_t num,
 
 """)
 
-#def cffi_compile():
-print("Compiling petlib ...")
-_FFI.compile(verbose=True)
+if __name__ == "__main__":
+    print("Compiling petlib ...")
+    _FFI.compile(verbose=True)
