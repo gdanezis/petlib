@@ -12,8 +12,8 @@ before_install:
 
 # command to install dependencies
 install: 
-  - sudo pip install -r requirements.txt
-  - sudo python setup.py install
+  - pip install -r requirements.txt
+  - python setup.py install
 
 # command to run tests
 script: paver generic_unit_tests
