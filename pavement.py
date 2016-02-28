@@ -75,8 +75,14 @@ def win(quiet=True):
 @task
 def upload(quiet=False):
     """ Uploads the latest distribution to pypi. """
-    tell("upload dist")
+
+    lib = file(os.path.join("petlib", "__init__.py")).read()
+    v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
+
+    tell("upload dist %s" % v)
+    sh('git tag -a v%s -m "Distribution versio v%s"' % (v, v))
     sh('python setup.py sdist upload', capture=quiet)
+    tell('Remeber to upload tags using "git push --tags"')
 
 @task
 def lintlib(quiet=False):
