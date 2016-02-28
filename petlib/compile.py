@@ -139,7 +139,13 @@ const char *OpenSSL_version(int type);
 # define OPENSSL_DIR              4
 # define OPENSSL_ENGINES_DIR      5
 
+
+# define BN_R_NO_INVERSE ...
+
 unsigned long ERR_get_error(void);
+int ERR_GET_LIB(unsigned long e);
+int ERR_GET_FUNC(unsigned long e);
+int ERR_GET_REASON(unsigned long e);
 
 /* 
     ECC OpenSSL functions.
@@ -412,6 +418,9 @@ int BP_GROUP_precompute_mult_G1(BP_GROUP *group, BN_CTX *ctx);
 int BP_GROUP_get_generator_G2(const BP_GROUP *group, G2_ELEM *g);
 int BP_GROUP_precompute_mult_G2(BP_GROUP *group, BN_CTX *ctx);
 
+int BP_GROUP_get_curve(const BP_GROUP *group, BIGNUM *p, BIGNUM *a,
+                       BIGNUM *b, BN_CTX *ctx);
+
 
 G1_ELEM *G1_ELEM_new(const BP_GROUP *group);
 void G1_ELEM_free(G1_ELEM *point);
@@ -419,6 +428,8 @@ void G1_ELEM_clear_free(G1_ELEM *point);
 int G1_ELEM_copy(G1_ELEM *dst, const G1_ELEM *src);
 G1_ELEM *G1_ELEM_dup(const G1_ELEM *src, const BP_GROUP *group);
 int G1_ELEM_set_to_infinity(const BP_GROUP *group, G1_ELEM *point);
+
+
 int G1_ELEM_set_Jprojective_coordinates(const BP_GROUP *group,
                                         G1_ELEM *point, const BIGNUM *x,
                                         const BIGNUM *y,
@@ -466,6 +477,7 @@ int G1_ELEM_mul(const BP_GROUP *group, G1_ELEM *r, const BIGNUM *g_scalar,
 int G1_ELEMs_mul(const BP_GROUP *group, G1_ELEM *r, const BIGNUM *scalar,
                  size_t num, const G1_ELEM *points[],
                  const BIGNUM *scalars[], BN_CTX *ctx);
+
 
 /********************************************************************/
 /*              Functions for managing G2 elements                  */

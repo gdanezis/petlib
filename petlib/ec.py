@@ -206,7 +206,7 @@ class EcGroup(object):
             x = Bn.from_binary(xhash) % p
             ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, _ctx.bnctx)
 
-        assert self.check_point(pt)
+        _check( self.check_point(pt) )
         _check( ret )
         return pt
 
@@ -641,7 +641,6 @@ def test_ec_bin_translation():
         EcPt.from_binary(ept, G)
     t1 = timer()
     print("\nParsed uncompressed Pt: %2.4f" % (t1-t0))
-
 
 import platform
 

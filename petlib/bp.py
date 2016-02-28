@@ -1,3 +1,22 @@
+""" A bilinear pairing library based on Diego Aranha's bp contribution to OpenSSL. 
+As an example here is an implementation of the BLS signature scheme (Boneh, Lynn, Shacham, 2001):
+    >>> from petlib.bp import BpGroup
+    >>> G = BpGroup()
+    >>>
+    >>> # Key Generation
+    >>> private = G.order().random()
+    >>> pub = private * G.gen2() # The public key
+    >>>
+    >>> # Signature
+    >>> message = "Hello World"
+    >>> sig = private * G.hashG1(message)
+    >>>
+    >>> # Verification
+    >>> G.pair(sig, G.gen2()) == G.pair(G.hashG1(message), pub)
+    True
+
+"""
+
 from .bindings import _FFI, _C, Const
 from .bn import Bn, force_Bn, _ctx
 
@@ -36,6 +55,7 @@ import pytest
 NID_fp254bnb = 1
 
 class BpGroup(object):
+    """ A class representing all groups involved in the bilinear pairing: G1, G2, and GT. """
     
     def __init__(self, nid=NID_fp254bnb, optimize_mult=True):
         """Build an BP group from the Open SSL nid."""
@@ -58,6 +78,8 @@ class BpGroup(object):
         self.ord = None
         self.inf = None
 
+        self.p = None
+
     def order(self):
         """Returns the order of the group as a Big Number.
 
@@ -78,6 +100,36 @@ class BpGroup(object):
     def gen1(self):
         """ Returns the generator for G1. """
         return self.g1
+
+    def hashG1(self, sbin):
+        """ Hashes a byte string into a point of G1. 
+
+        Example:
+            >>> G = BpGroup()
+            >>> g1 = G.gen1()
+            >>> g1p = G.hashG1("Hello")
+            >>> x = g1 + g1p
+        """
+
+        if self.p is None:
+            p = Bn()
+            a, b = Bn(), Bn()
+            _check( _C.BP_GROUP_get_curve(self.bpg, p.bn, a.bn, b.bn, _FFI.NULL) )
+            self.p = p
+
+        pt = G1Elem(self)
+        xhash = sbin
+        y = 1    
+        ret = 0
+
+        while ret == 0:
+            xhash = sha512(xhash).digest()
+            x = Bn.from_binary(xhash) % self.p
+            ret = _C.G1_ELEM_set_compressed_coordinates(self.bpg, pt.elem, x.bn, y, _FFI.NULL)
+
+        _check( _C.G1_ELEM_is_on_curve(self.bpg, pt.elem, _FFI.NULL) )
+        return pt
+
 
     def gen2(self):
         """ Returns the generator for G2. """
@@ -212,6 +264,7 @@ class G1Elem(Ops):
         return (int(resp) == 0)
 
     def isinf(self):
+        """ Returns True if the element is infinity. """
         return int(_C.G1_ELEM_is_at_infinity(self.group.bpg, self.elem)) == 1
 
     @force_Bn(1)
@@ -328,6 +381,7 @@ class G2Elem(Ops):
         return (int(resp) == 0)
 
     def isinf(self):
+        """ Returns True if the element is infinity."""
         return int(_C.G2_ELEM_is_at_infinity(self.group.bpg, self.elem)) == 1
 
     @force_Bn(1)
@@ -384,6 +438,7 @@ class GTElem(Ops):
         return zero_pt
 
     def iszero(self):
+        """ Return True if the element is zero."""
         return int(_C.GT_ELEM_is_zero(self.elem)) == 1
 
     @staticmethod
@@ -394,6 +449,7 @@ class GTElem(Ops):
         return one_pt
 
     def isone(self):
+        """ Return zero if the element is one. """
         return int(_C.GT_ELEM_is_unity(self.group.bpg, self.elem)) == 1
 
     def __init__(self, group):

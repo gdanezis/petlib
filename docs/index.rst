@@ -169,6 +169,22 @@ Module petlib.pack
 
 .. autofunction:: petlib.pack.decode
 
+Module petlib.bp
+------------------
+
+.. automodule:: petlib.bp
+
+.. autoclass:: petlib.bp.BpGroup
+    :members:
+
+.. autoclass:: petlib.bp.G1Elem
+    :members:
+
+.. autoclass:: petlib.bp.G2Elem
+    :members:
+
+.. autoclass:: petlib.bp.GTElem
+    :members:
 
 
 Indices and tables

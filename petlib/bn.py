@@ -26,11 +26,12 @@ def force_Bn(n):
         # pylint: disable=star-args
         @wraps(f)  
         def new_f(*args, **kwargs):
-
             try:
                 if args[n].bn: #isinstance(args[n], Bn):
                     return f(*args, **kwargs)
             except:
+                # assert not isinstance(args[n], Bn)
+
                 if not n < len(args):
                     return f(*args, **kwargs)
 
@@ -40,6 +41,7 @@ def force_Bn(n):
                     new_args[n] = r
                     return f(*tuple(new_args), **kwargs)
 
+            # print(n, type(args[n]), args[n])
             return NotImplemented
         return new_f
     return convert_nth
@@ -510,7 +512,7 @@ class Bn(object):
         return r
 
 
-    @force_Bn(1)
+    # @force_Bn(1)
     def mod_inverse(self, m):
         """
         mod_inverse(m)
@@ -518,7 +520,7 @@ class Bn(object):
 
         Example:
 
-            >>> Bn(10).mod_inverse(m = Bn(11))  # Only function notation available
+            >>> Bn(10).mod_inverse(Bn(11))  # Only function notation available
             10
             >>> Bn(10).mod_mul(Bn(10), m = Bn(11)) == Bn(1)
             True
@@ -527,13 +529,16 @@ class Bn(object):
 
         res = Bn()
         err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, _ctx.bnctx)
+
         if err == _FFI.NULL:
             errs = get_errors()
+            reason = int(_C.ERR_GET_REASON(errs[0]))
+            no_inverse = int(_C.BN_R_NO_INVERSE)
             
-            if errs == [ 50770023 ]:
+            if reason == no_inverse:
                 raise Exception("No inverse")
-            else:
-                _check( False )
+            
+            _check( False )
 
         return res
 
@@ -918,3 +923,8 @@ def test_check():
     with pytest.raises(Exception) as excinfo:
         _check(0)      
     assert 'BN' in str(excinfo.value)
+
+def test_bn_mod_inv():
+    p = Bn.from_decimal("26959946667150639794667015087019630673557916260026308143510066298880")
+    i = Bn(3).mod_inverse(p)
+    assert (Bn(3) * i) % p == Bn(1)
