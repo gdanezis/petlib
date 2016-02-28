@@ -8,6 +8,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq python-dev libssl-dev libffi-dev
   - sudo apt-get install --reinstall libssl1.0.0
+  - wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python
 
 # command to install dependencies
 install: 
