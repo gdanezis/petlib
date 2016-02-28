@@ -93,7 +93,8 @@ class BpGroup(object):
                 >>> gt6 = G.pair(g1.mul(2), g2.mul(3))
                 >>> gt.exp(6).eq( gt6 )
                 True
-
+                >>> gt**6 == G.pair(2*g1, 3*g2)
+                True
         """
 
         gt = GTElem(self)
@@ -109,12 +110,46 @@ class BpGroup(object):
         if self.bpq is not None:
             _C.BP_GROUP_clear_free(self.bpg)
 
-class G1Elem:
+
+class Ops(object):
+    """ A class to implement infix operations. """
+
+    def __eq__(self, other):
+        try:
+            return self.eq(other)
+        except Exception as e:
+            raise Exception("Equality Operation Failed: %s" % e.value())
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __add__(self, other):
+        return self.add(other)
+
+    def __sub__(self, other):
+        try:
+            return self.sub(other)
+        except:
+            return self.add(other.neg())
+
+    def __mul__(self, other):
+        return self.mul(other)
+
+    def __rmul__(self, other):
+        return self.mul(other)
+
+    def __pow__(self, other, modulo=None):
+        return self.exp(other)
+
+    def __neg__(self):
+        return
+
+class G1Elem(Ops):
 
     @staticmethod
     def inf(group):
         """ Returns the element at infinity for G1 """
-        zero = G1Elem(self.group)
+        zero = G1Elem(group)
         _check( _C.G1_ELEM_set_to_infinity(group.bpg, zero.elem) )
         return zero
 
@@ -141,12 +176,15 @@ class G1Elem:
         _check( _C.G1_ELEM_dbl(self.group.bpg, newpt.elem, self.elem, _FFI.NULL) )
         return newpt
 
-    def inv(self):
+    def neg(self):
         """ Returns the inverse point. 
 
             Example:
-                >>> g1 = BpGroup().gen1()
-                >>> g1.add(g1.inv()).isinf()
+                >>> G = BpGroup()
+                >>> g1 = G.gen1()
+                >>> g1.add(g1.neg()).isinf()
+                True
+                >>> g1 - g1 == G1Elem.inf(G)
                 True
 
         """
@@ -164,6 +202,11 @@ class G1Elem:
                 True
                 >>> g1.eq(g1.double())
                 False
+                >>> g1+g1 == 2*g1
+                True
+                >>> g1+g1 == Bn(2)*g1
+                True
+
         """
         resp = _C.G1_ELEM_cmp(self.group.bpg, self.elem, other.elem, _FFI.NULL)
         return (int(resp) == 0)
@@ -204,7 +247,7 @@ class G1Elem:
                 >>> g1 = G.gen1()
                 >>> buf = g1.export()
                 >>> g1p = G1Elem.from_bytes(buf, G)
-                >>> g1.eq(g1p)
+                >>> g1 == g1p
                 True
 
         """
@@ -219,12 +262,12 @@ class G1Elem:
         _C.G1_ELEM_clear_free(self.elem);
 
 
-class G2Elem:
+class G2Elem(Ops):
 
     @staticmethod
     def inf(group):
         """ Returns the element at infinity for G2. """
-        zero = G2Elem(self.group)
+        zero = G2Elem(group)
         _check( _C.G2_ELEM_set_to_infinity(group.bpg, zero.elem) )
         return zero
 
@@ -251,12 +294,12 @@ class G2Elem:
         _check( _C.G2_ELEM_dbl(self.group.bpg, newpt.elem, self.elem, _FFI.NULL) )
         return newpt
 
-    def inv(self):
+    def neg(self):
         """ Returns the inverse point. 
 
             Example:
                 >>> g2 = BpGroup().gen2()
-                >>> g2.add(g2.inv()).isinf()
+                >>> g2.add(g2.neg()).isinf()
                 True
 
         """
@@ -272,8 +315,14 @@ class G2Elem:
                 >>> g2 = G.gen2()
                 >>> g2.add(g2).eq(g2.double())
                 True
+                >>> g2.add(g2) == g2.double()
+                True
                 >>> g2.eq(g2.double())
                 False
+                >>> g2 != g2.double()
+                True
+
+
         """
         resp = _C.G2_ELEM_cmp(self.group.bpg, self.elem, other.elem, _FFI.NULL)
         return (int(resp) == 0)
@@ -325,7 +374,7 @@ class G2Elem:
 
         return newpt
 
-class GTElem:
+class GTElem(Ops):
 
     @staticmethod
     def zero(group):
@@ -360,7 +409,7 @@ class GTElem:
             >>> g1, g2 = G.gen1(), G.gen2()
             >>> gt = G.pair(g1, g2)
             >>> gtp = gt.__copy__()
-            >>> gt.eq(gtp)
+            >>> gt == gtp
             True
 
         """
@@ -377,6 +426,12 @@ class GTElem:
                 >>> x = zero.add(zero)
                 >>> x.iszero()
                 True
+                >>> zero + zero == zero
+                True
+                >>> one = GTElem.one(G)
+                >>> zero + one == one
+                True
+
         """
         newpt = GTElem(self.group)
         _check( _C.GT_ELEM_add(self.group.bpg, newpt.elem, self.elem, other.elem, _FFI.NULL) )
@@ -387,10 +442,14 @@ class GTElem:
 
             Example:
                 >>> G = BpGroup()
+                >>> zero = GTElem.zero(G)
                 >>> one = GTElem.one(G)
                 >>> x = one.sub(one)
                 >>> x.iszero()
                 True
+                >>> one - one == zero
+                True
+
         """
         newpt = GTElem(self.group)
         _check( _C.GT_ELEM_sub(self.group.bpg, newpt.elem, self.elem, other.elem, _FFI.NULL) )
@@ -405,6 +464,8 @@ class GTElem:
                 >>> gtinv = gt.inv()
                 >>> x = gt.mul(gtinv)
                 >>> x.isone()
+                True
+                >>> gt * gtinv == GTElem.one(G)
                 True
         """
         newpt = GTElem(self.group)
