@@ -27,10 +27,11 @@ if platform.system() == "Windows":
     assert bin_name == "bin"
     include_dirs += [os.path.join(openssl_base, "include")]
     library_dirs = [openssl_base, os.path.join(openssl_base, "lib"), os.path.join(openssl_base, "bin")]
-
+    link_args = []
 else:
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
+    link_args = []
     libraries=["crypto"]
     extra_compile_args=['-Wno-deprecated-declarations']
     if platform.system() == "Darwin":
@@ -41,6 +42,7 @@ else:
     else:
         include_dirs=[]
         library_dirs=[]
+        # link_args = ['libcrypto.so']
 
 _FFI = cffi.FFI()
 
@@ -102,7 +104,8 @@ void cleanup_ciphers(void){
     """, libraries=libraries, 
     extra_compile_args=extra_compile_args, 
     include_dirs=include_dirs,
-    library_dirs=library_dirs)
+    library_dirs=library_dirs,
+    extra_link_args=link_args)
 
 
 _FFI.cdef("""
