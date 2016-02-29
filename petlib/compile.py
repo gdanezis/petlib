@@ -4,7 +4,6 @@ import os
 import platform
 import cffi
 
-
 if platform.system() == "Windows":
     # Windows building instructions:
     # * Ensure you compile with a 64bit lib and toolchain 
@@ -29,20 +28,28 @@ if platform.system() == "Windows":
     library_dirs = [openssl_base, os.path.join(openssl_base, "lib"), os.path.join(openssl_base, "bin")]
 
 else:
+    try:
+        print("OpenSSL Path: %s" % os.environ["OPENSSL_DIR"])
+        openssl_dir = os.environ["OPENSSL_DIR"]
+    except:
+        print "Using default openssl location. Set OPENSSL_DIR env variable to change it."
+        openssl_dir = '../openssl'
+
     ## Asume we are running on a posix system
     # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
     libraries=[]
     extra_compile_args=['-Wno-deprecated-declarations ']
     if platform.system() == "Darwin":
-        include_dirs=['../openssl/include']
+        include_dirs=[os.path.join(openssl_dir,'include')]
         # FIXME(ben): not entirely clear to me why I don't seem to
         # have to include /opt/local/lib.
         library_dirs=[]
-        link_args = ['../openssl/']
+        link_args = [openssl_dir]
     else:
-        include_dirs=['../openssl/include']
-        library_dirs=['.']
-        link_args = ['../openssl/libcrypto.a']
+        include_dirs=[os.path.join(openssl_dir, 'include')]
+        library_dirs=[]
+        link_args = [os.path.join(openssl_dir,'libcrypto.a')]
+
 
 _FFI = cffi.FFI()
 
@@ -50,9 +57,7 @@ _FFI.set_source("petlib._petlib","""
 
 #include <openssl/err.h>
 #include <openssl/bn.h>
-
 #include <openssl/bp.h>
-
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -572,4 +577,4 @@ int GT_ELEMs_pairing(const BP_GROUP *group, GT_ELEM *r, size_t num,
 
 if __name__ == "__main__":
     print("Compiling petlib ...")
-    _FFI.compile()
+    _FFI.compile(verbose=True)
