@@ -415,7 +415,7 @@ def cred_show_proof(params, n):
 
     return zk
 
-def cred_show(params, publics, mac, sig, messages, cred_show_proof=cred_show_proof, xenv=None):
+def cred_show(params, publics, mac, sig, messages, cred_show_proof=cred_show_proof, xenv=None, export_zi=False):
     ## Parse and re-randomize
     G, g, h, o = params
     Cx0, iparams = publics
@@ -462,7 +462,10 @@ def cred_show(params, publics, mac, sig, messages, cred_show_proof=cred_show_pro
     if __debug__:
         assert zk.verify_proof(env.get(), sig, strict=False)
 
-    return cred, sig
+    if export_zi:
+	    return cred, sig, zis
+    else:
+	    return cred, sig
 
 def cred_show_check(params, publics, secrets, creds, sig, cred_show_proof=cred_show_proof, xenv={}):
 
