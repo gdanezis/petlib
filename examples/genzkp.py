@@ -245,7 +245,7 @@ class ZKProof(object):
 
             for v in variables:
                 if not v in env:
-                    raise Exception("Could not find variable \"%s\" in the environment." % v)
+                    raise Exception("Could not find variable %s in the environment.\n%s" % (repr(v), repr(variables)))
 
     def render_proof_statement(self):
         s = r'$'
@@ -577,7 +577,7 @@ def test_Pedersen_Env_missing():
     ## Ensure we catch missing variables
     with pytest.raises(Exception) as excinfo:
         zk.build_proof(env.get())
-    assert 'Could not find variable "o"' in str(excinfo.value)
+    assert 'Could not find variable' in str(excinfo.value)
 
     ## Ensure we catch false statements
     env.o = bn_o + 1    
