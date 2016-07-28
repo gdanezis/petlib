@@ -52,8 +52,15 @@ class CredentialServer():
         self.ipub, self.isec = cred_CredKeyge(self.params, self.n)
 
 
-    @asyncio.coroutine
     def handle_cmd(self, reader, writer):
+        sr = SReader(reader, writer)
+
+        CMD = sr.get()
+        if CMD == "FULL":
+            yield from self.handle_full(sr, reader, writer)
+
+    @asyncio.coroutine
+    def handle_full(self, sr, reader, writer):
 
         try:
             (G, g, h, o) = self.params
@@ -136,6 +143,8 @@ def test_server(event_loop, unused_tcp_port):
         reader, writer = yield from asyncio.open_connection(
                     ip, port, loop=loop)        
         sr = SReader(reader, writer)
+
+        sr.put("FULL")
 
         # Part 1. Get the params and the ipub
         (params, ipub) = yield from sr.get()
