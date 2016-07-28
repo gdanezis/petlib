@@ -5,7 +5,6 @@
 # The general imports
 
 import asyncio
-import pytest # requires pytest-asyncio!
 from io import BytesIO
 from msgpack import Unpacker
 
@@ -54,7 +53,7 @@ class CredentialServer():
 
 
     @asyncio.coroutine
-    def handle_echo(self, reader, writer):
+    def handle_cmd(self, reader, writer):
 
         try:
             (G, g, h, o) = self.params
@@ -121,19 +120,21 @@ def define_proof(G):
     return zk
 
 
+import pytest # requires pytest-asyncio!
+
 def test_server(event_loop, unused_tcp_port):
 
     cs = CredentialServer()
 
-    coro = asyncio.start_server(cs.handle_echo, 
+    coro = asyncio.start_server(cs.handle_cmd, 
                 '127.0.0.1', unused_tcp_port, loop=event_loop)
     
     @asyncio.coroutine
-    def sample_client():
+    def full_client(ip, port, loop):
 
         ## Setup the channel
         reader, writer = yield from asyncio.open_connection(
-                    '127.0.0.1', unused_tcp_port, loop=event_loop)        
+                    ip, port, loop=loop)        
         sr = SReader(reader, writer)
 
         # Part 1. Get the params and the ipub
@@ -199,12 +200,12 @@ def test_server(event_loop, unused_tcp_port):
         writer.close()
 
     event_loop.create_task(coro)
-    resp = event_loop.run_until_complete(sample_client())
+    resp = event_loop.run_until_complete(full_client('127.0.0.1', unused_tcp_port, event_loop))
 
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    coro = asyncio.start_server(handle_echo, '127.0.0.1', 8888, loop=loop)
+    coro = asyncio.start_server(handle_cmd, '127.0.0.1', 8888, loop=loop)
     server = loop.run_until_complete(coro)
 
     # Serve requests until Ctrl+C is pressed
