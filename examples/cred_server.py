@@ -155,6 +155,21 @@ def define_proof(G):
 import pytest # requires pytest-asyncio!
 
 @asyncio.coroutine
+def info_client(ip, port, loop):
+    ## Setup the channel
+    reader, writer = yield from asyncio.open_connection(
+                ip, port, loop=loop)        
+    sr = SReader(reader, writer)
+
+    # Send the FULL command
+    sr.put("INFO")
+
+    # Part 1. Get the params and the ipub
+    (params, ipub) = yield from sr.get()
+    (G, g, h, o) = params
+    return params
+
+@asyncio.coroutine
 def full_client(ip, port, loop):
 
     ## Setup the channel
@@ -228,16 +243,23 @@ def full_client(ip, port, loop):
     writer.close()
 
 
-def test_server(event_loop, unused_tcp_port):
-
+def test_full_server(event_loop, unused_tcp_port):
     cs = CredentialServer()
-
     coro = asyncio.start_server(cs.handle_cmd, 
                 '127.0.0.1', unused_tcp_port, loop=event_loop)    
 
     event_loop.create_task(coro)
     resp = event_loop.run_until_complete(full_client('127.0.0.1', unused_tcp_port, event_loop))
 
+def test_info_server(event_loop, unused_tcp_port):
+    cs = CredentialServer()
+    coro = asyncio.start_server(cs.handle_cmd, 
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
+
+    event_loop.create_task(coro)
+    resp = event_loop.run_until_complete(info_client('127.0.0.1', unused_tcp_port, event_loop))
+
+    assert resp == cs.params
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
