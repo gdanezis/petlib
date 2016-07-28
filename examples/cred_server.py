@@ -51,13 +51,38 @@ class CredentialServer():
         self.params = cred_setup()
         self.ipub, self.isec = cred_CredKeyge(self.params, self.n)
 
-
+    @asyncio.coroutine
     def handle_cmd(self, reader, writer):
-        sr = SReader(reader, writer)
+        try:
+            sr = SReader(reader, writer)
 
-        CMD = sr.get()
-        if CMD == "FULL":
-            yield from self.handle_full(sr, reader, writer)
+            CMD = yield from sr.get()
+
+            print("Executing: %s" % CMD)
+            if CMD == "FULL":
+                yield from self.handle_full(sr, reader, writer)
+            elif CMD == "INFO":
+                yield from self.handle_info(sr, reader, writer)
+
+        except Exception as e:
+            print(e)
+            sr.put("Error")
+
+
+    @asyncio.coroutine
+    def handle_info(self, sr, reader, writer):
+
+        try:
+            (G, g, h, o) = self.params
+            sr = SReader(reader, writer)
+
+            # Part 1. First we write the params and the ipub values
+            sr.put( (self.params, self.ipub) )
+
+        except Exception as e:
+            print(e)
+            sr.put("Error")
+
 
     @asyncio.coroutine
     def handle_full(self, sr, reader, writer):
@@ -129,84 +154,86 @@ def define_proof(G):
 
 import pytest # requires pytest-asyncio!
 
+@asyncio.coroutine
+def full_client(ip, port, loop):
+
+    ## Setup the channel
+    reader, writer = yield from asyncio.open_connection(
+                ip, port, loop=loop)        
+    sr = SReader(reader, writer)
+
+    # Send the FULL command
+    sr.put("FULL")
+
+    # Part 1. Get the params and the ipub
+    (params, ipub) = yield from sr.get()
+    (G, g, h, o) = params
+
+    # User creates a public / private key pair
+    keypair = cred_UserKeyge(params)
+
+    # User packages credentials
+    LT_user_ID = o.random()
+    timeout = 100
+    public_attr = [ timeout ]
+    private_attr = [ LT_user_ID ]
+
+    # Part 2. Send the encrypted attributes to server
+    user_token = cred_secret_issue_user(params, keypair, private_attr)
+    (pub, EGenc, sig_u) = user_token
+    sr.put( (user_token, public_attr) )        
+
+    # Part 3. Get the credential back
+    u, EncE, sig_s = yield from sr.get()
+    mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig_s)
+
+    # Part 4. Blind and show the credential
+    
+    ## User Shows back full credential to issuer
+    (creds, sig_o, zis) = cred_show(params, ipub, mac, sig_s, public_attr + private_attr, export_zi=True)
+
+    ## The credential contains a number of commitments to the attributes
+    (u, Cmis, Cup) = creds
+
+    assert len(Cmis) == 2
+    assert Cmis[0] == timeout * u + zis[0] * h
+    assert Cmis[1] == LT_user_ID * u + zis[1] * h
+
+    # Derive a service specific User ID
+    Service_name = b"ServiceNameRP"
+
+    Gid = G.hash_to_point(Service_name)
+    Uid = LT_user_ID * Gid
+
+    # Define the statements to be proved
+    zk = define_proof(G)
+
+    # Define the proof environemnt
+    env = ZKEnv(zk)
+    env.u, env.h = u, h
+    env.Cm0p, env.Cm1 = Cmis[0] - (timeout * u), Cmis[1]
+    env.Uid, env.Gid = Uid, Gid
+    env.LT_ID = LT_user_ID
+    env.z0, env.z1 = zis[0], zis[1]
+
+    sig_openID = zk.build_proof(env.get())
+
+    sr.put( (creds, sig_o, sig_openID, Service_name, Uid) )
+
+
+    # Check status
+    resp = yield from sr.get()
+    assert resp == "SUCCESS"
+
+    writer.close()
+
+
 def test_server(event_loop, unused_tcp_port):
 
     cs = CredentialServer()
 
     coro = asyncio.start_server(cs.handle_cmd, 
-                '127.0.0.1', unused_tcp_port, loop=event_loop)
-    
-    @asyncio.coroutine
-    def full_client(ip, port, loop):
-
-        ## Setup the channel
-        reader, writer = yield from asyncio.open_connection(
-                    ip, port, loop=loop)        
-        sr = SReader(reader, writer)
-
-        sr.put("FULL")
-
-        # Part 1. Get the params and the ipub
-        (params, ipub) = yield from sr.get()
-        (G, g, h, o) = params
-
-        # User creates a public / private key pair
-        keypair = cred_UserKeyge(params)
-
-        # User packages credentials
-        LT_user_ID = o.random()
-        timeout = 100
-        public_attr = [ timeout ]
-        private_attr = [ LT_user_ID ]
-
-        # Part 2. Send the encrypted attributes to server
-        user_token = cred_secret_issue_user(params, keypair, private_attr)
-        (pub, EGenc, sig_u) = user_token
-        sr.put( (user_token, public_attr) )        
-
-        # Part 3. Get the credential back
-        u, EncE, sig_s = yield from sr.get()
-        mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig_s)
-
-        # Part 4. Blind and show the credential
-        
-        ## User Shows back full credential to issuer
-        (creds, sig_o, zis) = cred_show(params, ipub, mac, sig_s, public_attr + private_attr, export_zi=True)
-
-        ## The credential contains a number of commitments to the attributes
-        (u, Cmis, Cup) = creds
-
-        assert len(Cmis) == 2
-        assert Cmis[0] == timeout * u + zis[0] * h
-        assert Cmis[1] == LT_user_ID * u + zis[1] * h
-
-        # Derive a service specific User ID
-        Service_name = b"ServiceNameRP"
-
-        Gid = G.hash_to_point(Service_name)
-        Uid = LT_user_ID * Gid
-
-        # Define the statements to be proved
-        zk = define_proof(G)
-
-        # Define the proof environemnt
-        env = ZKEnv(zk)
-        env.u, env.h = u, h
-        env.Cm0p, env.Cm1 = Cmis[0] - (timeout * u), Cmis[1]
-        env.Uid, env.Gid = Uid, Gid
-        env.LT_ID = LT_user_ID
-        env.z0, env.z1 = zis[0], zis[1]
-
-        sig_openID = zk.build_proof(env.get())
-
-        sr.put( (creds, sig_o, sig_openID, Service_name, Uid) )
-
-
-        # Check status
-        resp = yield from sr.get()
-        assert resp == "SUCCESS"
-
-        writer.close()
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
 
     event_loop.create_task(coro)
     resp = event_loop.run_until_complete(full_client('127.0.0.1', unused_tcp_port, event_loop))
