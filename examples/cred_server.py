@@ -59,10 +59,12 @@ class CredentialServer():
             CMD = yield from sr.get()
 
             print("Executing: %s" % CMD)
-            if CMD == "FULL":
-                yield from self.handle_full(sr, reader, writer)
-            elif CMD == "INFO":
+            if CMD == "INFO":
                 yield from self.handle_info(sr, reader, writer)
+            elif CMD == "ISSUE":
+                yield from self.handle_issue(sr, reader, writer)
+            elif CMD == "SHOW":
+                yield from self.handle_show(sr, reader, writer)
 
         except Exception as e:
             print(e)
@@ -71,11 +73,7 @@ class CredentialServer():
 
     @asyncio.coroutine
     def handle_info(self, sr, reader, writer):
-
         try:
-            (G, g, h, o) = self.params
-            sr = SReader(reader, writer)
-
             # Part 1. First we write the params and the ipub values
             sr.put( (self.params, self.ipub) )
 
@@ -85,18 +83,12 @@ class CredentialServer():
 
 
     @asyncio.coroutine
-    def handle_full(self, sr, reader, writer):
+    def handle_issue(self, sr, reader, writer):
 
         try:
-            (G, g, h, o) = self.params
-            sr = SReader(reader, writer)
-
-            # Part 1. First we write the params and the ipub values
-            sr.put( (self.params, self.ipub) )
 
             # Part 2. Get the public key an Encrypted cred from user
             (pub, EGenc, sig_u), public_attr  = yield from sr.get()
-            print(sig_u)
 
             # Part 3. Check and generate the credential
             if not cred_secret_issue_user_check(self.params, pub, EGenc, sig_u):
@@ -105,11 +97,22 @@ class CredentialServer():
             cred_issued = cred_secret_issue(self.params, pub, EGenc, self.ipub, self.isec, public_attr)
             sr.put(cred_issued)
 
-            [ timeout ] = public_attr
+        except Exception as e:
+            print(e)
+            sr.put("Error")
+
+
+    @asyncio.coroutine
+    def handle_show(self, sr, reader, writer):
+
+        try:
+            (G, g, h, o) = self.params
 
             # Part 4. Get a blinded credential & check it
-            creds, sig_o, sig_openID, Service_name, Uid = yield from sr.get()
+            creds, sig_o, sig_openID, Service_name, Uid, public_attr = yield from sr.get()
             (u, Cmis, Cup) = creds
+
+            [ timeout ] = public_attr
 
             if not cred_show_check(self.params, self.ipub, self.isec, creds, sig_o):
                 raise Exception("Error: aMAC failed")
@@ -167,45 +170,51 @@ def info_client(ip, port, loop):
     # Part 1. Get the params and the ipub
     (params, ipub) = yield from sr.get()
     (G, g, h, o) = params
-    return params
+    return params, ipub
+
 
 @asyncio.coroutine
-def full_client(ip, port, loop):
-
+def issue_client(ip, port, params, ipub, keypair, public_attr, private_attr, loop):
     ## Setup the channel
     reader, writer = yield from asyncio.open_connection(
                 ip, port, loop=loop)        
     sr = SReader(reader, writer)
 
     # Send the FULL command
-    sr.put("FULL")
-
-    # Part 1. Get the params and the ipub
-    (params, ipub) = yield from sr.get()
-    (G, g, h, o) = params
-
-    # User creates a public / private key pair
-    keypair = cred_UserKeyge(params)
-
-    # User packages credentials
-    LT_user_ID = o.random()
-    timeout = 100
-    public_attr = [ timeout ]
-    private_attr = [ LT_user_ID ]
+    sr.put("ISSUE")
 
     # Part 2. Send the encrypted attributes to server
     user_token = cred_secret_issue_user(params, keypair, private_attr)
     (pub, EGenc, sig_u) = user_token
+    
     sr.put( (user_token, public_attr) )        
 
     # Part 3. Get the credential back
-    u, EncE, sig_s = yield from sr.get()
+    cred = yield from sr.get()
+    (u, EncE, sig_s) = cred
     mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig_s)
 
-    # Part 4. Blind and show the credential
-    
+    return mac, user_token, cred 
+
+@asyncio.coroutine
+def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, Service_name, loop):
+
+    reader, writer = yield from asyncio.open_connection(
+                ip, port, loop=loop)        
+    sr = SReader(reader, writer)
+
+    # Send the FULL command
+    sr.put("SHOW")
+
+    # Part 1. Get the params and the ipub
+    (G, g, h, o) = params
+
+
     ## User Shows back full credential to issuer
     (creds, sig_o, zis) = cred_show(params, ipub, mac, sig_s, public_attr + private_attr, export_zi=True)
+
+    [ LT_user_ID ] = private_attr
+    [ timeout ] = public_attr
 
     ## The credential contains a number of commitments to the attributes
     (u, Cmis, Cup) = creds
@@ -215,7 +224,7 @@ def full_client(ip, port, loop):
     assert Cmis[1] == LT_user_ID * u + zis[1] * h
 
     # Derive a service specific User ID
-    Service_name = b"ServiceNameRP"
+    #Service_name = b"ServiceNameRP"
 
     Gid = G.hash_to_point(Service_name)
     Uid = LT_user_ID * Gid
@@ -233,23 +242,14 @@ def full_client(ip, port, loop):
 
     sig_openID = zk.build_proof(env.get())
 
-    sr.put( (creds, sig_o, sig_openID, Service_name, Uid) )
-
+    sr.put( (creds, sig_o, sig_openID, Service_name, Uid , public_attr) )
 
     # Check status
     resp = yield from sr.get()
-    assert resp == "SUCCESS"
-
     writer.close()
 
+    return resp
 
-def test_full_server(event_loop, unused_tcp_port):
-    cs = CredentialServer()
-    coro = asyncio.start_server(cs.handle_cmd, 
-                '127.0.0.1', unused_tcp_port, loop=event_loop)    
-
-    event_loop.create_task(coro)
-    resp = event_loop.run_until_complete(full_client('127.0.0.1', unused_tcp_port, event_loop))
 
 def test_info_server(event_loop, unused_tcp_port):
     cs = CredentialServer()
@@ -259,7 +259,63 @@ def test_info_server(event_loop, unused_tcp_port):
     event_loop.create_task(coro)
     resp = event_loop.run_until_complete(info_client('127.0.0.1', unused_tcp_port, event_loop))
 
-    assert resp == cs.params
+    assert tuple(resp[0]) == tuple(cs.params)
+
+def test_issue_server(event_loop, unused_tcp_port):
+    cs = CredentialServer()
+    coro = asyncio.start_server(cs.handle_cmd, 
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
+
+    event_loop.create_task(coro)
+
+    (G, g, h, o) = cs.params
+
+    # User creates a public / private key pair
+    keypair = cred_UserKeyge(cs.params)
+
+    # User packages credentials
+    LT_user_ID = o.random()
+    timeout = 100
+    public_attr = [ timeout ]
+    private_attr = [ LT_user_ID ]
+
+    resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
+        cs.params, cs.ipub, keypair, public_attr, private_attr, event_loop))
+
+
+def test_show_server(event_loop, unused_tcp_port):
+    cs = CredentialServer()
+    coro = asyncio.start_server(cs.handle_cmd, 
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
+
+    event_loop.create_task(coro)
+
+    (G, g, h, o) = cs.params
+
+    # User creates a public / private key pair
+    keypair = cred_UserKeyge(cs.params)
+
+    # User packages credentials
+    LT_user_ID = o.random()
+    timeout = 100
+    public_attr = [ timeout ]
+    private_attr = [ LT_user_ID ]
+
+    resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
+        cs.params, cs.ipub, keypair, public_attr, private_attr, event_loop))
+    mac, user_token, cred = resp
+
+    pub, EGenc, sig_u = user_token
+    u, EncE, sig_s = cred
+
+    Service_name = b"TestService"
+    resp = event_loop.run_until_complete(show_client('127.0.0.1', unused_tcp_port, 
+        cs.params, cs.ipub, mac, sig_s, public_attr, private_attr, Service_name,
+        event_loop))
+
+    assert resp == "SUCCESS"
+
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
