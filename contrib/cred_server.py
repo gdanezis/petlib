@@ -4,6 +4,9 @@
 
 # The general imports
 
+import sys
+sys.path += ["../examples"]
+
 import asyncio
 from io import BytesIO
 from msgpack import Unpacker
