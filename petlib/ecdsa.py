@@ -134,12 +134,54 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     return bool(result)
 
+def get_ecdsa_keys(G, sig, data):
+    """ Returns the two possible public keys corresponding to this signature. 
+
+    Args:
+        G (EcGroup): the group in which math is done.
+        data (str): the string to sign
+        sign (Bn, Bn): the (r,s) signature
+
+    Returns:
+        pub1, pub2: The two candidate public keys
+
+    """
+
+    (r, s) = sig
+    g = G.generator()
+    R1, R2 = G.get_points_from_x(r)
+
+    r_inv = r.mod_inverse(G.order())
+    z = Bn.from_binary(data)
+
+    if not (0 < z < G.order()):
+        raise Exception("Digest too long")
+
+    K1 = r_inv * ( s * R1 - z * g )
+    K2 = r_inv * ( s * R2 - z * g )
+
+    return K1, K2
+
+
 def test_ecdsa():
     G = EcGroup()
     priv = G.order().random()
     g = G.generator()
     sig = do_ecdsa_sign(G, priv, b"Hello")
     assert do_ecdsa_verify(G, priv * g, sig, b"Hello")
+
+def test_get_ecdsa_keys():
+    G = EcGroup()
+    g = G.generator()
+
+    priv = G.order().random()
+    pub = priv * g
+
+    sig = do_ecdsa_sign(G, priv, b"Hello")
+    assert do_ecdsa_verify(G, priv * g, sig, b"Hello")
+
+    pk1, pk2 = get_ecdsa_keys(G, sig, b"Hello")
+    assert pk1 == pub or pk2 == pub
 
 def test_ecdsa_fail():
     G = EcGroup()

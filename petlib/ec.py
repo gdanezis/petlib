@@ -210,6 +210,22 @@ class EcGroup(object):
         _check( ret )
         return pt
 
+    def get_points_from_x(self, x):
+        """ Returns the two EC points with the given x coordinate. """
+
+        pt0 = EcPt(self)
+        pt1 = EcPt(self)
+
+        ret0 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt0.pt, x.bn, True, _ctx.bnctx)
+        ret1 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt1.pt, x.bn, False, _ctx.bnctx)
+
+        assert self.check_point(pt0) and self.check_point(pt1)
+        _check( ret0 )
+        _check( ret1 )
+
+        return (pt0, pt1)
+
+
 @python_2_unicode_compatible
 class EcPt(object):
     """An EC point, supporting point addition, doubling 
@@ -491,6 +507,17 @@ def test_ec_build_group():
     assert "a" in G.parameters()
 
     h1 = G.hash_to_point(b"Hello2")
+
+def test_ec_from_x():
+    G = EcGroup(409)
+
+    g = G.generator()
+    x,y = g.get_affine()
+
+    g1, g2 = G.get_points_from_x(x)
+    assert g == g1 or g == g2
+
+
 
 def test_ec_arithmetic():
     G = EcGroup(713)
