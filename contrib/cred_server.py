@@ -24,6 +24,7 @@ class SReader():
         self.unpacker = Unpacker(ext_hook=self.decoder, encoding="utf8")
         self.obj_buf = []
 
+
     @asyncio.coroutine
     def get(self):
         """ The co-routine providing objects. """
@@ -37,9 +38,11 @@ class SReader():
 
         return self.obj_buf.pop(0)
 
+
     def put(self, obj):
         """ Write an object to the channel. """
         self.writer.write(encode(obj))
+
 
 ## The crypto imports
 
@@ -49,10 +52,11 @@ from petlib.pack import encode, decode
 
 
 class CredentialServer():
-    def __init__(self, num_pub = 1, num_priv = 1):
+    def __init__(self, num_pub = 3, num_priv = 1):
         self.n = num_pub + num_priv
         self.params = cred_setup()
         self.ipub, self.isec = cred_CredKeyge(self.params, self.n)
+
 
     @asyncio.coroutine
     def handle_cmd(self, reader, writer):
@@ -63,11 +67,11 @@ class CredentialServer():
 
             print("Executing: %s" % CMD)
             if CMD == "INFO":
-                yield from self.handle_info(sr, reader, writer)
+                yield from self.handle_info(sr)
             elif CMD == "ISSUE":
-                yield from self.handle_issue(sr, reader, writer)
+                yield from self.handle_issue(sr)
             elif CMD == "SHOW":
-                yield from self.handle_show(sr, reader, writer)
+                yield from self.handle_show(sr)
 
         except Exception as e:
             print(e)
@@ -75,7 +79,7 @@ class CredentialServer():
 
 
     @asyncio.coroutine
-    def handle_info(self, sr, reader, writer):
+    def handle_info(self, sr):
         try:
             # Part 1. First we write the params and the ipub values
             sr.put( (self.params, self.ipub) )
@@ -84,14 +88,18 @@ class CredentialServer():
             print(e)
             sr.put("Error")
 
+        finally:
+            sr.writer.close()
+
 
     @asyncio.coroutine
-    def handle_issue(self, sr, reader, writer):
+    def handle_issue(self, sr):
 
         try:
 
             # Part 2. Get the public key an Encrypted cred from user
             (pub, EGenc, sig_u), public_attr  = yield from sr.get()
+            k, v, timeout = public_attr
 
             # Part 3. Check and generate the credential
             if not cred_secret_issue_user_check(self.params, pub, EGenc, sig_u):
@@ -106,7 +114,7 @@ class CredentialServer():
 
 
     @asyncio.coroutine
-    def handle_show(self, sr, reader, writer):
+    def handle_show(self, sr):
 
         try:
             (G, g, h, o) = self.params
@@ -115,7 +123,7 @@ class CredentialServer():
             creds, sig_o, sig_openID, Service_name, Uid, public_attr = yield from sr.get()
             (u, Cmis, Cup) = creds
 
-            [ timeout ] = public_attr
+            [ key, value, timeout ] = public_attr
 
             if not cred_show_check(self.params, self.ipub, self.isec, creds, sig_o):
                 raise Exception("Error: aMAC failed")
@@ -126,7 +134,13 @@ class CredentialServer():
             zk = define_proof(G)
             env2 = ZKEnv(zk)
             env2.u, env2.h = u, h
-            env2.Cm0p, env2.Cm1 = Cmis[0] - (timeout * u), Cmis[1]
+            env2.Cm0p = Cmis[0] - (key * u)
+            env2.Cm1p = Cmis[1] - (value * u)
+            env2.Cm2p = Cmis[2] - (timeout * u)
+
+            env2.Cm3 = Cmis[3]
+
+            assert len(Cmis) == 4
             env2.Uid, env2.Gid = Uid, Gid
             
             if not  zk.verify_proof(env2.get(), sig_openID):
@@ -145,14 +159,20 @@ class CredentialServer():
 def define_proof(G):
     zk = ZKProof(G)
     u, h = zk.get(ConstGen, ["u", "h"])
-    LT_ID, z0, z1 = zk.get(Sec, ["LT_ID", "z0", "z1"])
+    LT_ID, z0, z1, z2, z3 = zk.get(Sec, ["LT_ID", "z0", "z1", "z2", "z3"])
     Cm0p = zk.get(ConstGen, "Cm0p")
-    Cm1 = zk.get(ConstGen, "Cm1")
+    Cm1p = zk.get(ConstGen, "Cm1p")
+    Cm2p = zk.get(ConstGen, "Cm2p")
+
+    Cm3 = zk.get(ConstGen, "Cm3")
     Uid = zk.get(ConstGen, "Uid")
     Gid = zk.get(ConstGen, "Gid")
 
     zk.add_proof(Cm0p, z0 * h)
-    zk.add_proof(Cm1, LT_ID*u + z1 * h) 
+    zk.add_proof(Cm1p, z1 * h)
+    zk.add_proof(Cm2p, z2 * h)
+
+    zk.add_proof(Cm3, LT_ID*u + z3 * h) 
     zk.add_proof(Uid, LT_ID * Gid)
 
     return zk
@@ -162,6 +182,8 @@ import pytest # requires pytest-asyncio!
 
 @asyncio.coroutine
 def info_client(ip, port, loop):
+    """ Implement a client for the INFO command. """
+
     ## Setup the channel
     reader, writer = yield from asyncio.open_connection(
                 ip, port, loop=loop)        
@@ -173,11 +195,14 @@ def info_client(ip, port, loop):
     # Part 1. Get the params and the ipub
     (params, ipub) = yield from sr.get()
     (G, g, h, o) = params
+
     return params, ipub
 
 
 @asyncio.coroutine
 def issue_client(ip, port, params, ipub, keypair, public_attr, private_attr, loop):
+    """ Implements a client for the ISSUE protocol. """
+
     ## Setup the channel
     reader, writer = yield from asyncio.open_connection(
                 ip, port, loop=loop)        
@@ -201,6 +226,7 @@ def issue_client(ip, port, params, ipub, keypair, public_attr, private_attr, loo
 
 @asyncio.coroutine
 def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, Service_name, loop):
+    """ Implements a client for the SHOW command. """
 
     reader, writer = yield from asyncio.open_connection(
                 ip, port, loop=loop)        
@@ -212,23 +238,23 @@ def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, S
     # Part 1. Get the params and the ipub
     (G, g, h, o) = params
 
-
     ## User Shows back full credential to issuer
     (creds, sig_o, zis) = cred_show(params, ipub, mac, sig_s, public_attr + private_attr, export_zi=True)
 
     [ LT_user_ID ] = private_attr
-    [ timeout ] = public_attr
+    [ key, value, timeout ] = public_attr
 
     ## The credential contains a number of commitments to the attributes
     (u, Cmis, Cup) = creds
 
-    assert len(Cmis) == 2
-    assert Cmis[0] == timeout * u + zis[0] * h
-    assert Cmis[1] == LT_user_ID * u + zis[1] * h
+    assert len(Cmis) == 4
+    assert Cmis[0] == key * u + zis[0] * h
+    assert Cmis[1] == value * u + zis[1] * h
+    assert Cmis[2] == timeout * u + zis[2] * h
+
+    assert Cmis[3] == LT_user_ID * u + zis[3] * h
 
     # Derive a service specific User ID
-    #Service_name = b"ServiceNameRP"
-
     Gid = G.hash_to_point(Service_name)
     Uid = LT_user_ID * Gid
 
@@ -238,10 +264,16 @@ def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, S
     # Define the proof environemnt
     env = ZKEnv(zk)
     env.u, env.h = u, h
-    env.Cm0p, env.Cm1 = Cmis[0] - (timeout * u), Cmis[1]
+    
+    env.Cm0p = Cmis[0] - (key * u)
+    env.Cm1p = Cmis[1] - (value * u)
+    env.Cm2p = Cmis[2] - (timeout * u)
+
+    env.Cm3 = Cmis[3]    
+
     env.Uid, env.Gid = Uid, Gid
     env.LT_ID = LT_user_ID
-    env.z0, env.z1 = zis[0], zis[1]
+    env.z0, env.z1, env.z2, env.z3  = zis[0], zis[1], zis[2], zis[3]
 
     sig_openID = zk.build_proof(env.get())
 
@@ -264,13 +296,13 @@ def test_info_server(event_loop, unused_tcp_port):
 
     assert tuple(resp[0]) == tuple(cs.params)
 
+
 def test_issue_server(event_loop, unused_tcp_port):
     cs = CredentialServer()
     coro = asyncio.start_server(cs.handle_cmd, 
                 '127.0.0.1', unused_tcp_port, loop=event_loop)    
 
     event_loop.create_task(coro)
-
     (G, g, h, o) = cs.params
 
     # User creates a public / private key pair
@@ -279,7 +311,9 @@ def test_issue_server(event_loop, unused_tcp_port):
     # User packages credentials
     LT_user_ID = o.random()
     timeout = 100
-    public_attr = [ timeout ]
+    key = 200
+    value = 300
+    public_attr = [ key, value, timeout ]
     private_attr = [ LT_user_ID ]
 
     resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
@@ -301,7 +335,10 @@ def test_show_server(event_loop, unused_tcp_port):
     # User packages credentials
     LT_user_ID = o.random()
     timeout = 100
-    public_attr = [ timeout ]
+    key = 200
+    value = 300
+
+    public_attr = [ key, value, timeout ]
     private_attr = [ LT_user_ID ]
 
     resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
