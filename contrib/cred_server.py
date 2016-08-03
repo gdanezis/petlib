@@ -148,10 +148,13 @@ class CredentialServer():
 
             sr.put("SUCCESS")
 
-            yield from writer.drain()
-            writer.close()
+            yield from sr.writer.drain()
+            sr.writer.close()
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+
             print(e)
             sr.put("Error")
 
@@ -354,6 +357,73 @@ def test_show_server(event_loop, unused_tcp_port):
         event_loop))
 
     assert resp == "SUCCESS"
+
+def test__server_timing(event_loop, unused_tcp_port):
+    cs = CredentialServer()
+    coro = asyncio.start_server(cs.handle_cmd, 
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
+
+    event_loop.create_task(coro)
+
+    (G, g, h, o) = cs.params
+
+    # User creates a public / private key pair
+    keypair = cred_UserKeyge(cs.params)
+
+    # User packages credentials
+    LT_user_ID = o.random()
+    timeout = 100
+    key = 200
+    value = 300
+
+    public_attr = [ key, value, timeout ]
+    private_attr = [ LT_user_ID ]
+
+    import time
+
+    t0 = time.monotonic()
+    for _ in range(10):
+        resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, keypair, public_attr, private_attr, event_loop))
+    t1 = time.monotonic()
+    print("ISSUE time (1): %.3f sec" % ((t1-t0) / 10))
+
+    t0 = time.monotonic()
+    coros = [issue_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, keypair, public_attr, private_attr, event_loop) for _ in range(10)]
+    G = asyncio.gather(loop=event_loop, *(tuple(coros)))
+    event_loop.run_until_complete(G)
+    t1 = time.monotonic()
+    print("ISSUE time (2): %.3f sec" % ((t1-t0) / 10))
+
+    mac, user_token, cred = resp
+
+    pub, EGenc, sig_u = user_token
+    u, EncE, sig_s = cred
+
+    Service_name = b"TestService"
+
+    t0 = time.monotonic()
+    for _ in range(10):
+        resp = event_loop.run_until_complete(show_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, mac, sig_s, public_attr, private_attr, Service_name,
+            event_loop))
+    t1 = time.monotonic()
+    print("SHOW time (1): %.3f sec" % ((t1-t0) / 10))
+
+    t0 = time.monotonic()
+    coros = [show_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, mac, sig_s, public_attr, private_attr, Service_name,
+            event_loop) for _ in range(10)] 
+    G = asyncio.gather(loop=event_loop, *(tuple(coros)))
+    event_loop.run_until_complete(G)
+    t1 = time.monotonic()
+    print("SHOW time (2): %.3f sec" % ((t1-t0) / 10))
+
+
+    assert resp == "SUCCESS"
+
+    print(define_proof(G).render_proof_statement())
 
 
 
