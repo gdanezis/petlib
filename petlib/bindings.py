@@ -37,9 +37,11 @@ class InitCiphers(object):
         self.on = False
         self._C = _C
         if not _inited:
+            _C.OPENSSL_init()
             _C.init_ciphers()
             _inited = True
             self.on = True
+
 
     def __del__(self):
         global _inited
@@ -60,3 +62,27 @@ def test_version():
 
 def test_errors():
     assert get_errors() == []
+
+def test_locks():
+    assert _C.CRYPTO_get_locking_callback() != _FFI.NULL
+
+def test_multithread():
+    import threading
+    from .ec import EcPt, EcGroup
+
+    G = EcGroup()
+    g = G.generator()
+    o = G.order()
+    g2 = o.random() * g
+    g2_s = g2.export()
+
+    def worker():
+        for _ in range(100):
+            EcPt.from_binary(g2_s, G)
+
+    threads = []
+    for i in range(100):
+        t = threading.Thread(target=worker)
+        threads.append(t)
+        t.start()    
+

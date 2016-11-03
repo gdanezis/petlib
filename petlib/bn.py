@@ -72,8 +72,20 @@ class BnCtx:
         if self.bnctx != None:
             self._C.BN_CTX_free(self.bnctx)
 
-_ctx = BnCtx()
+class BnCtxNULL(BnCtx):
+    """ A Bn Context for use by the petlib library """
 
+    __slots__ = ['bnctx', '_C']
+
+    def __init__(self):
+        self._C = _C
+        self.bnctx = _FFI.NULL
+
+    def __del__(self):
+        pass
+
+
+_ctx = BnCtxNULL()
 
 @python_2_unicode_compatible
 class Bn(object):
@@ -435,7 +447,8 @@ class Bn(object):
     def __mul__(self, other):
 
         r = Bn()
-        err = _C.BN_mul(r.bn, self.bn, other.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_mul(r.bn, self.bn, other.bn, local_ctx.bnctx)
 
         if __debug__:
             _check( err )
@@ -459,7 +472,8 @@ class Bn(object):
         """
 
         r = Bn()
-        err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
         if __debug__:
             _check( err )
             
@@ -480,7 +494,8 @@ class Bn(object):
         """
 
         r = Bn()
-        err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
         if __debug__:
             _check( err )
@@ -502,7 +517,8 @@ class Bn(object):
         """
 
         r = Bn()
-        err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
         if __debug__:
             _check( err )
@@ -526,7 +542,8 @@ class Bn(object):
         """
 
         res = Bn()
-        err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
         if err == _FFI.NULL:
             errs = get_errors()
             
@@ -563,7 +580,8 @@ class Bn(object):
 
         dv = Bn()
         rem = Bn()
-        _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, _ctx.bnctx))
+        local_ctx = BnCtx()
+        _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx))
         return (dv, rem)
 
     def int_div(self, other):
@@ -615,7 +633,8 @@ class Bn(object):
 
         rem = Bn()
 
-        err = _C.BN_nnmod(rem.bn, self.bn, other.bn, _ctx.bnctx)
+        local_ctx = BnCtx()
+        err = _C.BN_nnmod(rem.bn, self.bn, other.bn, local_ctx.bnctx)
 
         if __debug__:
             _check( err )
@@ -663,10 +682,12 @@ class Bn(object):
     def __pow__(self, other, modulo=None):
 
         res = Bn()
+        local_ctx = BnCtx()
+
         if modulo is None:
-            _check(_C.BN_exp(res.bn, self.bn, other.bn, _ctx.bnctx))
+            _check(_C.BN_exp(res.bn, self.bn, other.bn, local_ctx.bnctx))
         else:
-            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, _ctx.bnctx))
+            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, local_ctx.bnctx))
 
         return res
 

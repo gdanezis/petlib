@@ -201,42 +201,43 @@ def info_client(ip, port, loop):
 
     return params, ipub
 
+import time
 
 @asyncio.coroutine
-def issue_client(ip, port, params, ipub, keypair, public_attr, private_attr, loop):
+def issue_client(ip, port, params, ipub, keypair, public_attr, private_attr, loop, repeat=1):
     """ Implements a client for the ISSUE protocol. """
-
-    ## Setup the channel
-    reader, writer = yield from asyncio.open_connection(
-                ip, port, loop=loop)        
-    sr = SReader(reader, writer)
-
-    # Send the FULL command
-    sr.put("ISSUE")
 
     # Part 2. Send the encrypted attributes to server
     user_token = cred_secret_issue_user(params, keypair, private_attr)
     (pub, EGenc, sig_u) = user_token
-    
-    sr.put( (user_token, public_attr) )        
 
-    # Part 3. Get the credential back
-    cred = yield from sr.get()
+    t0 = time.monotonic()
+    for _ in range(repeat):
+        ## Setup the channel
+        reader, writer = yield from asyncio.open_connection(
+                    ip, port, loop=loop)        
+        sr = SReader(reader, writer)
+
+        # Send the FULL command
+        sr.put("ISSUE")
+        
+        sr.put( (user_token, public_attr) )        
+
+        # Part 3. Get the credential back
+        cred = yield from sr.get()
+    t1 = time.monotonic()
+    if repeat > 1:
+        print("CORE ISSUE time (1): %.3f sec (repeat=%s)" % ((t1-t0) / repeat, repeat))
+
+
     (u, EncE, sig_s) = cred
     mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig_s)
 
     return mac, user_token, cred 
 
 @asyncio.coroutine
-def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, Service_name, loop):
+def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, Service_name, loop, repeat=1):
     """ Implements a client for the SHOW command. """
-
-    reader, writer = yield from asyncio.open_connection(
-                ip, port, loop=loop)        
-    sr = SReader(reader, writer)
-
-    # Send the FULL command
-    sr.put("SHOW")
 
     # Part 1. Get the params and the ipub
     (G, g, h, o) = params
@@ -280,11 +281,23 @@ def show_client(ip, port, params, ipub, mac, sig_s, public_attr, private_attr, S
 
     sig_openID = zk.build_proof(env.get())
 
-    sr.put( (creds, sig_o, sig_openID, Service_name, Uid , public_attr) )
+    t0 = time.monotonic()
+    for _ in range(repeat):
+        reader, writer = yield from asyncio.open_connection(
+                    ip, port, loop=loop)        
+        sr = SReader(reader, writer)
 
-    # Check status
-    resp = yield from sr.get()
-    writer.close()
+        # Send the FULL command
+        sr.put("SHOW")
+        sr.put( (creds, sig_o, sig_openID, Service_name, Uid , public_attr) )
+
+        # Check status
+        resp = yield from sr.get()
+        writer.close()
+    t1 = time.monotonic()
+    if repeat > 1:
+        print("CORE SHOW time (1): %.3f sec (repeat=%s)" % ((t1-t0) / repeat, repeat))
+
 
     return resp
 
@@ -419,6 +432,43 @@ def test__server_timing(event_loop, unused_tcp_port):
     event_loop.run_until_complete(G)
     t1 = time.monotonic()
     print("SHOW time (2): %.3f sec" % ((t1-t0) / 10))
+
+def test__server_timing_core(event_loop, unused_tcp_port):
+    cs = CredentialServer()
+    coro = asyncio.start_server(cs.handle_cmd, 
+                '127.0.0.1', unused_tcp_port, loop=event_loop)    
+
+    event_loop.create_task(coro)
+
+    (G, g, h, o) = cs.params
+
+    # User creates a public / private key pair
+    keypair = cred_UserKeyge(cs.params)
+
+    # User packages credentials
+    LT_user_ID = o.random()
+    timeout = 100
+    key = 200
+    value = 300
+
+    public_attr = [ key, value, timeout ]
+    private_attr = [ LT_user_ID ]
+
+    import time
+
+    resp = event_loop.run_until_complete(issue_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, keypair, public_attr, private_attr, event_loop, repeat=10))
+    
+    mac, user_token, cred = resp
+
+    pub, EGenc, sig_u = user_token
+    u, EncE, sig_s = cred
+
+    Service_name = b"TestService"
+
+    resp = event_loop.run_until_complete(show_client('127.0.0.1', unused_tcp_port, 
+            cs.params, cs.ipub, mac, sig_s, public_attr, private_attr, Service_name,
+            event_loop, repeat=10))
 
 
     assert resp == "SUCCESS"

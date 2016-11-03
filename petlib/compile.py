@@ -55,8 +55,8 @@ _FFI.set_source("petlib._petlib","""
 #include <openssl/hmac.h>
 #include <openssl/ecdsa.h>
 
-#define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
+#define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
 int bn_num_bytes(BIGNUM * a){
     return BN_num_bytes(a);
@@ -114,6 +114,7 @@ _FFI.cdef("""
     Generic OpenSSL functions.
 */ 
 
+void OPENSSL_init(void);
 void OPENSSL_free(void*);
  
  // The constant-time compare functions
@@ -125,6 +126,17 @@ typedef enum foo {
      POINT_CONVERSION_UNCOMPRESSED = 4,
      POINT_CONVERSION_HYBRID = 6
 } point_conversion_form_t;
+
+
+/* Locking functions */
+
+int CRYPTO_num_locks(void);
+void CRYPTO_lock(int mode, int type, const char *file, int line);
+void CRYPTO_set_locking_callback(void (*func) (int mode, int type, const char *file, int line));
+void (*CRYPTO_get_locking_callback(void)) (int mode, int type, const char *file, int line);
+void CRYPTO_set_add_lock_callback(int (*func) (int *num, int mount, int type,
+                                    const char *file, int line));
+int (*CRYPTO_get_add_lock_callback(void)) (int *num, int mount, int type, const char *file, int line);
 
 
 /* 
