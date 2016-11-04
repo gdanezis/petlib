@@ -34,6 +34,8 @@ import msgpack
 from .ec import EcGroup, EcPt
 from .bn import Bn
 
+__all__ = ["encode", "decode"]
+
 
 def default(obj):
     # Serialize Bn objects
