@@ -1,5 +1,8 @@
 # The petlib version
-VERSION = '0.0.35'
+VERSION = '0.0.36'
+
+
+__all__ = ["bindings", "bn", "cipher", "compile", "ecdsa", "ec", "encode", "hmac", "pack"]
 
 def run_tests():
     # These are only needed in case we test
