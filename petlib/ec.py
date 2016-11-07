@@ -226,6 +226,15 @@ class EcGroup(object):
         return (pt0, pt1)
 
 
+# Class constants
+try:
+    POINT_CONVERSION_UNCOMPRESSED = _C.POINT_CONVERSION_UNCOMPRESSED
+    POINT_CONVERSION_COMPRESSED = _C.POINT_CONVERSION_COMPRESSED
+except:
+    POINT_CONVERSION_UNCOMPRESSED = None
+    POINT_CONVERSION_COMPRESSED = None
+
+
 @python_2_unicode_compatible
 class EcPt(object):
     """An EC point, supporting point addition, doubling 
@@ -233,10 +242,6 @@ class EcPt(object):
     """
     __slots__ = ["pt", "group"]
     
-    # Class constants
-    POINT_CONVERSION_UNCOMPRESSED = _C.POINT_CONVERSION_UNCOMPRESSED
-    POINT_CONVERSION_COMPRESSED = _C.POINT_CONVERSION_COMPRESSED
-
     @staticmethod
     def from_binary(sbin, group):
         """Create a point from a byte sequence.
@@ -423,8 +428,8 @@ class EcPt(object):
     def __hash__(self):
         return self.export().__hash__()
 
-    def export(self, form=_C.POINT_CONVERSION_COMPRESSED):
-        """export(form=_C.POINT_CONVERSION_COMPRESSED)
+    def export(self, form=POINT_CONVERSION_COMPRESSED):
+        """export(form=POINT_CONVERSION_COMPRESSED)
 
         Returns a string binary representation of the point in compressed coordinates.
 
@@ -661,7 +666,7 @@ def test_ec_bin_translation():
 
     exp = []
     for pt in pt1000:
-        exp += [ pt.export(EcPt.POINT_CONVERSION_UNCOMPRESSED) ]
+        exp += [ pt.export(POINT_CONVERSION_UNCOMPRESSED) ]
 
     t0 = timer()
     for ept in exp:

@@ -4,10 +4,15 @@ import os
 import platform
 import cffi
 
-from ._petlib import ffi, lib
+try:
+    from ._petlib import ffi, lib
+    _FFI = ffi
+    _C = lib
+except:
+    print("Support not loading the library to build docs without compiling.")
+    _C = None
+    _FFI = None
 
-_FFI = ffi
-_C = lib
 
 # Store constants
 class Const:
@@ -49,7 +54,8 @@ class InitCiphers(object):
             _inited = False
             self._C.cleanup_ciphers()
 
-_ciphers = InitCiphers()
+if _C and _FFI:
+    _ciphers = InitCiphers()
 
 def test_double_load():
     _c2 = InitCiphers()

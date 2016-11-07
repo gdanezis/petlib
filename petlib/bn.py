@@ -84,8 +84,10 @@ class BnCtxNULL(BnCtx):
     def __del__(self):
         pass
 
-
-_ctx = BnCtxNULL()
+try:
+    _ctx = BnCtxNULL()
+except:
+    _ctx = None
 
 @python_2_unicode_compatible
 class Bn(object):
