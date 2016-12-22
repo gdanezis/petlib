@@ -5,9 +5,9 @@ import pytest
 
 def _check(return_val):
     """Checks the return code of the C calls"""
-    if isinstance(return_val, int) and return_val == 1:
+    if return_val == 1 and isinstance(return_val, int):
       return
-    if isinstance(return_val, bool) and return_val == True:
+    if return_val == True and isinstance(return_val, bool):
       return
 
     raise Exception("Cipher exception: Unknown type %s or value %s" % (str(type(return_val)), str(return_val)))
