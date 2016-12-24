@@ -16,6 +16,15 @@ setup(name='petlib',
 
       setup_requires=["cffi>=1.0.0",
                       "pytest >= 2.6.4"],
+      tests_require = [
+            "cffi >= 1.0.0",
+            "pycparser >= 2.10",
+            "future >= 0.14.3",
+            "pytest >= 2.5.0",
+            "paver >= 1.2.3",
+            "pytest-cov >= 1.8.1",
+            "msgpack-python >= 0.4.6",
+            ],
       cffi_modules=["petlib/compile.py:_FFI"],
       install_requires=[
             "cffi >= 1.0.0",

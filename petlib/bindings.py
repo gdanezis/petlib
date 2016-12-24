@@ -56,6 +56,9 @@ class InitCiphers(object):
 
 if _C and _FFI:
     _ciphers = InitCiphers()
+    if _C.CRYPTO_get_locking_callback() == _FFI.NULL:
+        _C.setup_ssl_threads()
+
 
 def test_double_load():
     _c2 = InitCiphers()
