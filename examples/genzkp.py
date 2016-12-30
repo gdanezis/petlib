@@ -166,6 +166,8 @@ class ZKProof(object):
     def __init__(self, G):
         """Define a proof object, and the group in which the proof
         is to be carried."""
+        
+        self.locked = False
         self.G = G
 
         self.Const = {}
@@ -175,6 +177,8 @@ class ZKProof(object):
 
         self.arrays = {}
 
+        self.locked = True
+
     def add_proof(self, lhs, rhs):
         """Adds a proof obligation to show the rhs is the representation of the lhs"""
         assert isinstance(lhs, Gen)
@@ -183,7 +187,7 @@ class ZKProof(object):
         assert rhs.prove == True
         assert self == lhs.zkp == rhs.zkp
         
-        self.proofs += [(lhs, rhs)]
+        self.proofs.append((lhs, rhs))
 
     def _check_name_ok(self, name):
         if __debug__:
@@ -217,6 +221,18 @@ class ZKProof(object):
                 return D[name]
 
         return vtype(self, name)
+
+
+    def __setattr__(self, name, value):
+        if hasattr(self, "locked") and self.locked:
+            assert name not in self.__dict__
+
+            # Add the name to the zk proof
+            v = self.get(value, name)
+            object.__setattr__(self, name, v)
+        else:
+            # implement *my* __setattr__
+            object.__setattr__(self, name, value)
 
 
     def get_array(self, vtype, name, number, start=0):
@@ -543,6 +559,43 @@ def test_Pedersen_Env():
     env.g, env.h = ec_g, ec_h 
 
     assert zk.verify_proof(env.get(), sig)
+
+def test_Pedersen_Shorthand():
+
+    # Define an EC group
+    G = EcGroup(713)
+    order = G.order()
+
+    ## Proof definitions
+    zk = ZKProof(G)
+    zk.g, zk.h = ConstGen, ConstGen
+    zk.x, zk.o = Sec, Sec
+    zk.Cxo = Gen
+    zk.add_proof(zk.Cxo, zk.x*zk.g + zk.o*zk.h)
+
+    print(zk.render_proof_statement())
+
+    # A concrete Pedersen commitment
+    ec_g = G.generator()
+    ec_h = order.random() * ec_g
+    bn_x = order.random()
+    bn_o = order.random()
+    ec_Cxo = bn_x * ec_g + bn_o * ec_h
+
+    env = ZKEnv(zk)
+    env.g, env.h = ec_g, ec_h 
+    env.Cxo = ec_Cxo
+    env.x = bn_x 
+    env.o = bn_o
+
+    sig = zk.build_proof(env.get())
+
+    # Execute the verification
+    env = ZKEnv(zk)
+    env.g, env.h = ec_g, ec_h 
+
+    assert zk.verify_proof(env.get(), sig)
+
 
 def test_Pedersen_Env_missing():
 
