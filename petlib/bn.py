@@ -557,7 +557,7 @@ class Bn(object):
         return res
 
 
-    def mod_pow(self, other, m):
+    def mod_pow(self, other, m, ctx=None):
         """ Performs the modular exponentiation of self ** other % m.
 
             Example:
@@ -566,7 +566,7 @@ class Bn(object):
                 1
 
         """
-        return self.__pow__(other, m)
+        return self.__pow__(other, m, ctx=ctx)
 
 
     def divmod(self, other):
@@ -659,7 +659,7 @@ class Bn(object):
     def __rpow__(self, other):
         return Bn(other).__pow__(self)
 
-    def pow(self, other, modulo=None):
+    def pow(self, other, modulo=None, ctx=None):
         """Returns the number raised to the power other optionally modulo a third number. 
         Synonym with pow(self, other, modulo).
 
@@ -675,21 +675,23 @@ class Bn(object):
             
         """
         if modulo:
-            return self.__pow__(other, modulo)
+            return self.__pow__(other, modulo, ctx)
         else:
             return self ** other
 
     @force_Bn(1)
     @force_Bn(2)
-    def __pow__(self, other, modulo=None):
+    def __pow__(self, other, modulo=None, ctx=None):
 
         res = Bn()
-        local_ctx = BnCtx()
+
+        if ctx == None:
+            ctx = BnCtx()
 
         if modulo is None:
-            _check(_C.BN_exp(res.bn, self.bn, other.bn, local_ctx.bnctx))
+            _check(_C.BN_exp(res.bn, self.bn, other.bn, ctx.bnctx))
         else:
-            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, local_ctx.bnctx))
+            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, ctx.bnctx))
 
         return res
 
@@ -785,11 +787,11 @@ def test_bn_constructors():
 
 
 def test_bn_prime():
-    p = Bn.get_prime(512)
+    p = Bn.get_prime(128)
     assert p > Bn(0)
     assert p.is_prime()
     assert not Bn(16).is_prime()
-    assert p.num_bits() > 500
+    assert p.num_bits() > 127
 
 def test_bn_arithmetic():
     assert (Bn(1) + Bn(1) == Bn(2))
@@ -941,3 +943,29 @@ def test_check():
     with pytest.raises(Exception) as excinfo:
         _check(0)      
     assert 'BN' in str(excinfo.value)
+
+def test_timing_exp():
+    p = Bn.from_decimal("158261031819091141711717027498980088325079888681498417129323009913367867128038610210948802263526234270043507882496188624614467036250990588401775690578042934008692254417273606807265961724843618743242066301529332478013432957153823449143202719186309012133210922613102725038632605463022887306439116579645787938883")
+    psmall = Bn.from_decimal("90123082853250477832412338337738008391831682960497136029451532639902615425459")
+
+    xs = [p.random() for _ in range(1000)]
+    ys = [p.random() for _ in range(1000)]
+
+    import time
+
+    print
+    t0 = time.time()
+    X = [xi.mod_mul(yi, psmall) for (xi,yi) in zip(xs,ys)]
+    t1 = time.time()
+    print("Mod_mul time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
+
+    t0 = time.time()
+    X = [xi.pow(yi, p) for (xi,yi) in zip(xs,ys)]
+    t1 = time.time()
+    print("    Pow time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
+
+    ctx = BnCtx()
+    t0 = time.time()
+    X = [xi.pow(yi, p, ctx) for (xi,yi) in zip(xs,ys)]
+    t1 = time.time()
+    print("Pow ctx time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
