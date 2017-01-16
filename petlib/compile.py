@@ -35,10 +35,10 @@ else:
     libraries=["crypto"]
     extra_compile_args=['-Wno-deprecated-declarations']
     if platform.system() == "Darwin":
-        include_dirs=['/opt/local/include']
-        # FIXME(ben): not entirely clear to me why I don't seem to
-        # have to include /opt/local/lib.
-        library_dirs=[]
+        include_dirs = ['/usr/local/opt/openssl/include',
+                        '/usr/local/ssl/include']
+        library_dirs=['/usr/local/opt/openssl/lib',
+                      '/usr/local/ssl/lib']
     else:
         include_dirs=[]
         library_dirs=[]
