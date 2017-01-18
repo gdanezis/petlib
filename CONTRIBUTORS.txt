@@ -1,5 +1,12 @@
+CONTRIBUTORS
+
 George Danezis     (https://github.com/gdanezis)
 Ben Laurie         (https://github.com/benlaurie)
 Vasilios Mavroudis (https://github.com/mavroudisv)
 Salman Khalifa     (https://github.com/The-Skas)
 Tariq Elahi        (https://github.com/TariqEE)
+Panos Louridas     (https://github.com/louridas)
+
+FUNDING
+
+PANORAMIX (Project ID: 653497) Funded under:  H2020-EU.3.7. - Secure societies - Protecting freedom and security of Europe and its citizens
