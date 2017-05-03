@@ -551,8 +551,12 @@ class Bn(object):
             
             if errs == [ 50770023 ]:
                 raise Exception("No inverse")
+
+            elif errs == [ 50782316 ]:
+            	raise Exception("No inverse")
+            	
             else:
-                _check( False )
+                raise Exception("Unknown error: %s" % errs)
 
         return res
 
@@ -838,6 +842,11 @@ def test_bn_arithmetic():
 
     with pytest.raises(Exception) as excinfo:
         Bn(3).mod_inverse(0)
+    assert 'No inverse' in str(excinfo.value)
+
+    with pytest.raises(Exception) as excinfo:
+        x = Bn(0).mod_inverse(Bn(13))
+        print("Got inverse", x)
     assert 'No inverse' in str(excinfo.value)
 
 

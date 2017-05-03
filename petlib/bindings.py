@@ -32,6 +32,7 @@ def get_errors():
     while err != 0:
         errors += [ err ]
         err = _C.ERR_get_error()
+    assert isinstance(errors, list)
     return errors
 
 class InitCiphers(object):

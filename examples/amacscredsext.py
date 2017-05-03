@@ -28,8 +28,6 @@ def cred_cert_proof(params, n):
     zk = ZKProof(G)
 
     ## The variables
-    # zk.VplusCup = ConstGen
-    #zk.Cup = ConstGen
     g, h, u = zk.get(ConstGen, ["g", "h", "u"])
     Cmis = zk.get_array(ConstGen, "Cmi", n)
     Cx0, VplusCup = zk.get(ConstGen, ["Cx0","VplusCup"])
@@ -92,30 +90,14 @@ def cred_show_check_cert(params, publics, secrets, creds, sig, cred_show_proof=c
     # Define the cert proof
     zkcert = cred_cert_proof(params, n)
     env = ZKEnv(zkcert)
-
-    # zk.VplusCup = ConstGen
     env.VplusCup = V + Cup
-
-    # zk.Cup = ConstGen
-
-    # g, h, minus_one = zk.get(ConstPub, ["g", "h", "minus1"])
     env.u = u
     env.g, env.h = g, h
-
-    #Cmis = zk.get_array(ConstGen, "Cmi", n)
     env.Cmi = Cmis
-
-    #zk.Cx0 = ConstGen
     env.Cx0 = Cx0
-
-    #x0, x0_bar =  zk.get(Sec, ["x0", "x0_bar"])
     env.x0 = sk[0]
     env.x0_bar = x0_bar
-
-    #xis = zk.get_array(Sec, "xi", n)
     env.xi = sk[1:]
-
-    #Xis = zk.get_array(ConstGen, "Xi", n)
     env.Xi = iparams
 
 
@@ -125,8 +107,54 @@ def cred_show_check_cert(params, publics, secrets, creds, sig, cred_show_proof=c
 
 
     # Return the result of the verification
-    return Correct, sig
+    return Correct, (V, sig)
 
+def public_check_cert(params, publics, cert, creds, sig, cred_show_proof=cred_show_proof, xenv={}):
+    # Parse the inputs
+    G, g, h, _ = params
+    Cx0, iparams = publics
+    (u, Cmis, Cup) = creds
+
+    n = len(iparams)
+
+    ## Recompute a V
+    V, sig2 = cert
+
+    # Define the proof, and instanciate it with variables
+    zk = cred_show_proof(params, n)
+
+    env = ZKEnv(zk)
+    env.u = u
+    env.g, env.h = g, h
+    env.V = V
+    env.minus1 = -Bn(1)
+    env.Xi = iparams
+    env.Cmi = Cmis
+
+    if xenv:
+        xenv(env)
+
+    Correct = zk.verify_proof(env.get(), sig)
+    if not Correct:
+        return False
+
+    # Define the cert proof
+    zkcert = cred_cert_proof(params, n)
+    env = ZKEnv(zkcert)
+
+    # zk.VplusCup = ConstGen
+    env.VplusCup = V + Cup
+    env.u = u
+    env.g, env.h = g, h
+    env.Cmi = Cmis
+    env.Cx0 = Cx0
+    env.Xi = iparams
+
+    Correct = zkcert.verify_proof(env.get(), sig2, strict=True)
+    if not Correct:
+        return False
+
+    return True
 
 def test_secret_creds_ext():
     ## Setup from credential issuer.
@@ -162,5 +190,8 @@ def test_secret_creds_ext():
     #  The proof just proves knowledge of the attributes, but any other 
     #  ZK statement is also possible by augmenting the proof.
     (creds, sig) = cred_show(params, ipub, mac, sig, public_attr + private_attr)
-    res, sig = cred_show_check_cert(params, ipub, isec, creds, sig)
+    res, cert = cred_show_check_cert(params, ipub, isec, creds, sig)
     assert res
+
+    ## Check the public certificate that is returned by the verification step
+    public_check_cert(params, ipub, cert, creds, sig)
