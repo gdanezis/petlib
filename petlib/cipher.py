@@ -73,7 +73,7 @@ class Cipher(object):
         """Return the OpenSSL nid of the cipher and mode."""
         return int(self.alg.nid)
 
-    def op(self, key, iv, enc=1):
+    def op(self, key, iv=None, enc=1):
         """Initializes a cipher operation, either encrypt or decrypt 
         and returns a CipherOperation object
 
@@ -83,12 +83,17 @@ class Cipher(object):
             enc (int): set to 1 to perform encryption, or 0 to perform decryption.
 
         """
+
+        if iv is None:
+            iv = _FFI.NULL
+
         c_op = CipherOperation(enc)
         _check( len(key) == self.len_key())
         _check( enc in [0,1] )
        
         if not self.gcm:
-            _check( len(iv) == self.len_IV())
+            if iv != _FFI.NULL:
+                _check( len(iv) == self.len_IV())
             _check( _C.EVP_CipherInit_ex(c_op.ctx, 
                 self.alg,  _FFI.NULL, key, iv, enc) )
 
@@ -565,5 +570,22 @@ def test_quick_assoc():
     c, t = aes.quick_gcm_enc(b"A"*16, b"A"*16, b"Hello", assoc=b"blah")
     p = aes.quick_gcm_dec(b"A"*16, b"A"*16, c, t, assoc=b"blah")
     assert p == b"Hello"
+
+def test_ecb():
+        key = b"\x02" * 16
+        data = b"\x01" * 16 
+
+        assert len(data) == 16
+        aes = Cipher("AES-128-ECB")
+        enc = aes.enc(key, None)
+        c = enc.update(data)
+        c += enc.finalize()
+        
+        assert len(data) == 16
+        aes = Cipher("AES-128-ECB")
+        enc = aes.dec(key, None)
+        c1 = enc.update(c)
+        c1 += enc.finalize()
+        assert c1 == data
 
 # pylint: enable=unused-variable,redefined-outer-name
