@@ -27,20 +27,24 @@ def force_Bn(n):
         @wraps(f)  
         def new_f(*args, **kwargs):
 
+            new_args = args
             try:
-                if args[n].bn: #isinstance(args[n], Bn):
-                    return f(*args, **kwargs)
+                if not n < len(args) or args[n].bn: #isinstance(args[n], Bn):
+                    new_args = args
             except:
-                if not n < len(args):
-                    return f(*args, **kwargs)
+                # if not n < len(args):
+                #    new_args = args
 
                 if isinstance(args[n], int):
                     r = Bn(args[n])
                     new_args = list(args)
                     new_args[n] = r
-                    return f(*tuple(new_args), **kwargs)
+                    new_args = tuple(new_args)
+                else:
+                    return NotImplemented
 
-            return NotImplemented
+            return f(*new_args, **kwargs)
+
         return new_f
     return convert_nth
 
@@ -546,6 +550,7 @@ class Bn(object):
         res = Bn()
         local_ctx = BnCtx()
         err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
+        
         if err == _FFI.NULL:
             errs = get_errors()
             
@@ -560,7 +565,8 @@ class Bn(object):
 
         return res
 
-
+    @force_Bn(1)
+    @force_Bn(2)
     def mod_pow(self, other, m, ctx=None):
         """ Performs the modular exponentiation of self ** other % m.
 
@@ -842,12 +848,18 @@ def test_bn_arithmetic():
 
     with pytest.raises(Exception) as excinfo:
         Bn(3).mod_inverse(0)
+        print("Got inverse", x)
     assert 'No inverse' in str(excinfo.value)
 
     with pytest.raises(Exception) as excinfo:
         x = Bn(0).mod_inverse(Bn(13))
-        print("Got inverse", x)
+        print("!!! Got inverse", x)
     assert 'No inverse' in str(excinfo.value)
+
+    #with pytest.raises(Exception) as excinfo:
+    #    x = Bn(0).mod_inverse(Bn(13))
+    #    print("Got inverse", x)
+    #assert 'No inverse' in str(excinfo.value)
 
 
     assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
