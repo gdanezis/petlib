@@ -99,13 +99,13 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
     return (r, s)
 
 def do_ecdsa_verify(G, pub, sig, data):
-    """A quick function to ECDSA sign a hash.
+    """A quick function to ECDSA verify a hash.
 
     Args:
         G (EcGroup): the group in which math is done.
         pub (EcPt): the secret key
+        sig (Bn, Bn): the (r,s) signature
         data (str): the string to sign
-        sign (Bn, Bn): the (r,s) signature
 
     Returns:
         bool: A Boolean indicating whether the signature verifies.
@@ -213,7 +213,7 @@ def test_ecdsa_timing():
         sig = do_ecdsa_sign(G, sig_key, digest)
     t += [time.clock() - t0]
     
-    print("%s:\t%2.2f/sec" % (x, 1.0/(t[-1] / repreats)) )
+    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
     
     x = "Sign. with setup"
@@ -223,7 +223,7 @@ def test_ecdsa_timing():
         sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp = kinv_rp)
     t += [time.clock() - t0]
     
-    print("%s:\t%2.2f/sec" % (x, 1.0/(t[-1] / repreats)) )
+    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
 
     x = "Verification"
@@ -233,5 +233,5 @@ def test_ecdsa_timing():
             do_ecdsa_verify(G, ver_key, sig, digest)
     t += [time.clock() - t0]
     
-    print("%s:\t%2.2f/sec" % (x, 1.0/(t[-1] / repreats)) )
+    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
