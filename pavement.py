@@ -85,7 +85,7 @@ def upload(quiet=False):
     tell("upload dist %s" % v)
     sh('git tag -a v%s -m "Distribution versio v%s"' % (v, v))
     sh('python setup.py sdist upload', capture=quiet)
-    tell('Remeber to upload tags using "git push --tags"')
+    tell('Remember to upload tags using "git push --tags"')
 
 @task
 def lintlib(quiet=False):
