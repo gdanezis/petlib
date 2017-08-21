@@ -228,6 +228,34 @@ class CipherOperation(object):
         _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
         self.xenc = xenc
+
+    def set_padding(self, pad):
+        """Sets the padding on or off, accodring to pad (bool).
+
+        Example:
+            >>> from os import urandom
+            >>> aes = Cipher("AES-128-ECB")     # Init AES in Electronic codebook mode
+            >>> key = urandom(16)
+            >>> iv  = None
+            >>>
+            >>> # Get a CipherOperation object for encryption
+            >>> enc = aes.enc(key, iv)
+            >>> enc.set_padding(False)
+            >>> ref = b"A" * 16
+            >>> ciphertext = enc.update(ref)
+            >>> ciphertext += enc.finalize()
+            >>> len(ciphertext)
+            16
+            >>> # Get a CipherOperation object for decryption
+            >>> dec = aes.dec(key, iv)
+            >>> dec.set_padding(False)
+            >>> plaintext = dec.update(ciphertext)
+            >>> plaintext += dec.finalize()
+            >>> plaintext == ref # Check resulting plaintest matches referece one.
+            True
+
+        """
+        _check( _C.EVP_CIPHER_CTX_set_padding(self.ctx, pad) )
             
     def update(self, data):
         """Processes some data, and returns a partial result."""
