@@ -39,4 +39,6 @@ def test_toyrsa():
     assert p == b"Hello World!"
     print(p)
 
+if __name__ == "__main__":
+    test_toyrsa()
     

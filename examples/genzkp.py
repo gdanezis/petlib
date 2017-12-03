@@ -466,7 +466,7 @@ def test_basic():
     # Test: need to be of same type!
     with pytest.raises(Exception) as excinfo:
         zk.get(Pub, "g")
-    print str(excinfo.value)
+    print(str(excinfo.value))
     assert "isinstance" in str(excinfo.value)
 
 

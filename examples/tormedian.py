@@ -174,7 +174,11 @@ class CountSketchCt(object):
         #self.store = [ [zero for i in range(w)] for j in range(d) ]
 
     def dump(self):
-        from cStringIO import StringIO
+        try:
+            from cStringIO import StringIO
+        except:
+            # Python 3
+            from io import StringIO
         from struct import pack
 
         dst = StringIO()
@@ -385,7 +389,7 @@ def size_vs_error():
 
     eps = [0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.025, 0.01]  #, 0.005, 0.001]
     for epsilon in eps:
-        print epsilon
+        print(epsilon)
 
         for _ in range(40):
             vals = [gauss(300, 25) for _ in range (narrow_vals)]
@@ -474,7 +478,7 @@ def no_test_DP_median():
 
     eps = ["Inf", 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001]
     for epsilon in eps:
-        print epsilon
+        print(epsilon)
 
         for _ in range(40):
             vals = [gauss(300, 25) for _ in range (narrow_vals)]
@@ -669,7 +673,7 @@ if __name__ == "__main__":
                 med2 = xmed * (vmax - vmin) / MX + vmin
                 err2 = abs(med2 - med_gt) / float(med_gt)
 
-                print data.columns.values[i], med1, err1* 100, med2, err2* 100, med_gt 
+                print(data.columns.values[i], med1, err1* 100, med2, err2* 100, med_gt)
                 d += [(data.columns.values[i], [med1, err1* 100, med2, err2* 100, med_gt])]
 
             except:
@@ -677,7 +681,7 @@ if __name__ == "__main__":
                 # print data.iloc[0:num, i]
 
         frame = pd.DataFrame.from_items(d, orient="index", columns=["Median (0.25)", "Error (%)", "Median (0.05)", "Error (%)", "Truth"])
-        print frame.to_latex(float_format=(lambda x: u"%1.1f" % x))
+        print(frame.to_latex(float_format=(lambda x: u"%1.1f" % x)))
 
     if args.time:
         test_median()
