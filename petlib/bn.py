@@ -477,7 +477,7 @@ class Bn(object):
 
         try:
             r = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_mul(r.bn, self.bn, other.bn, local_ctx.bnctx)
 
             if __debug__:
@@ -508,7 +508,7 @@ class Bn(object):
         """
         try:
             r = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
             if __debug__:
                 _check( err )
@@ -531,7 +531,7 @@ class Bn(object):
 
         try:
             r = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
             if __debug__:
@@ -554,7 +554,7 @@ class Bn(object):
         """
         try:
             r = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
             if __debug__:
@@ -581,7 +581,7 @@ class Bn(object):
 
         try:
             res = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
             
             if err == _FFI.NULL:
@@ -624,7 +624,7 @@ class Bn(object):
         try:
             dv = Bn()
             rem = Bn()
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             ret =_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx)
             if __debug__:
                 _check(ret)
@@ -680,7 +680,7 @@ class Bn(object):
         try:
             rem = Bn()
 
-            local_ctx = BnCtx()
+            local_ctx = get_ctx()
             err = _C.BN_nnmod(rem.bn, self.bn, other.bn, local_ctx.bnctx)
 
             if __debug__:
