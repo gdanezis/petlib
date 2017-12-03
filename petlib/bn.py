@@ -92,12 +92,12 @@ _thread_local = threading.local()
 
 def get_ctx():
     global _thread_local
-    ctx = getattr(_thread_local, 'ctx', None)
-    if ctx is None:
+
+    try:
+        return _thread_local.ctx
+    except:
         _thread_local.ctx = BnCtx()
         return _thread_local.ctx
-    else:
-        return ctx
 
 
 @python_2_unicode_compatible
@@ -292,7 +292,7 @@ class Bn(object):
         return self.__inner_cmp__(other) >= 0
 
     def bool(self):
-        'Turn bn into boolean. False if zero, True otherwise.' 
+        'Turn Bn into boolean. False if zero, True otherwise.' 
         return self.__bool__()
 
     def __bool__(self):
@@ -323,11 +323,9 @@ class Bn(object):
         return self.__int__()
 
     def __int__(self):
-        # """A native python integer representation of the Big Number"""
         return int(self.__repr__())
 
     def __index__(self):
-        # """A native python integer representation of the Big Number"""
         return int(self.__repr__())
 
     def hex(self):
@@ -772,7 +770,7 @@ class Bn(object):
     # Implement negative 
     def __neg__(self):
         # pylint: disable=protected-access
-        zero = Bn(0)
+        global zero
         ret = copy(self)
         if ret >= zero:
             ret._set_neg(1)
@@ -791,6 +789,9 @@ class Bn(object):
 # object.__or__(self, other)
 
 # ---------- Tests ------------
+
+# Some globals
+zero = Bn(0)
 
 def test_bn_constructors():
     assert Bn.from_decimal("100") == 100
