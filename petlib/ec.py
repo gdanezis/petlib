@@ -1,5 +1,5 @@
 from .bindings import _FFI, _C, Const
-from .bn import Bn, force_Bn, _ctx
+from .bn import Bn, force_Bn, get_ctx
 
 from copy import copy
 from binascii import hexlify
@@ -66,7 +66,7 @@ class EcGroup(object):
         self.inf = None
 
         if optimize_mult:
-            _check( _C.EC_GROUP_precompute_mult(self.ecg, _ctx.bnctx) )
+            _check( _C.EC_GROUP_precompute_mult(self.ecg, get_ctx().bnctx) )
             
     def parameters(self):
         """Returns a dictionary with the parameters (a,b and p) of the curve.
@@ -82,7 +82,7 @@ class EcGroup(object):
 
         """
         p, a, b = Bn(), Bn(), Bn()
-        _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, _ctx.bnctx) )
+        _check( _C.EC_GROUP_get_curve_GFp(self.ecg, p.bn, a.bn, b.bn, get_ctx().bnctx) )
         return {"p":p, "a":a, "b":b}
 
     def generator(self):
@@ -123,7 +123,7 @@ class EcGroup(object):
 
         if self.ord is None:
             o = Bn()
-            _check( _C.EC_GROUP_get_order(self.ecg, o.bn, _ctx.bnctx) )
+            _check( _C.EC_GROUP_get_order(self.ecg, o.bn, get_ctx().bnctx) )
             self.ord = o
 
         return self.ord
@@ -134,7 +134,7 @@ class EcGroup(object):
         result = copy(elems[0]) # EcPt(self)
 
         for e in elems[1:]:
-            err = _C.EC_POINT_add(self.ecg, result.pt, result.pt, e.pt, _ctx.bnctx)
+            err = _C.EC_POINT_add(self.ecg, result.pt, result.pt, e.pt, get_ctx().bnctx)
 
             if __debug__:
                 _check( err )
@@ -153,7 +153,7 @@ class EcGroup(object):
 
         all_ws = [e.bn for e in weights]
         all_es = [e.pt for e in elems]
-        err = _C.EC_POINTs_mul(self.ecg, res.pt, _FFI.NULL, len(all_es), all_es, all_ws, _ctx.bnctx)
+        err = _C.EC_POINTs_mul(self.ecg, res.pt, _FFI.NULL, len(all_es), all_es, all_ws, get_ctx().bnctx)
 
         if __debug__:
             _check( err )
@@ -161,7 +161,7 @@ class EcGroup(object):
         return res
 
     def __eq__(self, other):
-        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, _ctx.bnctx)
+        res = _C.EC_GROUP_cmp(self.ecg, other.ecg, get_ctx().bnctx)
         return res == 0
 
     def __ne__(self, other):
@@ -189,7 +189,7 @@ class EcGroup(object):
             True
 
         """
-        res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, _ctx.bnctx))
+        res = int(_C.EC_POINT_is_on_curve(self.ecg, pt.pt, get_ctx().bnctx))
         return res == 1
 
     def hash_to_point(self, hinput):
@@ -204,7 +204,7 @@ class EcGroup(object):
         while ret == 0:
             xhash = sha512(xhash).digest()
             x = Bn.from_binary(xhash) % p
-            ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, _ctx.bnctx)
+            ret = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt.pt, x.bn, y, get_ctx().bnctx)
 
         assert self.check_point(pt)
         _check( ret )
@@ -216,8 +216,8 @@ class EcGroup(object):
         pt0 = EcPt(self)
         pt1 = EcPt(self)
 
-        ret0 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt0.pt, x.bn, True, _ctx.bnctx)
-        ret1 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt1.pt, x.bn, False, _ctx.bnctx)
+        ret0 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt0.pt, x.bn, True, get_ctx().bnctx)
+        ret1 = _C.EC_POINT_set_compressed_coordinates_GFp(self.ecg, pt1.pt, x.bn, False, get_ctx().bnctx)
 
         assert self.check_point(pt0) and self.check_point(pt1)
         _check( ret0 )
@@ -254,7 +254,7 @@ class EcPt(object):
 
         """
         new_pt = EcPt(group)
-        err = _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), _ctx.bnctx)
+        err = _C.EC_POINT_oct2point(group.ecg, new_pt.pt, sbin, len(sbin), get_ctx().bnctx)
         _check( err )
 
         return new_pt
@@ -292,7 +292,7 @@ class EcPt(object):
             _check( other.group == self.group )
 
         result = EcPt(self.group)
-        err = _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, _ctx.bnctx)
+        err = _C.EC_POINT_add(self.group.ecg, result.pt, self.pt, other.pt, get_ctx().bnctx)
         
         if __debug__:
             _check( err )
@@ -312,12 +312,12 @@ class EcPt(object):
     def pt_double(self):
         """Doubles the point. equivalent to "self + self"."""
         result = EcPt(self.group)
-        _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, _ctx.bnctx) )
+        _check( _C.EC_POINT_dbl(self.group.ecg, result.pt, self.pt, get_ctx().bnctx) )
         return result
     
     def pt_double_inplace(self):
         """Doubles the point and mutates it to hold the result."""
-        _check( _C.EC_POINT_dbl(self.group.ecg, self.pt, self.pt, _ctx.bnctx) )
+        _check( _C.EC_POINT_dbl(self.group.ecg, self.pt, self.pt, get_ctx().bnctx) )
 
     def pt_neg(self):
         """Returns the negative of the point. Synonym with -self.
@@ -351,7 +351,7 @@ class EcPt(object):
         if __debug__:
             _check( err )
 
-        err = _C.EC_POINT_invert(self.group.ecg, result.pt, _ctx.bnctx)
+        err = _C.EC_POINT_invert(self.group.ecg, result.pt, get_ctx().bnctx)
         if __debug__:
             _check( err )
         return result
@@ -359,7 +359,7 @@ class EcPt(object):
     def __neg_inplace__(self):
         # result = copy(self)
 
-        err = _C.EC_POINT_invert(self.group.ecg, self.pt, _ctx.bnctx)
+        err = _C.EC_POINT_invert(self.group.ecg, self.pt, get_ctx().bnctx)
         if __debug__:
             _check( err )
 
@@ -383,19 +383,25 @@ class EcPt(object):
         """
         return self.__rmul_inplace__(scalar)
 
-    @force_Bn(1)
+    # @force_Bn(1)
     def __rmul__(self, other):
-        result = EcPt(self.group)
-        err = _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, _ctx.bnctx)
-        if __debug__:    
-            _check( err )
-        return result
+        try:
+            result = EcPt(self.group)
+            err = _C.EC_POINT_mul(self.group.ecg, result.pt, _FFI.NULL, self.pt, other.bn, get_ctx().bnctx)
+            if __debug__:    
+                _check( err )
+            return result
+        except AttributeError:
+            return self.__rmul__(Bn.from_num(other))
     
-    @force_Bn(1)
+    # @force_Bn(1)
     def __rmul_inplace__(self, other):
-        err = _C.EC_POINT_mul(self.group.ecg, self.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
-        if __debug__:    
-            _check( err )
+        try:
+            err = _C.EC_POINT_mul(self.group.ecg, self.pt, _FFI.NULL, self.pt, other.bn, _FFI.NULL)
+            if __debug__:    
+                _check( err )
+        except AttributeError:
+            return self.__rmul_inplace__(Bn.from_num(other))
 
     def pt_eq(self, other):
         """Returns a boolean denoting whether the points are equal. Synonym with self == other.
@@ -415,7 +421,7 @@ class EcPt(object):
         if __debug__:
             _check( type(other) == EcPt )
             _check( other.group == self.group )
-        r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, _ctx.bnctx))
+        r = int(_C.EC_POINT_cmp(self.group.ecg, self.pt, other.pt, get_ctx().bnctx))
         return r == 0
 
     def __ne__(self, other):
@@ -441,10 +447,10 @@ class EcPt(object):
 
         """
         size = _C.EC_POINT_point2oct(self.group.ecg, self.pt, form, 
-                             _FFI.NULL, 0, _ctx.bnctx)
+                             _FFI.NULL, 0, get_ctx().bnctx)
         buf = _FFI.new("unsigned char[]", size)
         _C.EC_POINT_point2oct(self.group.ecg, self.pt, form,
-                             buf, size, _ctx.bnctx)
+                             buf, size, get_ctx().bnctx)
         output = bytes(_FFI.buffer(buf)[:])
         return output
     
@@ -478,7 +484,7 @@ class EcPt(object):
         x = Bn()
         y = Bn()
         _check( _C.EC_POINT_get_affine_coordinates_GFp(self.group.ecg,
-self.pt, x.bn, y.bn, _ctx.bnctx))
+self.pt, x.bn, y.bn, get_ctx().bnctx))
         return (x,y)
 
     def __str__(self):

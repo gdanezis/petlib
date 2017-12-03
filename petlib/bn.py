@@ -26,7 +26,6 @@ def force_Bn(n):
         # pylint: disable=star-args
         @wraps(f)  
         def new_f(*args, **kwargs):
-
             new_args = args
             try:
                 if not n < len(args) or args[n].bn: #isinstance(args[n], Bn):
@@ -36,7 +35,7 @@ def force_Bn(n):
                 #    new_args = args
 
                 if isinstance(args[n], int):
-                    r = Bn(args[n])
+                    r = Bn.from_num(args[n])
                     new_args = list(args)
                     new_args[n] = r
                     new_args = tuple(new_args)
@@ -88,10 +87,18 @@ class BnCtxNULL(BnCtx):
     def __del__(self):
         pass
 
-try:
-    _ctx = BnCtxNULL()
-except:
-    _ctx = None
+import threading
+_thread_local = threading.local()
+
+def get_ctx():
+    global _thread_local
+    ctx = getattr(_thread_local, 'ctx', None)
+    if ctx is None:
+        _thread_local.ctx = BnCtx()
+        return _thread_local.ctx
+    else:
+        return ctx
+
 
 @python_2_unicode_compatible
 class Bn(object):
@@ -107,6 +114,18 @@ class Bn(object):
     __slots__ = ['bn']
 
     ## -- static methods  
+
+    @staticmethod
+    def from_num(num):
+        if isinstance(num, int):
+            return Bn(num)
+        elif isinstance(num, Bn):
+            return num
+        else:
+            # raise TypeError("Cannot coerce %s into a BN." % num)
+            return NotImplemented
+
+
     @staticmethod
     def from_decimal(sdec):
         """Creates a Big Number from a decimal string.
@@ -199,7 +218,7 @@ class Bn(object):
 
     _upper_bound = 2**(64-1)
     def __init__(self, num=0):
-        'Allocate a Big Number structure, initialized with num or zero'        
+        'Allocate a Big Number structure, initialized with a small integer or zero.'        
         self.bn = _C.BN_new()
 
         if num == 0:
@@ -211,14 +230,17 @@ class Bn(object):
 
         # Assign
         if num != 0:
-            _check(_C.BN_set_word(self.bn, abs(num)))
+            ret = _C.BN_set_word(self.bn, abs(num))
+            if __debug__: _check(ret)
+            if ret != 1: raise Exception("Bn Exception.")
 
         if num < 0:
             self._set_neg(1)
 
     def _set_neg(self, sign=1):
         # """Sets the sign to "-" (1) or "+" (0)"""
-        _check( sign == 0 or sign == 1 )
+        if not (sign == 0 or sign == 1):
+            raise Exception("Sign has to be 0 or 1.")
         _C.BN_set_negative(self.bn, sign)
 
     def copy(self):
@@ -240,35 +262,32 @@ class Bn(object):
         # 'Deallocate all resources of the big number'
         self.__C.BN_clear_free(self.bn)
 
-    @force_Bn(1)
     def __inner_cmp__(self, other):
-        # 'Internal comparison function' 
-        if __debug__:
-            _check( type(other) == Bn )
-        sig = int(_C.BN_cmp(self.bn, other.bn))
-        return sig
+        # 'Irel comparison function' 
+        #if __debug__:
+        #    _check( type(other) == Bn )
+        try:
+            sig = int(_C.BN_cmp(self.bn, other.bn))
+            return sig
+        except AttributeError:
+            return self.__inner_cmp__(Bn.from_num(other))
+        
 
-    @force_Bn(1)
     def __lt__(self, other):
         return self.__inner_cmp__(other) < 0
 
-    @force_Bn(1)
     def __le__(self, other):
         return self.__inner_cmp__(other) <= 0
 
-    @force_Bn(1)
     def __eq__(self, other):
         return self.__inner_cmp__(other) == 0
 
-    @force_Bn(1)
     def __ne__(self, other):
         return self.__inner_cmp__(other) != 0
 
-    @force_Bn(1)
     def __gt__(self, other):
         return self.__inner_cmp__(other) > 0
 
-    @force_Bn(1)
     def __ge__(self, other):
         return self.__inner_cmp__(other) >= 0
 
@@ -392,14 +411,16 @@ class Bn(object):
     def __radd__(self, other):
         return self.__add__(other)
 
-    @force_Bn(1)
     def __add__(self, other):
-        r = Bn()
-        err = _C.BN_add(r.bn, self.bn, other.bn)
-        
-        if __debug__:
-            _check( err )
-        return r
+        try:
+            r = Bn()
+            err = _C.BN_add(r.bn, self.bn, other.bn)
+            
+            if __debug__:
+                _check( err )
+            return r
+        except AttributeError:
+            return self.__add__(Bn.from_num(other))
 
     def int_sub(self, other):
         """Returns the difference between this number and another. 
@@ -420,15 +441,17 @@ class Bn(object):
     def __rsub__(self, other):
         return Bn(other) - self
 
-    @force_Bn(1)
     def __sub__(self, other):
-        r = Bn()
-        err = _C.BN_sub(r.bn, self.bn, other.bn)
-        
-        if __debug__:
-            _check( err )
+        try:
+            r = Bn()
+            err = _C.BN_sub(r.bn, self.bn, other.bn)
+            
+            if __debug__:
+                _check( err )
 
-        return r
+            return r
+        except AttributeError:
+            return self.__sub__(Bn.from_num(other))
 
     def int_mul(self, other):
         """Returns the product of this number with another.
@@ -449,22 +472,29 @@ class Bn(object):
     def __rmul__(self, other):
         return self.__mul__(other)
 
-    @force_Bn(1)
+    
     def __mul__(self, other):
 
-        r = Bn()
-        local_ctx = BnCtx()
-        err = _C.BN_mul(r.bn, self.bn, other.bn, local_ctx.bnctx)
+        try:
+            r = Bn()
+            local_ctx = BnCtx()
+            err = _C.BN_mul(r.bn, self.bn, other.bn, local_ctx.bnctx)
 
-        if __debug__:
-            _check( err )
-        
-        return r
+            if __debug__:
+                _check( err )
+            
+            return r
+        except AttributeError:
+            other = Bn.from_num(other)
+            if other is NotImplemented:
+                return NotImplemented
+            return self.__mul__(other)
+
+
+
 
 # ------------------ Mod arithmetic -------------------------
 
-    @force_Bn(1)
-    @force_Bn(2)
     def mod_add(self, other, m):
         """
         mod_add(other, m)
@@ -476,17 +506,17 @@ class Bn(object):
             1
 
         """
+        try:
+            r = Bn()
+            local_ctx = BnCtx()
+            err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
+            if __debug__:
+                _check( err )
+                
+            return r
+        except AttributeError:
+            return self.mod_add(Bn.from_num(other), Bn.from_num(m))
 
-        r = Bn()
-        local_ctx = BnCtx()
-        err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
-        if __debug__:
-            _check( err )
-            
-        return r
-
-    @force_Bn(1)
-    @force_Bn(2)
     def mod_sub(self, other, m):
         """
         mod_sub(other, m)
@@ -499,17 +529,18 @@ class Bn(object):
 
         """
 
-        r = Bn()
-        local_ctx = BnCtx()
-        err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
+        try:
+            r = Bn()
+            local_ctx = BnCtx()
+            err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
-        if __debug__:
-            _check( err )
+            if __debug__:
+                _check( err )
 
-        return r
+            return r
+        except AttributeError:
+            return self.mod_sub(Bn.from_num(other), Bn.from_num(m))
 
-    @force_Bn(1)
-    @force_Bn(2)
     def mod_mul(self, other, m):
         """
         mod_mul(other, m)
@@ -521,18 +552,19 @@ class Bn(object):
             9
 
         """
+        try:
+            r = Bn()
+            local_ctx = BnCtx()
+            err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
-        r = Bn()
-        local_ctx = BnCtx()
-        err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
+            if __debug__:
+                _check( err )
 
-        if __debug__:
-            _check( err )
-
-        return r
+            return r
+        except AttributeError:
+            return self.mod_mul(Bn.from_num(other), Bn.from_num(m))
 
 
-    @force_Bn(1)
     def mod_inverse(self, m):
         """
         mod_inverse(m)
@@ -547,26 +579,27 @@ class Bn(object):
 
         """
 
-        res = Bn()
-        local_ctx = BnCtx()
-        err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
-        
-        if err == _FFI.NULL:
-            errs = get_errors()
+        try:
+            res = Bn()
+            local_ctx = BnCtx()
+            err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
             
-            if errs == [ 50770023 ]:
-                raise Exception("No inverse")
+            if err == _FFI.NULL:
+                errs = get_errors()
+                
+                if errs == [ 50770023 ]:
+                    raise Exception("No inverse")
 
-            elif errs == [ 50782316 ]:
-            	raise Exception("No inverse")
-            	
-            else:
-                raise Exception("Unknown error: %s" % errs)
+                elif errs == [ 50782316 ]:
+                    raise Exception("No inverse")
+                    
+                else:
+                    raise Exception("Unknown error: %s" % errs)
 
-        return res
+            return res
+        except AttributeError:
+            return self.mod_inverse(Bn.from_num(m))
 
-    @force_Bn(1)
-    @force_Bn(2)
     def mod_pow(self, other, m, ctx=None):
         """ Performs the modular exponentiation of self ** other % m.
 
@@ -587,14 +620,17 @@ class Bn(object):
     def __rdivmod__(self, other):
         return Bn(other).__divmod__(self)
 
-    @force_Bn(1)
     def __divmod__(self, other):
-
-        dv = Bn()
-        rem = Bn()
-        local_ctx = BnCtx()
-        _check(_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx))
-        return (dv, rem)
+        try:
+            dv = Bn()
+            rem = Bn()
+            local_ctx = BnCtx()
+            ret =_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx)
+            if __debug__:
+                _check(ret)
+            return (dv, rem)
+        except AttributeError:
+            return self.__divmod__(Bn.from_num(other))
 
     def int_div(self, other):
         """Returns the integer division of this number by another. 
@@ -615,7 +651,6 @@ class Bn(object):
     def __rdiv__(self, other):
         return Bn(other).__div__(self)
 
-    @force_Bn(1)
     def __div__(self, other):
         dv, _ = divmod(self, other)
         return dv
@@ -640,29 +675,30 @@ class Bn(object):
     def __rmod__(self, other):
         return Bn(other).__mod__(self)
 
-    @force_Bn(1)
     def __mod__(self, other):
 
-        rem = Bn()
+        try:
+            rem = Bn()
 
-        local_ctx = BnCtx()
-        err = _C.BN_nnmod(rem.bn, self.bn, other.bn, local_ctx.bnctx)
+            local_ctx = BnCtx()
+            err = _C.BN_nnmod(rem.bn, self.bn, other.bn, local_ctx.bnctx)
 
-        if __debug__:
-            _check( err )
-        return rem
+            if __debug__:
+                _check( err )
+            return rem
+        except AttributeError:
+            self.__mod__(Bn.from_num(other))
+
 
     def __rtruediv__(self, other):
         return Bn(other).__truediv__(self)
 
-    @force_Bn(1)
     def __truediv__(self, other):
         return self.__div__(other)
 
     def __rfloordiv__(self, other):
         return Bn(other).__floordiv__(self)
 
-    @force_Bn(1)
     def __floordiv__(self, other):
         return self.__div__(other)
 
@@ -689,26 +725,30 @@ class Bn(object):
         else:
             return self ** other
 
-    @force_Bn(1)
-    @force_Bn(2)
     def __pow__(self, other, modulo=None, ctx=None):
 
-        res = Bn()
+        try:
+            res = Bn()
 
-        if ctx == None:
-            ctx = BnCtx()
+            if ctx == None:
+                ctx = BnCtx()
 
-        if modulo is None:
-            _check(_C.BN_exp(res.bn, self.bn, other.bn, ctx.bnctx))
-        else:
-            _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, ctx.bnctx))
+            if modulo is None:
+                _check(_C.BN_exp(res.bn, self.bn, other.bn, ctx.bnctx))
+            else:
+                _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, ctx.bnctx))
 
-        return res
+            return res
+        except:
+            other = Bn.from_num(other)
+            if modulo is not None:
+                modulo = Bn.from_num(modulo)
+            return self.__pow__(other, modulo, ctx)
 
     def is_prime(self):
         """Returns True if the number is prime, with negligible prob. of error."""
         
-        res = int(_C.BN_is_prime_ex(self.bn, 0, _ctx.bnctx, _FFI.NULL))
+        res = int(_C.BN_is_prime_ex(self.bn, 0, get_ctx().bnctx, _FFI.NULL))
         if res == 0:
             return False
         if res == 1:

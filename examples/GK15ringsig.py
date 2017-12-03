@@ -1,3 +1,6 @@
+import sys
+sys.path = ["."] + sys.path
+
 from petlib.ec import EcGroup
 from petlib.bn import Bn
 
