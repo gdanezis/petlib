@@ -3,15 +3,6 @@ from .bindings import _FFI, _C
 import pytest
 
 
-def _check(return_val):
-    """Checks the return code of the C calls"""
-    if return_val == 1 and isinstance(return_val, int):
-      return
-    if return_val == True and isinstance(return_val, bool):
-      return
-
-    raise Exception("Cipher exception: Unknown type %s or value %s" % (str(type(return_val)), str(return_val)))
-
 class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
@@ -87,33 +78,33 @@ class Cipher(object):
         if iv is None:
             iv = _FFI.NULL
 
+        ok = True
         c_op = CipherOperation(enc)
-        _check( len(key) == self.len_key())
-        _check( enc in [0,1] )
-       
+        
+        ok &= ( len(key) == int(self.alg.key_len) )
+        ok &= ( enc == 0 or enc == 1 )
+        
+        if not ok: raise Exception("Cipher exception: Wrong key length or enc mode.")
+
         if not self.gcm:
             if iv != _FFI.NULL:
-                _check( len(iv) == self.len_IV())
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
-                self.alg,  _FFI.NULL, key, iv, enc) )
+                ok &= ( len(iv) == self.len_IV() )
+            ok &= ( _C.EVP_CipherInit_ex(c_op.ctx, self.alg, _FFI.NULL, key, iv, enc) )
 
         else:
-            
 
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
-                self.alg,  _FFI.NULL, _FFI.NULL, _FFI.NULL, enc) )
+            ok &= ( _C.EVP_CipherInit_ex(c_op.ctx, self.alg,  _FFI.NULL, _FFI.NULL, _FFI.NULL, enc) )
 
             # assert len(iv) <= self.len_block()
 
-            _check( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, 
-                _C.EVP_CTRL_GCM_SET_IVLEN, len(iv), _FFI.NULL))
+            ok &= ( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_SET_IVLEN, len(iv), _FFI.NULL))
 
             _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_SET_IV_FIXED, -1, iv);
             _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_IV_GEN, 0, iv)
 
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
-                _FFI.NULL,  _FFI.NULL, key, iv, enc) )
+            ok &= ( _C.EVP_CipherInit_ex(c_op.ctx, _FFI.NULL,  _FFI.NULL, key, iv, enc) )
 
+        if not ok: raise Exception("Cipher exception: Init failed.")
         c_op.cipher = self
         return c_op
 
@@ -255,18 +246,21 @@ class CipherOperation(object):
             True
 
         """
-        _check( _C.EVP_CIPHER_CTX_set_padding(self.ctx, pad) )
-            
+        ok = _C.EVP_CIPHER_CTX_set_padding(self.ctx, pad)
+        if not ok: raise Exception("Cipher exception: Set padding failed.")
+
     def update(self, data):
         """Processes some data, and returns a partial result."""
-        block_len = self.cipher.len_block()
+        block_len = self.cipher.alg.block_size # self.cipher.len_block()
         alloc_len = len(data) + block_len + 1
         outl = _FFI.new("int *")
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
         
-        _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)) )
-        
+        ok = _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data))
+        if not ok: raise Exception("Cipher exception: Update failed.")
+
+
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
@@ -302,7 +296,9 @@ class CipherOperation(object):
         out = _FFI.new("unsigned char[]", alloc_len)
 
         try:
-            _check( _C.EVP_CipherFinal_ex(self.ctx, out, outl) )
+            ok = _C.EVP_CipherFinal_ex(self.ctx, out, outl)
+            if not ok: raise Exception("Cipher exception: Finalize failed.")
+
             if outl[0] == 0:
                 return b''
 
@@ -318,8 +314,9 @@ class CipherOperation(object):
             self.set_tag(b"\00" * 16)
 
         outl = _FFI.new("int *")
-        _check( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
-        _check( outl[0] == len(data) )
+        ok  = ( _C.EVP_CipherUpdate(self.ctx, _FFI.NULL, outl, data, len(data)))
+        ok &=( outl[0] == len(data) )
+        if not ok: raise Exception("Cipher exception: Update associated data failed.")
 
     def get_tag(self, tag_len = 16):
         """Get the GCM authentication tag. Execute after finalizing the encryption.
@@ -339,10 +336,10 @@ class CipherOperation(object):
 
         """
         tag = _FFI.new("unsigned char []", tag_len)
-        ret =  _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_GET_TAG, tag_len, tag)
-        _check( ret )
+        ok =  _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_GET_TAG, tag_len, tag)
+        if not ok: raise Exception("Cipher exception: Cipher control failed.")
+        return tag
         s = bytes(_FFI.buffer(tag)[:])
-        return s
         
 
     def set_tag(self, tag):
@@ -361,10 +358,11 @@ class CipherOperation(object):
             >>> assert plaintext == b'World!'
 
         """
-        _check( _C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))
+        ok = (_C.EVP_CIPHER_CTX_ctrl(self.ctx, _C.EVP_CTRL_GCM_SET_TAG, len(tag), tag))
+        if not ok: raise Exception("Cipher exception: Set tag failed.")
 
     def __del__(self):
-        _check( _C.EVP_CIPHER_CTX_cleanup(self.ctx) )
+        _C.EVP_CIPHER_CTX_cleanup(self.ctx)
         _C.EVP_CIPHER_CTX_free(self.ctx)
 
 
