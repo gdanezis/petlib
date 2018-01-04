@@ -3,6 +3,16 @@ from .bindings import _FFI, _C
 import pytest
 
 
+_pool = []
+
+def get_intptr():
+    if _pool == []:
+        _pool.append( _FFI.new("int *") )
+    return _pool.pop()
+
+def return_intptr(ptr):
+    _pool.append(ptr)
+
 class Cipher(object):
     """ A class representing a symmetric cipher and mode.
 
@@ -29,10 +39,12 @@ class Cipher(object):
 
     """
         
-    __slots__ = ["alg", "gcm"]
+    __slots__ = ["alg", "gcm", "_pool"]
 
     def __init__(self, name, _alg=None):
         """Initialize the cipher by name."""
+
+        self._pool = []
 
         if _alg:
             self.alg = _alg
@@ -79,7 +91,12 @@ class Cipher(object):
             iv = _FFI.NULL
 
         ok = True
-        c_op = CipherOperation(enc)
+
+        if self._pool == []:
+            c_op = CipherOperation(enc)
+        else:
+            c_op = self._pool.pop()
+            c_op.init(enc)
         
         ok &= ( len(key) == int(self.alg.key_len) )
         ok &= ( enc == 0 or enc == 1 )
@@ -130,8 +147,8 @@ class Cipher(object):
         """
         return self.op(key, iv, enc=0)
 
-    def __del__(self):
-        pass
+    #def __del__(self):
+    #    pass
 
 # --------- AES GCM special functions ---------------
 
@@ -216,9 +233,13 @@ class CipherOperation(object):
 
     def __init__(self, xenc):
         self.ctx = _C.EVP_CIPHER_CTX_new()
+        self.init(xenc)
+        
+    def init(self, xenc):
         _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
         self.xenc = xenc
+
 
     def set_padding(self, pad):
         """Sets the padding on or off, accodring to pad (bool).
@@ -253,7 +274,8 @@ class CipherOperation(object):
         """Processes some data, and returns a partial result."""
         block_len = self.cipher.alg.block_size # self.cipher.len_block()
         alloc_len = len(data) + block_len + 1
-        outl = _FFI.new("int *")
+        # outl = _FFI.new("int *")
+        outl = get_intptr()
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
         
@@ -262,6 +284,8 @@ class CipherOperation(object):
 
 
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
+
+        return_intptr(outl)
         return ret
 
     def finalize(self):
@@ -362,8 +386,11 @@ class CipherOperation(object):
         if not ok: raise Exception("Cipher exception: Set tag failed.")
 
     def __del__(self):
-        _C.EVP_CIPHER_CTX_cleanup(self.ctx)
-        _C.EVP_CIPHER_CTX_free(self.ctx)
+        if self not in self.cipher._pool:
+            self.cipher._pool.append(self)
+        else:
+            _C.EVP_CIPHER_CTX_cleanup(self.ctx)
+            _C.EVP_CIPHER_CTX_free(self.ctx)
 
 
 ## When testing ignore extra variables
