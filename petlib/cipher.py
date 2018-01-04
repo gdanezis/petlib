@@ -282,7 +282,6 @@ class CipherOperation(object):
         ok = _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data))
         if not ok: raise Exception("Cipher exception: Update failed.")
 
-
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
 
         return_intptr(outl)
