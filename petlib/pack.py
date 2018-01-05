@@ -36,32 +36,77 @@ from .bn import Bn
 
 __all__ = ["encode", "decode"]
 
+_pack_reg = {}
+_unpack_reg = {}
+
+def register_coders(cls, num, enc_func, dec_func):
+    """ Register a new type for encoding and decoding. 
+    Take a class type, a number, an encoding and a decoding function."""
+
+    if num in _unpack_reg or cls in _pack_reg:
+        raise Exception("Class or number already in use.")
+
+    coders = (cls, num, enc_func, dec_func)
+    _pack_reg[cls] = coders
+    _unpack_reg[num] = coders
+
+
+def bn_enc(obj):
+    if obj < 0:
+        neg = b"-"
+        data = (-obj).binary()
+    else:
+        neg = b"+"
+        data = obj.binary()
+    return neg + data
+
+def bn_dec(data):
+    num = Bn.from_binary(data[1:])
+    # Accomodate both Python 2 and Python 3
+    if data[0] == ord("-") or data[0] == "-":
+        return -num
+    return num
+
+register_coders(Bn, 0, bn_enc, bn_dec)
+
+
+def ecg_enc(obj):
+    # Serialize EcGroup objects
+    nid = obj.nid()
+    packed_nid = msgpack.packb(nid)
+    return packed_nid
+
+def ecg_dec(data):
+    # Decode EcGroup
+    nid = msgpack.unpackb(data)
+    return EcGroup(nid)
+
+register_coders(EcGroup, 1, ecg_enc, ecg_dec)
+
+
+def ecpt_enc(obj):
+    # Serialize EcPt objects
+    nid = obj.group.nid()
+    data = obj.export()
+    packed_data = msgpack.packb((nid, data))
+    return packed_data
+
+def ecpt_dec(data):
+    # Decode EcPt
+    nid, ptdata = msgpack.unpackb(data)
+    return EcPt.from_binary(ptdata, EcGroup(nid))
+
+register_coders(EcPt, 2, ecpt_enc, ecpt_dec)
+
 
 def default(obj):
     # Serialize Bn objects
-    if isinstance(obj, Bn):
-        if obj < 0:
-            neg = b"-"
-            data = (-obj).binary()
-        else:
-            neg = b"+"
-            data = obj.binary()
-        return msgpack.ExtType(0, neg + data)
-
-    # Serialize EcGroup objects
-    elif isinstance(obj, EcGroup):
-        nid = obj.nid()
-        packed_nid = msgpack.packb(nid)
-        return msgpack.ExtType(1, packed_nid)
-
-    # Serialize EcPt objects
-    elif isinstance(obj, EcPt):
-        nid = obj.group.nid()
-        data = obj.export()
-        packed_nid = msgpack.packb((nid, data))
-        return msgpack.ExtType(2, packed_nid)
-
-    raise TypeError("Unknown type: %r" % (obj,))
+    T = type(obj)
+    if T in _pack_reg:
+        _, num, enc, _ = _pack_reg[T]
+        return msgpack.ExtType(num, enc(obj))
+    else:
+        raise TypeError("Unknown type: %r" % (obj,))
 
 def make_encoder(out_encoder=None):
     if out_encoder is None:
@@ -76,24 +121,9 @@ def make_encoder(out_encoder=None):
         return new_encoder
 
 def ext_hook(code, data):
-
-    # Decode Bn types
-    if code == 0:
-        num = Bn.from_binary(data[1:])
-        # Accomodate both Python 2 and Python 3
-        if data[0] == ord("-") or data[0] == "-":
-            return -num
-        return num
-
-    # Decode EcGroup
-    elif code == 1:
-        nid = msgpack.unpackb(data)
-        return EcGroup(nid)
-
-    # Decode EcPt
-    elif code == 2:
-        nid, ptdata = msgpack.unpackb(data)
-        return EcPt.from_binary(ptdata, EcGroup(nid))
+    if code in _unpack_reg:
+        _, _, _, dec = _unpack_reg[code]
+        return dec(data)
 
     # Other
     return msgpack.ExtType(code, data)
