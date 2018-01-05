@@ -14,7 +14,6 @@ Example:
     ...     return CustomType()
     >>> 
     >>> register_coders(CustomType, 10, enc_custom, dec_custom)
-    >>> assert CustomType in _pack_reg
     >>>
     >>> # Define a structure
     >>> G = EcGroup()
@@ -66,8 +65,6 @@ def bn_dec(data):
         return -num
     return num
 
-register_coders(Bn, 0, bn_enc, bn_dec)
-
 
 def ecg_enc(obj):
     # Serialize EcGroup objects
@@ -79,8 +76,6 @@ def ecg_dec(data):
     # Decode EcGroup
     nid = msgpack.unpackb(data)
     return EcGroup(nid)
-
-register_coders(EcGroup, 1, ecg_enc, ecg_dec)
 
 
 def ecpt_enc(obj):
@@ -95,8 +90,15 @@ def ecpt_dec(data):
     nid, ptdata = msgpack.unpackb(data)
     return EcPt.from_binary(ptdata, EcGroup(nid))
 
-register_coders(EcPt, 2, ecpt_enc, ecpt_dec)
+def _init_coders():
+    global _pack_reg, _unpack_reg
+    _pack_reg, _unpack_reg = {}, {}
+    register_coders(Bn, 0, bn_enc, bn_dec)
+    register_coders(EcGroup, 1, ecg_enc, ecg_dec)
+    register_coders(EcPt, 2, ecpt_enc, ecpt_dec)
 
+# Register default coders
+_init_coders()
 
 def default(obj):
     # Serialize Bn objects
@@ -274,6 +276,7 @@ def test_docstring():
     def dec_custom(data):
         return CustomType()
     
+    _init_coders()
     register_coders(CustomType, 14, enc_custom, dec_custom)
     assert CustomType in _pack_reg
     
@@ -286,3 +289,4 @@ def test_docstring():
     packed = encode(test_data)
     x = decode(packed)
     assert x == test_data
+    _init_coders()
