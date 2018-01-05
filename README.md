@@ -40,7 +40,7 @@ Build & Test
 
 You may use 'setuptools' and 'tox' to build and test the library:
 
-	python setup.py build
+	python setup.py build_ext
 
 To run all tests simply do:
 
