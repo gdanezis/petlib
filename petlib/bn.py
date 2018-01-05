@@ -61,7 +61,7 @@ def _check(return_val):
         errs = get_errors()
         raise Exception("BN exception: %s" % errs) 
 
-class BnCtx:
+class BnCtx(object):
     """ A Bn Context for use by the petlib library """
 
     __slots__ = ['bnctx', '_C']
@@ -889,7 +889,7 @@ def test_bn_arithmetic():
 
     with pytest.raises(Exception) as excinfo:
         Bn(3).mod_inverse(0)
-        print("Got inverse", x)
+        print("Got inverse")
     assert 'No inverse' in str(excinfo.value)
 
     with pytest.raises(Exception) as excinfo:

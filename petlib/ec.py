@@ -13,7 +13,7 @@ except:                             # pylint: disable=bare-except
 
 try:
     from future.utils import python_2_unicode_compatible
-except Exception as e:              # pylint: disable=broad-except
+except Exception:              # pylint: disable=broad-except
     # An identity decorator
     python_2_unicode_compatible = lambda x: x
 
@@ -133,8 +133,8 @@ class EcGroup(object):
 
         result = copy(elems[0]) # EcPt(self)
 
-        for e in elems[1:]:
-            err = _C.EC_POINT_add(self.ecg, result.pt, result.pt, e.pt, get_ctx().bnctx)
+        for el in elems[1:]:
+            err = _C.EC_POINT_add(self.ecg, result.pt, result.pt, el.pt, get_ctx().bnctx)
 
             if __debug__:
                 _check( err )
