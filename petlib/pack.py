@@ -3,28 +3,27 @@ strucures.
 
 Example:
     >>> # Define a custom class, encoder and decoder
-    >>> class CustomClass:
+    >>> class CustomType:
     ...     def __eq__(self, other):
-    ...         return isinstance(other, CustomClass)
+    ...         return isinstance(other, CustomType)
     >>> 
-    >>> def enc_CustomClass(obj):
-    ...     if isinstance(obj, CustomClass):
-    ...         return msgpack.ExtType(10, b'')
-    ...     raise TypeError("Unknown type: %r" % (obj,))
+    >>> def enc_custom(obj):
+    ...     return b''
     >>>
-    >>> def dec_CustomClass(code, data):
-    ...     if code == 10:
-    ...         return CustomClass()
-    ...     return msgpack.ExtType(code, data)
+    >>> def dec_custom(data):
+    ...     return CustomType()
     >>> 
+    >>> register_coders(CustomType, 10, enc_custom, dec_custom)
+    >>> assert CustomType in _pack_reg
+    >>>
     >>> # Define a structure
     >>> G = EcGroup()
-    >>> custom_obj = CustomClass()
+    >>> custom_obj = CustomType() 
     >>> test_data = [G, G.generator(), G.order(), custom_obj]
     >>> 
     >>> # Encode and decode custom structure
-    >>> packed = encode(test_data, enc_CustomClass)
-    >>> x = decode(packed, dec_CustomClass)
+    >>> packed = encode(test_data)
+    >>> x = decode(packed)
     >>> assert x == test_data
 
 """
@@ -34,7 +33,7 @@ import msgpack
 from .ec import EcGroup, EcPt
 from .bn import Bn
 
-__all__ = ["encode", "decode"]
+__all__ = ["encode", "decode", "register_coders"]
 
 _pack_reg = {}
 _unpack_reg = {}
@@ -101,12 +100,12 @@ register_coders(EcPt, 2, ecpt_enc, ecpt_dec)
 
 def default(obj):
     # Serialize Bn objects
-    T = type(obj)
-    if T in _pack_reg:
-        _, num, enc, _ = _pack_reg[T]
-        return msgpack.ExtType(num, enc(obj))
-    else:
-        raise TypeError("Unknown type: %r" % (obj,))
+    for T in _pack_reg:
+        if isinstance(obj, T):
+            _, num, enc, _ = _pack_reg[T]
+            return msgpack.ExtType(num, enc(obj))
+    
+    raise TypeError("Unknown type: %r" % (T,))
 
 def make_encoder(out_encoder=None):
     if out_encoder is None:
@@ -211,11 +210,11 @@ def test_enc_dec_custom():
 
     def enc_CustomClass(obj):
         if isinstance(obj, CustomClass):
-            return msgpack.ExtType(10, b'')
+            return msgpack.ExtType(11, b'')
         raise TypeError("Unknown type: %r" % (obj,))
 
     def dec_CustomClass(code, data):
-        if code == 10:
+        if code == 11:
             return CustomClass()
 
         return msgpack.ExtType(code, data)
@@ -233,24 +232,24 @@ def test_enc_dec_custom():
 def test_streaming():
 
     # Define a custom class, encoder and decoder
-    class CustomClass:
+    class CustomClass2:
         def __eq__(self, other):
-            return isinstance(other, CustomClass)
+            return isinstance(other, CustomClass2)
 
     def enc_CustomClass(obj):
-        if isinstance(obj, CustomClass):
-            return msgpack.ExtType(10, b'')
+        if isinstance(obj, CustomClass2):
+            return msgpack.ExtType(12, b'')
         raise TypeError("Unknown type: %r" % (obj,))
 
     def dec_CustomClass(code, data):
-        if code == 10:
-            return CustomClass()
+        if code == 12:
+            return CustomClass2()
 
         return msgpack.ExtType(code, data)
 
     # Define a structure
     G = EcGroup()
-    custom_obj = CustomClass()
+    custom_obj = CustomClass2()
     test_data = [G, G.generator(), G.order(), custom_obj]
     packed1 = encode(test_data, enc_CustomClass)
     packed2 = encode(test_data, enc_CustomClass)
@@ -261,5 +260,29 @@ def test_streaming():
     Up = msgpack.Unpacker(ext_hook=decoder)
     Up.feed(data)
     for o in Up:
-        print(o)
         assert o == test_data
+
+def test_docstring():
+    # Define a custom class, encoder and decoder
+    class CustomType:
+        def __eq__(self, other):
+           return isinstance(other, CustomType)
+    
+    def enc_custom(obj):
+        return b''
+
+    def dec_custom(data):
+        return CustomType()
+    
+    register_coders(CustomType, 14, enc_custom, dec_custom)
+    assert CustomType in _pack_reg
+    
+    # Define a structure
+    G = EcGroup()
+    custom_obj = CustomType() 
+    test_data = [G, G.generator(), G.order(), custom_obj]
+    
+    # Encode and decode custom structure
+    packed = encode(test_data)
+    x = decode(packed)
+    assert x == test_data
