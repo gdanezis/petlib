@@ -107,7 +107,7 @@ def default(obj):
             _, num, enc, _ = _pack_reg[T]
             return msgpack.ExtType(num, enc(obj))
     
-    raise TypeError("Unknown type: %r" % (T,))
+    raise TypeError("Unknown type: %r" % (type(obj),))
 
 def make_encoder(out_encoder=None):
     if out_encoder is None:
