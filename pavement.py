@@ -29,7 +29,7 @@ def win(quiet=True):
 def upload(quiet=False):
     """ Uploads the latest distribution to pypi. """
 
-    lib = file(os.path.join("petlib", "__init__.py")).read()
+    lib = open(os.path.join("petlib", "__init__.py")).read()
     v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
 
     tell("upload dist %s" % v)
