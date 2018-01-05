@@ -35,13 +35,13 @@ Test your installation:
 	python -c "import petlib; petlib.run_tests()"
 
 
-Build
------
+Build & Test
+------------
 
-1. Install paver (http://paver.github.io/paver/).
+You may use 'setuptools' and 'tox' to build and test the library:
 
-2. Install pytest (http://pytest.org/latest/).
+	python setup.py build
 
-3. Install pytest-cov (https://pypi.python.org/pypi/pytest-cov).
+To run all tests simply do:
 
-4. Run paver.
+	tox
