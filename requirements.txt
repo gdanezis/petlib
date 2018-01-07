@@ -4,3 +4,4 @@ future>=0.14.3
 pytest>=2.5.0
 pytest-cov>=1.8.1
 msgpack-python>=0.4.6
+tox>=2.9.0

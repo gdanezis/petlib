@@ -16,4 +16,4 @@ install:
   - python setup.py install
 
 # command to run tests
-script: paver generic_unit_tests
+script: tox
