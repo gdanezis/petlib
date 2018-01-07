@@ -12,6 +12,7 @@ before_install:
 
 # command to install dependencies
 install: 
+  - pip install tox-travis
   - pip install -r requirements.txt
   - python setup.py install
 
