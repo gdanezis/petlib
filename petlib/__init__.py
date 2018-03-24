@@ -1,5 +1,5 @@
 # The petlib version
-VERSION = '0.0.43'
+VERSION = '0.0.44'
 
 
 __all__ = ["bindings", "bn", "cipher", "compile", "ecdsa", "ec", "encode", "hmac", "pack"]
@@ -13,7 +13,7 @@ def run_tests():
     # List all petlib files in the directory
     petlib_dir = os.path.dirname(os.path.realpath(__file__))
     pyfiles = glob.glob(os.path.join(petlib_dir, '*.py'))
-    
+
     # Run the test suite
     print("Directory: %s" % pyfiles)
     res = pytest.main(["-v", "-x"] + pyfiles)
