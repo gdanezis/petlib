@@ -8,10 +8,15 @@ try:
     from ._petlib import ffi, lib
     _FFI = ffi
     _C = lib
+
 except:
     print("Support not loading the library to build docs without compiling.")
     _C = None
     _FFI = None
+
+
+from ._compat import get_openssl_version, OpenSSLVersion  # pylint: disable=unused-import
+_OPENSSL_VERSION = get_openssl_version(_C)
 
 
 # Store constants
@@ -57,8 +62,8 @@ class InitCiphers(object):
 
 if _C and _FFI:
     _ciphers = InitCiphers()
-    if _C.CRYPTO_get_locking_callback() == _FFI.NULL:
-        _C.setup_ssl_threads()
+    # if _C.CRYPTO_get_locking_callback() == _FFI.NULL:
+    #    _C.setup_ssl_threads()
 
 
 def test_double_load():
@@ -73,8 +78,8 @@ def test_version():
 def test_errors():
     assert get_errors() == []
 
-def test_locks():
-    assert _C.CRYPTO_get_locking_callback() != _FFI.NULL
+#def test_locks():
+#    assert _C.CRYPTO_get_locking_callback() != _FFI.NULL
 
 def test_multithread():
     import threading
@@ -91,8 +96,8 @@ def test_multithread():
             EcPt.from_binary(g2_s, G)
 
     threads = []
-    for i in range(100):
+    for _ in range(100):
         t = threading.Thread(target=worker)
         threads.append(t)
-        t.start()    
+        t.start()
 

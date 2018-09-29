@@ -1,0 +1,7 @@
+graft petlib
+graft contrib
+
+include LICENSE*
+
+recursive-exclude docs/_build *
+global-exclude *.py[co]

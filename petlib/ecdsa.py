@@ -89,9 +89,12 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
 
     r = Bn()
     s = Bn()
+    rptr = _FFI.new("BIGNUM **")
+    sptr = _FFI.new("BIGNUM **")
 
-    _C.BN_copy(r.bn, ecdsa_sig.r)
-    _C.BN_copy(s.bn, ecdsa_sig.s)
+    _C.ECDSA_SIG_get0(ecdsa_sig, rptr, sptr);
+    _C.BN_copy(r.bn, rptr[0])
+    _C.BN_copy(s.bn, sptr[0])
 
     _C.ECDSA_SIG_free(ecdsa_sig)
     _C.EC_KEY_free(ec_key)
@@ -120,8 +123,12 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     ec_sig = _C.ECDSA_SIG_new()
 
-    _C.BN_copy(ec_sig.r, r.bn)
-    _C.BN_copy(ec_sig.s, s.bn)
+    # OPENSSL 1.0 code
+    #_C.BN_copy(ec_sig.r, r.bn)
+    #_C.BN_copy(ec_sig.s, s.bn)
+    
+    ret = _C.ECDSA_SIG_set0(ec_sig, r.bn, s.bn)
+    # TODO test ret value
 
     try:
         result = int(_C.ECDSA_do_verify(data, len(data), ec_sig, ec_key))
@@ -130,7 +137,8 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     finally:
         _C.EC_KEY_free(ec_key)
-        _C.ECDSA_SIG_free(ec_sig)
+        # WL: prevent double free
+        #_C.ECDSA_SIG_free(ec_sig)
 
     return bool(result)
 
