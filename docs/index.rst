@@ -13,38 +13,14 @@ Welcome to petlib's documentation!
     :target: https://readthedocs.org/projects/petlib/?badge=latest
     :alt: Documentation Status
 
-Pre-requisites
---------------
-
-* On Ubuntu / debian use `apt-get` to install package `libssl-dev`. Ensure you also install `libffi-dev` and `python-dev`:
-
-.. code-block:: none
-
-  sudo apt-get install python-dev
-  sudo apt-get install libssl-dev
-  sudo apt-get install libffi-dev
-
-* On MacOS, install OpenSSL 1.0.2 in `/opt/local`.
-
-* On Windows, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure `libeay32.dll` is on the system `PATH` (https://www.openssl.org/related/binaries.html). Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command `vcvars32.bat` or `vcvarsx86_amd64.bat`.
- 
-
-Quick install
--------------
-
-If you have `pip` installed the following command should install `petlib`::
-
-  pip install petlib
-
-Test your installation::
-
-  python -c "import petlib; petlib.run_tests()"
-
+.. include:: ../README.rst 
+   :start-after: docs-include-marker-begin-do-not-remove
+   :end-before: docs-include-marker-end-do-not-remove
 
 Testing and Packaging
 ---------------------
 
-You will need a working Python 2.7 and 3.4 environemnt with pytest::
+You will need a working Python 2.7 and 3.6 environemnt with pytest::
 
   sudo apt-get install python-pytest
   sudo apt-get install python3-pytest
