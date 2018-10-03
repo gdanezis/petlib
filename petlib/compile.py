@@ -68,7 +68,6 @@ openssl_bindings_defs = get_openssl_bindings(
 openssl_bindings_src = get_openssl_bindings(
         'openssl_v%s.c' % openssl_version_code)
 
-
 _FFI = cffi.FFI()
 _FFI.set_source("petlib._petlib", openssl_bindings_src,
     libraries=libraries,
@@ -80,6 +79,6 @@ _FFI.cdef(openssl_bindings_defs)
 
 
 if __name__ == "__main__":
-    print("Compiling petlib...")
+    print("Compiling petlib for OpenSSL version %s..." % openssl_version_code)
     _FFI.compile()
 

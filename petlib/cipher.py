@@ -1,4 +1,4 @@
-from .bindings import _FFI, _C
+from .bindings import _FFI, _C, _OPENSSL_VERSION, OpenSSLVersion
 
 import pytest
 
@@ -37,7 +37,7 @@ class Cipher(object):
         True
 
     """
-        
+
     __slots__ = ["alg", "gcm"]
 
     def __init__(self, name, _alg=None):
@@ -56,27 +56,39 @@ class Cipher(object):
 
         if "gcm" in name.lower():
             self.gcm = True
-        
+
         if "ccm" in name.lower():
             raise Exception("CCM mode not supported")
 
     def len_IV(self):
         """Return the Initialization Vector length in bytes."""
-        return int(_C.EVP_CIPHER_iv_length(self.alg))
+        if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+            return int(self.alg.iv_len)
+        else:
+            return int(_C.EVP_CIPHER_iv_length(self.alg))
     def len_key(self):
         """Return the secret key length in bytes."""
-        return int(_C.EVP_CIPHER_key_length(self.alg))
+        if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+            return int(self.alg.key_len)
+        else:
+            return int(_C.EVP_CIPHER_key_length(self.alg))
     def len_block(self):
         """Return the block size in bytes."""
-        return int(_C.EVP_CIPHER_block_size(self.alg))
+        if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+            return int(self.alg.block_size)
+        else:
+            return int(_C.EVP_CIPHER_block_size(self.alg))
     def get_nid(self):
         """Return the OpenSSL nid of the cipher and mode."""
-        return int(_C.EVP_CIPHER_nid(self.alg))
+        if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+            return int(self.alg.nid)
+        else:
+            return int(_C.EVP_CIPHER_nid(self.alg))
 
 
 
     def op(self, key, iv, enc=1):
-        """Initializes a cipher operation, either encrypt or decrypt 
+        """Initializes a cipher operation, either encrypt or decrypt
         and returns a CipherOperation object
 
         Args:
@@ -88,34 +100,34 @@ class Cipher(object):
         c_op = CipherOperation(enc)
         _check( len(key) == self.len_key())
         _check( enc in [0,1] )
-       
+
         if not self.gcm:
             _check( len(iv) == self.len_IV())
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+            _check( _C.EVP_CipherInit_ex(c_op.ctx,
                 self.alg,  _FFI.NULL, key, iv, enc) )
 
         else:
-            
 
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+
+            _check( _C.EVP_CipherInit_ex(c_op.ctx,
                 self.alg,  _FFI.NULL, _FFI.NULL, _FFI.NULL, enc) )
 
             # assert len(iv) <= self.len_block()
 
-            _check( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, 
+            _check( _C.EVP_CIPHER_CTX_ctrl(c_op.ctx,
                 _C.EVP_CTRL_GCM_SET_IVLEN, len(iv), _FFI.NULL))
 
             _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_SET_IV_FIXED, -1, iv);
             _C.EVP_CIPHER_CTX_ctrl(c_op.ctx, _C.EVP_CTRL_GCM_IV_GEN, 0, iv)
 
-            _check( _C.EVP_CipherInit_ex(c_op.ctx, 
+            _check( _C.EVP_CipherInit_ex(c_op.ctx,
                 _FFI.NULL,  _FFI.NULL, key, iv, enc) )
 
         c_op.cipher = self
         return c_op
 
     def enc(self, key, iv):
-        """Initializes an encryption engine with the cipher with a specific key and Initialization Vector (IV). 
+        """Initializes an encryption engine with the cipher with a specific key and Initialization Vector (IV).
         Returns the CipherOperation engine.
 
         Args:
@@ -126,7 +138,7 @@ class Cipher(object):
         return self.op(key, iv, enc=1)
 
     def dec(self, key, iv):
-        """Initializes a decryption engine with the cipher with a specific key and Initialization Vector (IV). 
+        """Initializes a decryption engine with the cipher with a specific key and Initialization Vector (IV).
         Returns the CipherOperation engine.
 
         Args:
@@ -167,7 +179,7 @@ class Cipher(object):
             assoc (str): associated data that will be integrity protected, but not encrypted.
             tagl (int): the length of the tag, up to the block length.
 
-        Example: 
+        Example:
             Use of `quick_gcm_enc` and `quick_gcm_dec` for AES-GCM operations.
 
             >>> from os import urandom      # Secure OS random source
@@ -191,7 +203,7 @@ class Cipher(object):
         return (ciphertext, tag)
 
     def quick_gcm_dec(self, key, iv, cip, tag, assoc=None):
-        """One operation GCM decrypt. See usage example in "quick_gcm_enc". 
+        """One operation GCM decrypt. See usage example in "quick_gcm_enc".
         Throws an exception on failure of decryption
 
         Args:
@@ -205,16 +217,16 @@ class Cipher(object):
         dec = self.dec(key, iv)
         if assoc:
             dec.update_associated(assoc)
-        
+
         dec.set_tag(tag)
         plain = dec.update(cip)
-        
+
         try:
             plain += dec.finalize()
         except:
             raise Exception("Cipher: decryption failed.")
         return plain
-                
+
 
 class CipherOperation(object):
 
@@ -225,7 +237,7 @@ class CipherOperation(object):
         # _C.EVP_CIPHER_CTX_init(self.ctx)
         self.cipher = None
         self.xenc = xenc
-            
+
     def update(self, data):
         """Processes some data, and returns a partial result."""
         block_len = self.cipher.len_block()
@@ -233,19 +245,19 @@ class CipherOperation(object):
         outl = _FFI.new("int *")
         outl[0] = alloc_len
         out = _FFI.new("unsigned char[]", alloc_len)
-        
+
         _check( _C.EVP_CipherUpdate(self.ctx, out, outl, data, len(data)) )
-        
+
         ret = bytes(_FFI.buffer(out)[:int(outl[0])])
         return ret
 
     def finalize(self):
-        """Finalizes the operation and may return some additional data. 
+        """Finalizes the operation and may return some additional data.
         Throws an exception if the authenticator tag is different from the expected value.
-        
+
         Example:
             Example of the exception thrown when an invalid tag is provided.
-            
+
             >>> from os import urandom
             >>> aes = Cipher.aes_128_gcm()              # Define an AES-GCM cipher
             >>> iv = urandom(16)
@@ -260,9 +272,9 @@ class CipherOperation(object):
             ... except:
             ...    print("Failure")
             Failure
-            
+
             Throws an exception since integrity check fails due to the invalid tag.
-        
+
         """
         block_len = self.cipher.len_block()
         alloc_len = block_len
@@ -293,7 +305,7 @@ class CipherOperation(object):
     def get_tag(self, tag_len = 16):
         """Get the GCM authentication tag. Execute after finalizing the encryption.
 
-        Example: 
+        Example:
             AES-GCM encryption usage:
 
             >>> from os import urandom
@@ -312,7 +324,7 @@ class CipherOperation(object):
         _check( ret )
         s = bytes(_FFI.buffer(tag)[:])
         return s
-        
+
 
     def set_tag(self, tag):
         """Specify the GCM authenticator tag. Must be done before finalizing decryption
@@ -325,7 +337,7 @@ class CipherOperation(object):
             >>> dec = aes.dec(key=b"A"*16, iv=b"A"*16)  # Get a decryption CipherOperation
             >>> dec.update_associated(b"Hello")         # Feed in the non-secret assciated data.
             >>> plaintext = dec.update(ciphertext)      # Feed in the ciphertext for decryption.
-            >>> dec.set_tag(tag)                        # Provide the AES-GCM tag for integrity. 
+            >>> dec.set_tag(tag)                        # Provide the AES-GCM tag for integrity.
             >>> nothing = dec.finalize()                # Check and finalize.
             >>> assert plaintext == b'World!'
 

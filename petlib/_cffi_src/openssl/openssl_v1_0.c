@@ -98,7 +98,7 @@ static void _ssl_thread_locking_function(int mode, int n, const char *file,
     }
 }
 
-int setup_ssl_threads() {
+int setup_ssl_threads(void) {
     unsigned int i;
 
     if (_ssl_locks == NULL) {

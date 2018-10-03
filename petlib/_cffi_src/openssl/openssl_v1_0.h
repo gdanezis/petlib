@@ -320,7 +320,7 @@ int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
 #define SSLEAY_VERSION ...
 
 unsigned long SSLeay();
-/* const char *SSLeay_version(int type); */
+const char *SSLeay_version(int type);
 
 unsigned long ERR_get_error(void);
 

@@ -47,3 +47,16 @@ void cleanup_ciphers(void){
 */
 int (*setup_ssl_threads)(void) = NULL;
 
+/* Version of ECDSA_SIG_set0 that does not take ownership
+ * of passed variables r and s. */
+int ECDSA_SIG_set0_petlib(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
+    BIGNUM *rnew = BN_new();
+    BIGNUM *snew = BN_new();
+
+    BN_copy(rnew, r);
+    BN_copy(snew, s);
+
+    return ECDSA_SIG_set0(sig, rnew, snew);
+    // NOTE: new values rnew, snew not freed because signature
+    // takes ownership.
+}

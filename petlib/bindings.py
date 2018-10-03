@@ -3,6 +3,7 @@
 import os
 import platform
 import cffi
+import sys
 
 try:
     from ._petlib import ffi, lib
@@ -29,7 +30,12 @@ class Const:
 _inited = False
 
 def version():
-    return str(_FFI.string(_C.SSLeay_version(_C.SSLEAY_VERSION)))
+    if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+        cstr = _C.SSLeay_version(_C.SSLEAY_VERSION)
+    else:
+        cstr = _C.OpenSSL_version(_C.OPENSSL_VERSION)
+
+    return str(_FFI.string(cstr))
 
 def get_errors():
     errors = []
@@ -62,8 +68,9 @@ class InitCiphers(object):
 
 if _C and _FFI:
     _ciphers = InitCiphers()
-    # if _C.CRYPTO_get_locking_callback() == _FFI.NULL:
-    #    _C.setup_ssl_threads()
+    if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+        if _C.CRYPTO_get_locking_callback() == _FFI.NULL:
+            _C.setup_ssl_threads()
 
 
 def test_double_load():
@@ -78,8 +85,9 @@ def test_version():
 def test_errors():
     assert get_errors() == []
 
-#def test_locks():
-#    assert _C.CRYPTO_get_locking_callback() != _FFI.NULL
+def test_locks():
+    if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+        assert _C.CRYPTO_get_locking_callback() != _FFI.NULL
 
 def test_multithread():
     import threading

@@ -5,6 +5,8 @@
 void OPENSSL_init(void);
 void OPENSSL_free(void*);
 unsigned long OpenSSL_version_num(void);
+const char *OpenSSL_version(int t);
+#define OPENSSL_VERSION ...
 
 // The constant-time compare functions
 int CRYPTO_memcmp(const void *a, const void *b, size_t len);
@@ -257,6 +259,7 @@ typedef ... ECDSA_SIG;
 
 void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps);
 int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
+int ECDSA_SIG_set0_petlib(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
 
 typedef ... EC_KEY;
 

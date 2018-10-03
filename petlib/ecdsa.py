@@ -33,7 +33,8 @@ Example:
 """
 
 
-from .bindings import _C, _FFI
+from .bindings import _FFI, _C, _OPENSSL_VERSION, OpenSSLVersion
+
 from .ec import EcGroup, _check
 from .bn import Bn, get_ctx
 
@@ -59,7 +60,7 @@ def do_ecdsa_setup(G, priv):
     _C.BN_clear_free(ptr_rp[0])
 
     return kinv, rp
-        
+
 
 
 def do_ecdsa_sign(G, priv, data, kinv_rp = None):
@@ -89,12 +90,17 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
 
     r = Bn()
     s = Bn()
-    rptr = _FFI.new("BIGNUM **")
-    sptr = _FFI.new("BIGNUM **")
 
-    _C.ECDSA_SIG_get0(ecdsa_sig, rptr, sptr);
-    _C.BN_copy(r.bn, rptr[0])
-    _C.BN_copy(s.bn, sptr[0])
+    if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+        _C.BN_copy(r.bn, ecdsa_sig.r)
+        _C.BN_copy(s.bn, ecdsa_sig.s)
+    else:
+        rptr = _FFI.new("BIGNUM **")
+        sptr = _FFI.new("BIGNUM **")
+
+        _C.ECDSA_SIG_get0(ecdsa_sig, rptr, sptr);
+        _C.BN_copy(r.bn, rptr[0])
+        _C.BN_copy(s.bn, sptr[0])
 
     _C.ECDSA_SIG_free(ecdsa_sig)
     _C.EC_KEY_free(ec_key)
@@ -123,12 +129,11 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     ec_sig = _C.ECDSA_SIG_new()
 
-    # OPENSSL 1.0 code
-    #_C.BN_copy(ec_sig.r, r.bn)
-    #_C.BN_copy(ec_sig.s, s.bn)
-    
-    ret = _C.ECDSA_SIG_set0(ec_sig, r.bn, s.bn)
-    # TODO test ret value
+    if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+        _C.BN_copy(ec_sig.r, r.bn)
+        _C.BN_copy(ec_sig.s, s.bn)
+    else:
+        _check( _C.ECDSA_SIG_set0_petlib(ec_sig, r.bn, s.bn) )
 
     try:
         result = int(_C.ECDSA_do_verify(data, len(data), ec_sig, ec_key))
@@ -137,13 +142,12 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     finally:
         _C.EC_KEY_free(ec_key)
-        # WL: prevent double free
-        #_C.ECDSA_SIG_free(ec_sig)
+        _C.ECDSA_SIG_free(ec_sig)
 
     return bool(result)
 
 def get_ecdsa_keys(G, sig, data):
-    """ Returns the two possible public keys corresponding to this signature. 
+    """ Returns the two possible public keys corresponding to this signature.
 
     Args:
         G (EcGroup): the group in which math is done.
@@ -209,10 +213,10 @@ def test_ecdsa_timing():
     G = EcGroup()
     sig_key = G.order().random()
     ver_key = sig_key * G.generator()
-    
+
     digest = sha1(b"Hello World!").digest()
-    
-    print 
+
+    print
     t = []
 
     x = "Sign. plain"
@@ -220,17 +224,17 @@ def test_ecdsa_timing():
     for y in range(repreats):
         sig = do_ecdsa_sign(G, sig_key, digest)
     t += [time.clock() - t0]
-    
+
     print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
-    
+
     x = "Sign. with setup"
     t0 = time.clock()
     kinv_rp = do_ecdsa_setup(G, sig_key)
     for y in range(repreats):
         sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp = kinv_rp)
     t += [time.clock() - t0]
-    
+
     print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
 
@@ -240,6 +244,6 @@ def test_ecdsa_timing():
     for y in range(repreats):
             do_ecdsa_verify(G, ver_key, sig, digest)
     t += [time.clock() - t0]
-    
+
     print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
 
