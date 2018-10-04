@@ -32,15 +32,14 @@ def get_openssl_version(lib=None, warn=False):
     elif version == 0x100:
         if warn:
             warnings.warn(
-                    "Support for the system OpenSSL version (0x%x) is pending deprecation. "
-                    "Please upgrade to OpenSSL v1.1" % version)
+                "Support for the system OpenSSL version (0x%x) is pending deprecation. "
+                "Please upgrade to OpenSSL v1.1" % version)
         return OpenSSLVersion.V1_0
     else:
         # If the version is not 1.0 or 1.1, assume its a later one, and optimistically
         # assume it doesn't horribly break the interface this time.
         if warn:
             warnings.warn(
-                    "System OpenSSL version is not supported: %d. "
-                    "Attempting to use in OpenSSL v1.1 mode." % version)
+                "System OpenSSL version is not supported: %d. "
+                "Attempting to use in OpenSSL v1.1 mode." % version)
         return OpenSSLVersion.V1_1
-

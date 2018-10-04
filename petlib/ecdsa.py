@@ -43,13 +43,13 @@ def do_ecdsa_setup(G, priv):
     """Compute the parameters kinv and rp to (optionally) speed up ECDSA signing."""
 
     ec_key = _C.EC_KEY_new()
-    _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
-    _check( _C.EC_KEY_set_private_key(ec_key, priv.bn) )
+    _check(_C.EC_KEY_set_group(ec_key, G.ecg))
+    _check(_C.EC_KEY_set_private_key(ec_key, priv.bn))
 
     ptr_kinv = _FFI.new("BIGNUM **")
     ptr_rp = _FFI.new("BIGNUM **")
 
-    _check( _C.ECDSA_sign_setup(ec_key, get_ctx().bnctx, ptr_kinv, ptr_rp) )
+    _check(_C.ECDSA_sign_setup(ec_key, get_ctx().bnctx, ptr_kinv, ptr_rp))
 
     kinv = Bn()
     _C.BN_copy(kinv.bn, ptr_kinv[0])
@@ -62,8 +62,7 @@ def do_ecdsa_setup(G, priv):
     return kinv, rp
 
 
-
-def do_ecdsa_sign(G, priv, data, kinv_rp = None):
+def do_ecdsa_sign(G, priv, data, kinv_rp=None):
     """A quick function to ECDSA sign a hash.
 
     Args:
@@ -77,8 +76,8 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
 
     """
     ec_key = _C.EC_KEY_new()
-    _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
-    _check( _C.EC_KEY_set_private_key(ec_key, priv.bn) )
+    _check(_C.EC_KEY_set_group(ec_key, G.ecg))
+    _check(_C.EC_KEY_set_private_key(ec_key, priv.bn))
     # _check( _C.EC_KEY_precompute_mult(ec_key, _FFI.NULL) )
 
     if kinv_rp is None:
@@ -86,7 +85,8 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
 
     else:
         kinv, rp = kinv_rp
-        ecdsa_sig = _C.ECDSA_do_sign_ex(data, len(data), kinv.bn, rp.bn, ec_key)
+        ecdsa_sig = _C.ECDSA_do_sign_ex(
+            data, len(data), kinv.bn, rp.bn, ec_key)
 
     r = Bn()
     s = Bn()
@@ -98,7 +98,7 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
         rptr = _FFI.new("BIGNUM **")
         sptr = _FFI.new("BIGNUM **")
 
-        _C.ECDSA_SIG_get0(ecdsa_sig, rptr, sptr);
+        _C.ECDSA_SIG_get0(ecdsa_sig, rptr, sptr)
         _C.BN_copy(r.bn, rptr[0])
         _C.BN_copy(s.bn, sptr[0])
 
@@ -106,6 +106,7 @@ def do_ecdsa_sign(G, priv, data, kinv_rp = None):
     _C.EC_KEY_free(ec_key)
 
     return (r, s)
+
 
 def do_ecdsa_verify(G, pub, sig, data):
     """A quick function to ECDSA verify a hash.
@@ -123,9 +124,9 @@ def do_ecdsa_verify(G, pub, sig, data):
     r, s = sig
 
     ec_key = _C.EC_KEY_new()
-    _check( _C.EC_KEY_set_group(ec_key, G.ecg) )
-    _check( _C.EC_KEY_set_public_key(ec_key, pub.pt) )
-    _check( _C.EC_KEY_precompute_mult(ec_key, get_ctx().bnctx) )
+    _check(_C.EC_KEY_set_group(ec_key, G.ecg))
+    _check(_C.EC_KEY_set_public_key(ec_key, pub.pt))
+    _check(_C.EC_KEY_precompute_mult(ec_key, get_ctx().bnctx))
 
     ec_sig = _C.ECDSA_SIG_new()
 
@@ -133,7 +134,7 @@ def do_ecdsa_verify(G, pub, sig, data):
         _C.BN_copy(ec_sig.r, r.bn)
         _C.BN_copy(ec_sig.s, s.bn)
     else:
-        _check( _C.ECDSA_SIG_set0_petlib(ec_sig, r.bn, s.bn) )
+        _check(_C.ECDSA_SIG_set0_petlib(ec_sig, r.bn, s.bn))
 
     try:
         result = int(_C.ECDSA_do_verify(data, len(data), ec_sig, ec_key))
@@ -145,6 +146,7 @@ def do_ecdsa_verify(G, pub, sig, data):
         _C.ECDSA_SIG_free(ec_sig)
 
     return bool(result)
+
 
 def get_ecdsa_keys(G, sig, data):
     """ Returns the two possible public keys corresponding to this signature.
@@ -169,8 +171,8 @@ def get_ecdsa_keys(G, sig, data):
     if not (0 < z < G.order()):
         raise Exception("Digest too long")
 
-    K1 = r_inv * ( s * R1 - z * g )
-    K2 = r_inv * ( s * R2 - z * g )
+    K1 = r_inv * (s * R1 - z * g)
+    K2 = r_inv * (s * R2 - z * g)
 
     return K1, K2
 
@@ -181,6 +183,7 @@ def test_ecdsa():
     g = G.generator()
     sig = do_ecdsa_sign(G, priv, b"Hello")
     assert do_ecdsa_verify(G, priv * g, sig, b"Hello")
+
 
 def test_get_ecdsa_keys():
     G = EcGroup()
@@ -194,6 +197,7 @@ def test_get_ecdsa_keys():
 
     pk1, pk2 = get_ecdsa_keys(G, sig, b"Hello")
     assert pk1 == pub or pk2 == pub
+
 
 def test_ecdsa_fail():
     G = EcGroup()
@@ -225,25 +229,22 @@ def test_ecdsa_timing():
         sig = do_ecdsa_sign(G, sig_key, digest)
     t += [time.clock() - t0]
 
-    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
-
+    print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))
 
     x = "Sign. with setup"
     t0 = time.clock()
     kinv_rp = do_ecdsa_setup(G, sig_key)
     for y in range(repreats):
-        sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp = kinv_rp)
+        sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp=kinv_rp)
     t += [time.clock() - t0]
 
-    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
-
+    print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))
 
     x = "Verification"
     t0 = time.clock()
     kinv_rp = do_ecdsa_setup(G, sig_key)
     for y in range(repreats):
-            do_ecdsa_verify(G, ver_key, sig, digest)
+        do_ecdsa_verify(G, ver_key, sig, digest)
     t += [time.clock() - t0]
 
-    print("%s:\t%2.2f/sec" % (x, 1.0/(float(t[-1]) / repreats)) )
-
+    print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))

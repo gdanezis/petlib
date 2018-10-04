@@ -21,8 +21,8 @@ if platform.system() == "Windows":
     #   (run vcvarsx86_amd64.bat)
     # * Ensure the OpenSSL 64 bit lib is on the path.
     #   (PATH=C:\OpenSSL-Win64\bin;%PATH%)
-    libraries=["libeay32"]
-    include_dirs=[r"."]
+    libraries = ["libeay32"]
+    include_dirs = [r"."]
     extra_compile_args = []
 
     # if "VCINSTALLDIR" not in os.environ:
@@ -36,23 +36,27 @@ if platform.system() == "Windows":
     openssl_base, bin_name = os.path.split(openssl_bin)
     assert bin_name == "bin"
     include_dirs += [os.path.join(openssl_base, "include")]
-    library_dirs = [openssl_base, os.path.join(openssl_base, "lib"), os.path.join(openssl_base, "bin")]
+    library_dirs = [
+        openssl_base, os.path.join(
+            openssl_base, "lib"), os.path.join(
+            openssl_base, "bin")]
     link_args = []
 
 else:
-    ## Asume we are running on a posix system
-    # LINUX: libraries=["crypto"], extra_compile_args=['-Wno-deprecated-declarations']
+    # Asume we are running on a posix system
+    # LINUX: libraries=["crypto"],
+    # extra_compile_args=['-Wno-deprecated-declarations']
     link_args = []
-    libraries=["crypto"]
-    extra_compile_args=['-Wno-deprecated-declarations']
+    libraries = ["crypto"]
+    extra_compile_args = ['-Wno-deprecated-declarations']
     if platform.system() == "Darwin":
         include_dirs = ['/usr/local/opt/openssl/include',
                         '/usr/local/ssl/include']
-        library_dirs=['/usr/local/opt/openssl/lib',
-                      '/usr/local/ssl/lib']
+        library_dirs = ['/usr/local/opt/openssl/lib',
+                        '/usr/local/ssl/lib']
     else:
-        include_dirs=[]
-        library_dirs=[]
+        include_dirs = []
+        library_dirs = []
         # link_args = ['libcrypto.so']
 
 
@@ -64,21 +68,20 @@ def get_openssl_bindings(filename):
 
 openssl_version_code = get_openssl_version(warn=True)  # pylint: disable=undefined-variable
 openssl_bindings_defs = get_openssl_bindings(
-        'openssl_v%s.h' % openssl_version_code)
+    'openssl_v%s.h' % openssl_version_code)
 openssl_bindings_src = get_openssl_bindings(
-        'openssl_v%s.c' % openssl_version_code)
+    'openssl_v%s.c' % openssl_version_code)
 
 _FFI = cffi.FFI()
 _FFI.set_source("petlib._petlib", openssl_bindings_src,
-    libraries=libraries,
-    extra_compile_args=extra_compile_args,
-    include_dirs=include_dirs,
-    library_dirs=library_dirs,
-    extra_link_args=link_args)
+                libraries=libraries,
+                extra_compile_args=extra_compile_args,
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                extra_link_args=link_args)
 _FFI.cdef(openssl_bindings_defs)
 
 
 if __name__ == "__main__":
     print("Compiling petlib for OpenSSL version %s..." % openssl_version_code)
     _FFI.compile()
-

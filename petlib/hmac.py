@@ -8,9 +8,9 @@ import pytest
 def _check(return_val):
     """Checks the return code of the C calls"""
     if isinstance(return_val, int) and return_val == 1:
-      return
+        return
     if isinstance(return_val, bool) and return_val == True:
-      return
+        return
 
     raise Exception("HMAC exception")
 
@@ -25,7 +25,7 @@ def secure_compare(a1, a2):
     Returns:
         bool: whether the two stings are equal.
     """
-    _check(type(a1) == type(a2))
+    _check(isinstance(a1, type(a2)))
 
     if len(a1) != len(a2):
         return False
@@ -35,6 +35,7 @@ def secure_compare(a1, a2):
         return True
 
     return False
+
 
 class Hmac(object):
     """Initialize the HMAC by name with a key.
@@ -63,7 +64,7 @@ class Hmac(object):
         self.mac_ctx = None
         md = _C.EVP_get_digestbyname(name)
         if md == _FFI.NULL:
-            raise Exception("HMAC Error loading function %s", name)
+            raise Exception("HMAC Error loading function %s" % name)
 
         self.outsize = _C.EVP_MD_size(md)
         if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
@@ -110,7 +111,7 @@ class Hmac(object):
         return bytes(_FFI.buffer(out_md)[:])
 
     def __del__(self):
-        if self.mac_ctx != None and _OPENSSL_VERSION == OpenSSLVersion.V1_1:
+        if self.mac_ctx is not None and _OPENSSL_VERSION == OpenSSLVersion.V1_1:
             _C.HMAC_CTX_free(self.mac_ctx)
 
 
@@ -120,6 +121,7 @@ def test_init():
     d = h.digest()
     assert d
     assert len(d) == 128 / 8
+
 
 def test_vectors():
     """
@@ -163,6 +165,7 @@ def test_vectors():
 
     assert len(ans1) == len(ans2)
     assert ans1 == ans2
+
 
 def test_cmp():
     assert secure_compare(b"Hello", b"Hello")
