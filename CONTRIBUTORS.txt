@@ -6,6 +6,8 @@ Vasilios Mavroudis (https://github.com/mavroudisv)
 Salman Khalifa     (https://github.com/The-Skas)
 Tariq Elahi        (https://github.com/TariqEE)
 Panos Louridas     (https://github.com/louridas)
+Bogdan Kulynych    (https://github.com/bogdan-kulynych)
+Wouter Lueks       (https://github.com/wouterl)
 
 FUNDING
 
