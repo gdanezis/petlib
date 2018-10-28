@@ -19,9 +19,9 @@ On *Ubuntu / debian* use `apt-get` to install package ``libssl-dev``. Ensure you
 	sudo apt-get install libssl-dev
 	sudo apt-get install libffi-dev
 
-On *MacOS*, install OpenSSL 1.0.2, 1.1.x, or later using homebrew::
+On *MacOS*, install OpenSSL 1.1.x using homebrew:
     
-    brew install openssl
+    brew install openssl@1.1
 
 On *Windows*, install 32 bit or 64 bit OpenSSL binary edition matching your Python installation. Ensure ``libeay32.dll`` is on the system ``PATH`` (https://www.openssl.org/related/binaries.html).
 Configure the path variables of Microsoft VS compilers for 32 bit or 64 bit architectures, by executing the command ``vcvars32.bat`` or ``vcvarsx86_amd64.bat``.

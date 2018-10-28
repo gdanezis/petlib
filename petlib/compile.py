@@ -50,10 +50,17 @@ else:
     libraries = ["crypto"]
     extra_compile_args = ['-Wno-deprecated-declarations']
     if platform.system() == "Darwin":
-        include_dirs = ['/usr/local/opt/openssl/include',
+        include_dirs = ['/usr/local/opt/openssl@1.1/include',
+                        '/usr/local/opt/openssl/include',
                         '/usr/local/ssl/include']
-        library_dirs = ['/usr/local/opt/openssl/lib',
+        library_dirs = ['/usr/local/opt/openssl@1.1/lib',
+                        '/usr/local/opt/openssl/lib',
                         '/usr/local/ssl/lib']
+
+        # Ensure that our dynamic ABI-based version finding code in
+        # _compat.get_openssl_version also tries to load the
+        # brew-installed openssl libraries first.
+        os.environ["DYLD_LIBRARY_PATH"] = str.join(":", library_dirs)
     else:
         include_dirs = []
         library_dirs = []
