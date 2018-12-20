@@ -16,6 +16,10 @@ setup(name='petlib',
 
       setup_requires=["cffi>=1.0.0",
                       "pytest >= 2.6.4"],
+      package_data = {
+            "": ["_cffi_src/openssl/*"]
+      },
+      include_package_data = True,
       tests_require = [
             "cffi >= 1.0.0",
             "pycparser >= 2.10",
