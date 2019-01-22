@@ -10,3 +10,4 @@ Panos Louridas     (https://github.com/louridas)
 FUNDING
 
 PANORAMIX (Project ID: 653497) Funded under:  H2020-EU.3.7. - Secure societies - Protecting freedom and security of Europe and its citizens
+NEXTLEAP (project ID: 688722) Funded under: H2020-EU.2.1.1. - INDUSTRIAL LEADERSHIP - Leadership in enabling and industrial technologies
