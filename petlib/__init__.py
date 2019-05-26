@@ -2,7 +2,7 @@
 VERSION = '0.0.44'
 
 
-__all__ = ["bindings", "bn", "cipher", "compile", "ecdsa", "ec", "encode", "hmac", "pack"]
+__all__ = ["bindings", "bn", "cipher", "compile", "ecdsa", "ec", "hmac", "pack"]
 
 def run_tests():
     # These are only needed in case we test

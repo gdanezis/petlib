@@ -1,17 +1,18 @@
-from .bindings import _FFI, _C
+from .bindings import _FFI, _C, _OPENSSL_VERSION, OpenSSLVersion
 
 from binascii import hexlify
 
 import pytest
 
+
 def _check(return_val):
     """Checks the return code of the C calls"""
     if isinstance(return_val, int) and return_val == 1:
-      return
+        return
     if isinstance(return_val, bool) and return_val == True:
-      return
+        return
 
-    raise Exception("HMAC exception") 
+    raise Exception("HMAC exception")
 
 
 def secure_compare(a1, a2):
@@ -24,7 +25,7 @@ def secure_compare(a1, a2):
     Returns:
         bool: whether the two stings are equal.
     """
-    _check(type(a1) == type(a2))
+    _check(isinstance(a1, type(a2)))
 
     if len(a1) != len(a2):
         return False
@@ -34,6 +35,7 @@ def secure_compare(a1, a2):
         return True
 
     return False
+
 
 class Hmac(object):
     """Initialize the HMAC by name with a key.
@@ -62,11 +64,15 @@ class Hmac(object):
         self.mac_ctx = None
         md = _C.EVP_get_digestbyname(name)
         if md == _FFI.NULL:
-            raise Exception("HMAC Error loading function %s", name)
+            raise Exception("HMAC Error loading function %s" % name)
 
         self.outsize = _C.EVP_MD_size(md)
-        self.mac_ctx = _FFI.new("HMAC_CTX *")
-        _C.HMAC_CTX_init(self.mac_ctx)
+        if _OPENSSL_VERSION == OpenSSLVersion.V1_0:
+            self.mac_ctx = _FFI.new("HMAC_CTX *")
+            _C.HMAC_CTX_init(self.mac_ctx)
+        else:
+            self.mac_ctx = _C.HMAC_CTX_new()
+
         _check(_C.HMAC_Init_ex(self.mac_ctx, key, len(key), md, _FFI.NULL))
         self.active = True
 
@@ -105,9 +111,9 @@ class Hmac(object):
         return bytes(_FFI.buffer(out_md)[:])
 
     def __del__(self):
-        if self.mac_ctx != None:
-            _C.HMAC_CTX_cleanup(self.mac_ctx)
-        
+        if self.mac_ctx is not None and _OPENSSL_VERSION == OpenSSLVersion.V1_1:
+            _C.HMAC_CTX_free(self.mac_ctx)
+
 
 def test_init():
     h = Hmac(b"md5", b"Hello")
@@ -115,6 +121,7 @@ def test_init():
     d = h.digest()
     assert d
     assert len(d) == 128 / 8
+
 
 def test_vectors():
     """
@@ -157,7 +164,8 @@ def test_vectors():
     ans2 = b"164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
 
     assert len(ans1) == len(ans2)
-    assert ans1 == ans2 
+    assert ans1 == ans2
+
 
 def test_cmp():
     assert secure_compare(b"Hello", b"Hello")

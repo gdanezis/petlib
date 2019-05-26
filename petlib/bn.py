@@ -2,35 +2,36 @@ from .bindings import _FFI, _C, get_errors
 
 from functools import wraps
 from copy import copy, deepcopy
-from binascii import hexlify, unhexlify # pylint: disable=unused-import
+from binascii import hexlify, unhexlify  # pylint: disable=unused-import
 
 # Py2/3 compatibility
 try:
     from builtins import int        # pylint: disable=redefined-builtin
     from builtins import object     # pylint: disable=redefined-builtin
-except:                             # pylint: disable=bare-except
+except BaseException:                             # pylint: disable=bare-except
     print("Cannot mock for docs")
 
 try:
     from future.utils import python_2_unicode_compatible
 except Exception as e:              # pylint: disable=broad-except
     # An identity decorator
-    python_2_unicode_compatible = lambda x: x
+    def python_2_unicode_compatible(x): return x
 
 import pytest
+
 
 def force_Bn(n):
     """A decorator that coerces the nth input to be a Big Number"""
 
     def convert_nth(f):
         # pylint: disable=star-args
-        @wraps(f)  
+        @wraps(f)
         def new_f(*args, **kwargs):
             new_args = args
             try:
-                if not n < len(args) or args[n].bn: #isinstance(args[n], Bn):
+                if not n < len(args) or args[n].bn:  # isinstance(args[n], Bn):
                     new_args = args
-            except:
+            except BaseException:
                 # if not n < len(args):
                 #    new_args = args
 
@@ -47,19 +48,21 @@ def force_Bn(n):
         return new_f
     return convert_nth
 
-def _check(return_val):
-        """Checks the return code of the C calls"""
-        if __debug__:
-            if isinstance(return_val, int) and return_val == 1:
-                return
-            if isinstance(return_val, bool) and return_val == True:
-                return
 
-        if return_val == True and return_val == 1:
+def _check(return_val):
+    """Checks the return code of the C calls"""
+    if __debug__:
+        if isinstance(return_val, int) and return_val == 1:
+            return
+        if isinstance(return_val, bool) and return_val == True:
             return
 
-        errs = get_errors()
-        raise Exception("BN exception: %s" % errs) 
+    if return_val == True and return_val == 1:
+        return
+
+    errs = get_errors()
+    raise Exception("BN exception: %s" % errs)
+
 
 class BnCtx(object):
     """ A Bn Context for use by the petlib library """
@@ -69,11 +72,12 @@ class BnCtx(object):
     def __init__(self):
         self._C = _C
         self.bnctx = self._C.BN_CTX_new()
-        _check( self.bnctx != _FFI.NULL )
+        _check(self.bnctx != _FFI.NULL)
 
     def __del__(self):
-        if self.bnctx != None:
+        if self.bnctx is not None:
             self._C.BN_CTX_free(self.bnctx)
+
 
 class BnCtxNULL(BnCtx):
     """ A Bn Context for use by the petlib library """
@@ -87,25 +91,27 @@ class BnCtxNULL(BnCtx):
     def __del__(self):
         pass
 
+
 import threading
 _thread_local = threading.local()
+
 
 def get_ctx():
     global _thread_local
 
     try:
         return _thread_local.ctx
-    except:
+    except BaseException:
         _thread_local.ctx = BnCtx()
         return _thread_local.ctx
 
 
 @python_2_unicode_compatible
 class Bn(object):
-    """The core Big Number class. 
+    """The core Big Number class.
          It supports all comparisons (<, <=, ==, !=, >=, >),
-         arithmetic operations (+, -, %, /, divmod, pow) 
-         and copy operations (copy and deep copy). The right-hand 
+         arithmetic operations (+, -, %, /, divmod, pow)
+         and copy operations (copy and deep copy). The right-hand
          side operand may be a small native python integer (<2^64). """
 
     __C = _C
@@ -113,7 +119,7 @@ class Bn(object):
     # We know this class will keep minimal state
     __slots__ = ['bn']
 
-    ## -- static methods  
+    # -- static methods
 
     @staticmethod
     def from_num(num):
@@ -125,11 +131,10 @@ class Bn(object):
             # raise TypeError("Cannot coerce %s into a BN." % num)
             return NotImplemented
 
-
     @staticmethod
     def from_decimal(sdec):
         """Creates a Big Number from a decimal string.
-        
+
         Args:
             sdec (string): numeric string possibly starting with minus.
 
@@ -156,7 +161,7 @@ class Bn(object):
     @staticmethod
     def from_hex(shex):
         """Creates a Big Number from a hexadecimal string.
-        
+
         Args:
             shex (string): hex (0-F) string possibly starting with minus.
 
@@ -181,9 +186,9 @@ class Bn(object):
     @staticmethod
     def from_binary(sbin):
         """Creates a Big Number from a byte sequence representing the number in Big-endian 8 byte atoms. Only positive values can be represented as byte sequence, and the library user should store the sign bit separately.
-        
+
         Args:
-            sbin (string): a byte sequence. 
+            sbin (string): a byte sequence.
 
         Example:
             >>> byte_seq = unhexlify(b"010203")
@@ -204,35 +209,44 @@ class Bn(object):
         Args:
                 bits (int) -- the number of bits.
                 safe (int) -- 1 for a safe prime, otherwise 0.
-        
-        """
-        _check( 0 < bits < 10000 )
-        _check( safe in [0,1] )
-        
-        ret = Bn()
-        _check( _C.BN_generate_prime_ex(ret.bn, bits, safe, _FFI.NULL, _FFI.NULL, _FFI.NULL) )
-        return ret
 
+        """
+        _check(0 < bits < 10000)
+        _check(safe in [0, 1])
+
+        ret = Bn()
+        _check(
+            _C.BN_generate_prime_ex(
+                ret.bn,
+                bits,
+                safe,
+                _FFI.NULL,
+                _FFI.NULL,
+                _FFI.NULL))
+        return ret
 
     ## -- methods
 
-    _upper_bound = 2**(64-1)
+    _upper_bound = 2**(64 - 1)
+
     def __init__(self, num=0):
-        'Allocate a Big Number structure, initialized with a small integer or zero.'        
+        'Allocate a Big Number structure, initialized with a small integer or zero.'
         self.bn = _C.BN_new()
 
         if num == 0:
             return
 
         if __debug__:
-            _check( 0 <= abs(num) <= self._upper_bound )
-            _check( isinstance(num, int) )
+            _check(0 <= abs(num) <= self._upper_bound)
+            _check(isinstance(num, int))
 
         # Assign
         if num != 0:
             ret = _C.BN_set_word(self.bn, abs(num))
-            if __debug__: _check(ret)
-            if ret != 1: raise Exception("Bn Exception.")
+            if __debug__:
+                _check(ret)
+            if ret != 1:
+                raise Exception("Bn Exception.")
 
         if num < 0:
             self._set_neg(1)
@@ -255,7 +269,7 @@ class Bn(object):
 
     def __deepcopy__(self, memento):
         # 'Deepcopy is the same as copy'
-        # pylint: disable=unused-argument 
+        # pylint: disable=unused-argument
         return self.__copy__()
 
     def __del__(self):
@@ -263,15 +277,14 @@ class Bn(object):
         self.__C.BN_clear_free(self.bn)
 
     def __inner_cmp__(self, other):
-        # 'Irel comparison function' 
-        #if __debug__:
+        # 'Irel comparison function'
+        # if __debug__:
         #    _check( type(other) == Bn )
         try:
             sig = int(_C.BN_cmp(self.bn, other.bn))
             return sig
         except AttributeError:
             return self.__inner_cmp__(Bn.from_num(other))
-        
 
     def __lt__(self, other):
         return self.__inner_cmp__(other) < 0
@@ -292,18 +305,18 @@ class Bn(object):
         return self.__inner_cmp__(other) >= 0
 
     def bool(self):
-        'Turn Bn into boolean. False if zero, True otherwise.' 
+        'Turn Bn into boolean. False if zero, True otherwise.'
         return self.__bool__()
 
     def __bool__(self):
-        # 'Turn into boolean' 
+        # 'Turn into boolean'
         return not (self == Bn(0))
 
     # Python 2 compatibility
     def __nonzero__(self):
         return self.__bool__()
 
-    ## Export in different representations
+    # Export in different representations
 
     def repr(self):
         'The representation of the number as a decimal string'
@@ -311,7 +324,7 @@ class Bn(object):
 
     def __repr__(self):
         # 'The representation of the number as a decimal string'
-        buf =  _C.BN_bn2dec(self.bn)
+        buf = _C.BN_bn2dec(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
         return s.decode('utf8')
@@ -329,19 +342,19 @@ class Bn(object):
         return int(self.__repr__())
 
     def hex(self):
-        """The representation of the string in hexadecimal. 
+        """The representation of the string in hexadecimal.
         Synonym for hex(n)."""
         return self.__hex__()
 
     def __hex__(self):
         # """The representation of the string in hexadecimal"""
-        buf =  _C.BN_bn2hex(self.bn)
+        buf = _C.BN_bn2hex(self.bn)
         s = bytes(_FFI.string(buf))
         _C.OPENSSL_free(buf)
         return s.decode("utf8")
 
     def binary(self):
-        """Returns a byte sequence storing the absolute value of the Big 
+        """Returns a byte sequence storing the absolute value of the Big
         Number in Big-Endian format (with 8 bit atoms). You need to extact the sign separately.
 
         Example:
@@ -350,10 +363,10 @@ class Bn(object):
             True
         """
         if self < 0:
-                raise Exception("Cannot represent negative numbers")
+            raise Exception("Cannot represent negative numbers")
         size = _C.bn_num_bytes(self.bn)
         bin_string = _FFI.new("unsigned char[]", size)
-        
+
         l = _C.BN_bn2bin(self.bn, bin_string)
         assert int(l) == size
         return bytes(_FFI.buffer(bin_string)[:])
@@ -370,11 +383,10 @@ class Bn(object):
         rnd = Bn()
         err = _C.BN_rand_range(rnd.bn, self.bn)
         if __debug__:
-            _check( err )
+            _check(err)
         return rnd
 
-
-    ## ---------- Arithmetic --------------
+    # ---------- Arithmetic --------------
 
     def int_neg(self):
         """Returns the negative of this number. Synonym with -self.
@@ -389,7 +401,6 @@ class Bn(object):
 
         """
         return self.__neg__()
-
 
     def int_add(self, other):
         """Returns the sum of this number with another. Synonym for self + other.
@@ -413,15 +424,15 @@ class Bn(object):
         try:
             r = Bn()
             err = _C.BN_add(r.bn, self.bn, other.bn)
-            
+
             if __debug__:
-                _check( err )
+                _check(err)
             return r
         except AttributeError:
             return self.__add__(Bn.from_num(other))
 
     def int_sub(self, other):
-        """Returns the difference between this number and another. 
+        """Returns the difference between this number and another.
         Synonym for self - other.
 
         Example:
@@ -443,9 +454,9 @@ class Bn(object):
         try:
             r = Bn()
             err = _C.BN_sub(r.bn, self.bn, other.bn)
-            
+
             if __debug__:
-                _check( err )
+                _check(err)
 
             return r
         except AttributeError:
@@ -470,7 +481,6 @@ class Bn(object):
     def __rmul__(self, other):
         return self.__mul__(other)
 
-    
     def __mul__(self, other):
 
         try:
@@ -479,8 +489,8 @@ class Bn(object):
             err = _C.BN_mul(r.bn, self.bn, other.bn, local_ctx.bnctx)
 
             if __debug__:
-                _check( err )
-            
+                _check(err)
+
             return r
         except AttributeError:
             other = Bn.from_num(other)
@@ -489,9 +499,8 @@ class Bn(object):
             return self.__mul__(other)
 
 
-
-
 # ------------------ Mod arithmetic -------------------------
+
 
     def mod_add(self, other, m):
         """
@@ -509,8 +518,8 @@ class Bn(object):
             local_ctx = get_ctx()
             err = _C.BN_mod_add(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
             if __debug__:
-                _check( err )
-                
+                _check(err)
+
             return r
         except AttributeError:
             return self.mod_add(Bn.from_num(other), Bn.from_num(m))
@@ -533,7 +542,7 @@ class Bn(object):
             err = _C.BN_mod_sub(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
             if __debug__:
-                _check( err )
+                _check(err)
 
             return r
         except AttributeError:
@@ -556,12 +565,11 @@ class Bn(object):
             err = _C.BN_mod_mul(r.bn, self.bn, other.bn, m.bn, local_ctx.bnctx)
 
             if __debug__:
-                _check( err )
+                _check(err)
 
             return r
         except AttributeError:
             return self.mod_mul(Bn.from_num(other), Bn.from_num(m))
-
 
     def mod_inverse(self, m):
         """
@@ -581,16 +589,16 @@ class Bn(object):
             res = Bn()
             local_ctx = get_ctx()
             err = _C.BN_mod_inverse(res.bn, self.bn, m.bn, local_ctx.bnctx)
-            
+
             if err == _FFI.NULL:
                 errs = get_errors()
-                
-                if errs == [ 50770023 ]:
+
+                if errs == [50770023]:
                     raise Exception("No inverse")
 
-                elif errs == [ 50782316 ]:
+                elif errs == [50782316]:
                     raise Exception("No inverse")
-                    
+
                 else:
                     raise Exception("Unknown error: %s" % errs)
 
@@ -609,7 +617,6 @@ class Bn(object):
         """
         return self.__pow__(other, m, ctx=ctx)
 
-
     def divmod(self, other):
         """Returns the integer division and remainder of this number by another.
         Synonym for (div, mod) = divmod(self, other)"""
@@ -623,7 +630,7 @@ class Bn(object):
             dv = Bn()
             rem = Bn()
             local_ctx = get_ctx()
-            ret =_C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx)
+            ret = _C.BN_div(dv.bn, rem.bn, self.bn, other.bn, local_ctx.bnctx)
             if __debug__:
                 _check(ret)
             return (dv, rem)
@@ -631,7 +638,7 @@ class Bn(object):
             return self.__divmod__(Bn.from_num(other))
 
     def int_div(self, other):
-        """Returns the integer division of this number by another. 
+        """Returns the integer division of this number by another.
         Synonym of self / other.
 
         Example:
@@ -682,11 +689,10 @@ class Bn(object):
             err = _C.BN_nnmod(rem.bn, self.bn, other.bn, local_ctx.bnctx)
 
             if __debug__:
-                _check( err )
+                _check(err)
             return rem
         except AttributeError:
             self.__mod__(Bn.from_num(other))
-
 
     def __rtruediv__(self, other):
         return Bn(other).__truediv__(self)
@@ -704,7 +710,7 @@ class Bn(object):
         return Bn(other).__pow__(self)
 
     def pow(self, other, modulo=None, ctx=None):
-        """Returns the number raised to the power other optionally modulo a third number. 
+        """Returns the number raised to the power other optionally modulo a third number.
         Synonym with pow(self, other, modulo).
 
         Example:
@@ -716,7 +722,7 @@ class Bn(object):
             10000
             >>> one100.pow(2, 3)   # Modular exponentiation
             1
-            
+
         """
         if modulo:
             return self.__pow__(other, modulo, ctx)
@@ -728,16 +734,22 @@ class Bn(object):
         try:
             res = Bn()
 
-            if ctx == None:
+            if ctx is None:
                 ctx = BnCtx()
 
             if modulo is None:
                 _check(_C.BN_exp(res.bn, self.bn, other.bn, ctx.bnctx))
             else:
-                _check(_C.BN_mod_exp(res.bn, self.bn, other.bn, modulo.bn, ctx.bnctx))
+                _check(
+                    _C.BN_mod_exp(
+                        res.bn,
+                        self.bn,
+                        other.bn,
+                        modulo.bn,
+                        ctx.bnctx))
 
             return res
-        except:
+        except BaseException:
             other = Bn.from_num(other)
             if modulo is not None:
                 modulo = Bn.from_num(modulo)
@@ -745,29 +757,28 @@ class Bn(object):
 
     def is_prime(self):
         """Returns True if the number is prime, with negligible prob. of error."""
-        
+
         res = int(_C.BN_is_prime_ex(self.bn, 0, get_ctx().bnctx, _FFI.NULL))
         if res == 0:
             return False
         if res == 1:
             return True
-        raise Exception("Primality test failure %s" % int(res) )
+        raise Exception("Primality test failure %s" % int(res))
 
     def is_odd(self):
         """Returns True if the number is odd."""
 
         return bool(_C.bn_is_odd(self.bn))
 
-    def is_bit_set(self,n):
+    def is_bit_set(self, n):
         """Returns True if the nth bit is set"""
         return int(_C.BN_is_bit_set(self.bn, n))
-
 
     def num_bits(self):
         """Returns the number of bits representing this Big Number"""
         return int(_C.BN_num_bits(self.bn))
 
-    # Implement negative 
+    # Implement negative
     def __neg__(self):
         # pylint: disable=protected-access
         global zero
@@ -780,8 +791,8 @@ class Bn(object):
 
     def __hash__(self):
         return int(self).__hash__()
-    
-## Unsuported
+
+# Unsuported
 # object.__lshift__(self, other)
 # object.__rshift__(self, other)
 # object.__and__(self, other)
@@ -790,8 +801,10 @@ class Bn(object):
 
 # ---------- Tests ------------
 
+
 # Some globals
 zero = Bn(0)
+
 
 def test_bn_constructors():
     assert Bn.from_decimal("100") == 100
@@ -821,11 +834,9 @@ def test_bn_constructors():
         Bn(s)
     assert 'does not fit' in str(excinfo.value)
 
-
     with pytest.raises(Exception) as excinfo:
         _check(False)
     assert 'BN' in str(excinfo.value)
-
 
     #assert Bn.from_binary(Bn(-100).binary()) != Bn(50)
     assert int(Bn(-100)) == -100
@@ -833,7 +844,7 @@ def test_bn_constructors():
     assert repr(Bn(5)) == Bn(5).repr() == "5"
     assert range(10)[Bn(4)] == 4
 
-    d = {Bn(5): 5, Bn(6):6}
+    d = {Bn(5): 5, Bn(6): 6}
     assert Bn(5) in d
 
 
@@ -844,13 +855,14 @@ def test_bn_prime():
     assert not Bn(16).is_prime()
     assert p.num_bits() > 127
 
+
 def test_bn_arithmetic():
     assert (Bn(1) + Bn(1) == Bn(2))
     assert (Bn(1).int_add(Bn(1)) == Bn(2))
 
     assert (Bn(1) + 1 == Bn(2))
     # assert (1 + Bn(1) == Bn(2))
-    
+
     assert (Bn(1) + Bn(-1) == Bn(0))
     assert (Bn(10) + Bn(10) == Bn(20))
     assert (Bn(-1) * Bn(-1) == Bn(1))
@@ -876,7 +888,6 @@ def test_bn_arithmetic():
     assert Bn(10) % Bn(3) == Bn(1)
     assert Bn(10).mod(Bn(3)) == Bn(1)
 
-    
     assert Bn(2) ** Bn(8) == Bn(2 ** 8)
     assert pow(Bn(2), Bn(8), Bn(27)) == Bn(2 ** 8 % 27)
 
@@ -885,7 +896,6 @@ def test_bn_arithmetic():
     assert pow(Bn(2), 8, 27) == 2 ** 8 % 27
 
     assert Bn(3).mod_inverse(16) == 11
-    
 
     with pytest.raises(Exception) as excinfo:
         Bn(3).mod_inverse(0)
@@ -897,22 +907,22 @@ def test_bn_arithmetic():
         print("!!! Got inverse", x)
     assert 'No inverse' in str(excinfo.value)
 
-    #with pytest.raises(Exception) as excinfo:
+    # with pytest.raises(Exception) as excinfo:
     #    x = Bn(0).mod_inverse(Bn(13))
     #    print("Got inverse", x)
     #assert 'No inverse' in str(excinfo.value)
-
 
     assert Bn(10).mod_add(10, 15) == (10 + 10) % 15
     assert Bn(10).mod_sub(100, 15) == (10 - 100) % 15
     assert Bn(10).mod_mul(10, 15) == (10 * 10) % 15
     assert Bn(-1).bool()
 
+
 def test_bn_right_arithmetic():
     assert (1 + Bn(1) == Bn(2))
-    
+
     assert (-1 * Bn(-1) == Bn(1))
-    
+
     assert (10 * Bn(10) == Bn(100))
     assert (10 - Bn(10) == Bn(0))
     assert (10 - Bn(100) == Bn(-90))
@@ -920,19 +930,18 @@ def test_bn_right_arithmetic():
     s = -Bn(100)
     assert (10 + s == Bn(-90))
     assert (10 - (-Bn(10)) == Bn(20))
-    
+
     assert divmod(10, Bn(3)) == (Bn(3), Bn(1))
-    
+
     assert 10 / Bn(3) == Bn(3)
     assert 10 // Bn(3) == Bn(3)
-    
-    assert 10 % Bn(3) == Bn(1)    
+
+    assert 10 % Bn(3) == Bn(1)
     assert 2 ** Bn(8) == Bn(2 ** 8)
 
     assert 100 == Bn(100)
-    
-    pow(10, Bn(10))
 
+    pow(10, Bn(10))
 
 
 def test_bn_allocate():
@@ -950,7 +959,6 @@ def test_bn_allocate():
     assert int(Bn(5)) == 5
     assert Bn(5).int() == 5
 
-
     assert 0 <= Bn(15).random() < 15
 
     # Test copy
@@ -966,6 +974,7 @@ def test_bn_allocate():
     assert Bn(1)
     assert Bn(100)
 
+
 def test_bn_cmp():
     assert Bn(1) < Bn(2)
     assert Bn(1) <= Bn(2)
@@ -974,10 +983,12 @@ def test_bn_cmp():
     assert Bn(2) <= Bn(3)
     assert Bn(2) < Bn(3)
 
+
 def test_extras():
     two = Bn(2)
     two2 = two.copy()
-    assert two == two2    
+    assert two == two2
+
 
 def test_odd():
     assert Bn(1).is_odd()
@@ -991,7 +1002,8 @@ def test_odd():
     assert not Bn(0).is_odd()
     assert not Bn(2).is_odd()
 
-    assert Bn(100).is_bit_set(Bn(100).num_bits()-1)
+    assert Bn(100).is_bit_set(Bn(100).num_bits() - 1)
+
 
 def test_check():
     with pytest.raises(Exception) as excinfo:
@@ -1003,12 +1015,14 @@ def test_check():
     assert 'BN' in str(excinfo.value)
 
     with pytest.raises(Exception) as excinfo:
-        _check(0)      
+        _check(0)
     assert 'BN' in str(excinfo.value)
+
 
 def test_timing_exp():
     p = Bn.from_decimal("158261031819091141711717027498980088325079888681498417129323009913367867128038610210948802263526234270043507882496188624614467036250990588401775690578042934008692254417273606807265961724843618743242066301529332478013432957153823449143202719186309012133210922613102725038632605463022887306439116579645787938883")
-    psmall = Bn.from_decimal("90123082853250477832412338337738008391831682960497136029451532639902615425459")
+    psmall = Bn.from_decimal(
+        "90123082853250477832412338337738008391831682960497136029451532639902615425459")
 
     xs = [p.random() for _ in range(1000)]
     ys = [p.random() for _ in range(1000)]
@@ -1017,17 +1031,17 @@ def test_timing_exp():
 
     print
     t0 = time.time()
-    X = [xi.mod_mul(yi, psmall) for (xi,yi) in zip(xs,ys)]
+    X = [xi.mod_mul(yi, psmall) for (xi, yi) in zip(xs, ys)]
     t1 = time.time()
     print("Mod_mul time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
 
     t0 = time.time()
-    X = [xi.pow(yi, p) for (xi,yi) in zip(xs,ys)]
+    X = [xi.pow(yi, p) for (xi, yi) in zip(xs, ys)]
     t1 = time.time()
     print("    Pow time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
 
     ctx = BnCtx()
     t0 = time.time()
-    X = [xi.pow(yi, p, ctx) for (xi,yi) in zip(xs,ys)]
+    X = [xi.pow(yi, p, ctx) for (xi, yi) in zip(xs, ys)]
     t1 = time.time()
     print("Pow ctx time: %.2fms" % ((t1 - t0) * 1000.0 / 1000.0))
