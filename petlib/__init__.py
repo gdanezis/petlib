@@ -1,5 +1,5 @@
 # The petlib version
-VERSION = '0.0.44'
+VERSION = '0.0.45'
 
 
 __all__ = ["bindings", "bn", "cipher", "compile", "ecdsa", "ec", "hmac", "pack"]
