@@ -9,15 +9,15 @@ try:
     from ._petlib import ffi, lib
     _FFI = ffi
     _C = lib
+    from ._compat import get_openssl_version, OpenSSLVersion  # pylint: disable=unused-import
+    _OPENSSL_VERSION = get_openssl_version(_C)
+
 
 except BaseException:
     print("Support not loading the library to build docs without compiling.")
     _C = None
     _FFI = None
-
-
-from ._compat import get_openssl_version, OpenSSLVersion  # pylint: disable=unused-import
-_OPENSSL_VERSION = get_openssl_version(_C)
+    _OPENSSL_VERSION = None
 
 
 # Store constants

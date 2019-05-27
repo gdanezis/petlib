@@ -781,7 +781,7 @@ class Bn(object):
     # Implement negative
     def __neg__(self):
         # pylint: disable=protected-access
-        global zero
+        zero = Bn(0)
         ret = copy(self)
         if ret >= zero:
             ret._set_neg(1)
@@ -800,10 +800,6 @@ class Bn(object):
 # object.__or__(self, other)
 
 # ---------- Tests ------------
-
-
-# Some globals
-zero = Bn(0)
 
 
 def test_bn_constructors():
