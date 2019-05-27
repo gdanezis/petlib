@@ -27,7 +27,10 @@ Example:
 
 """
 
-import msgpack
+try:
+    import msgpack
+except:
+    print("Generate Documentation")
 
 from .ec import EcGroup, EcPt
 from .bn import Bn
@@ -104,7 +107,10 @@ def _init_coders():
 
 
 # Register default coders
-_init_coders()
+try:
+    _init_coders()
+except:
+    print("Generate documentation")
 
 
 def default(obj):
