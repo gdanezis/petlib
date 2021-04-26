@@ -181,6 +181,8 @@ class EcGroup(object):
         return res
 
     def __eq__(self, other):
+        if not isinstance(other, EcGroup):
+            return False
         res = _C.EC_GROUP_cmp(self.ecg, other.ecg, get_ctx().bnctx)
         return res == 0
 
@@ -478,8 +480,9 @@ class EcPt(object):
         return self.__eq__(other)
 
     def __eq__(self, other):
+        if not isinstance(other, EcPt):
+            return False
         if __debug__:
-            _check(isinstance(other, EcPt))
             _check(other.group == self.group)
         r = int(
             _C.EC_POINT_cmp(
@@ -571,6 +574,7 @@ def test_ec_list_group():
 
 def test_ec_build_group():
     G = EcGroup(409)
+    assert not G == None
     assert G.nid() == 409
     H = EcGroup(410)
     assert G.check_point(G.generator())
@@ -600,6 +604,7 @@ def test_ec_from_x():
 def test_ec_arithmetic():
     G = EcGroup(713)
     g = G.generator()
+    assert not g == None
     assert g + g == g + g
     assert g + g == g.pt_double()
     assert g + g == Bn(2) * g

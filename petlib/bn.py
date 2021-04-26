@@ -293,6 +293,10 @@ class Bn(object):
         return self.__inner_cmp__(other) <= 0
 
     def __eq__(self, other):
+        if isinstance(other, int):
+            other = Bn(other)
+        if not isinstance(other, Bn):
+            return False
         return self.__inner_cmp__(other) == 0
 
     def __ne__(self, other):
@@ -976,6 +980,7 @@ def test_bn_cmp():
     assert Bn(1) <= Bn(2)
     assert Bn(2) <= Bn(2)
     assert Bn(2) == Bn(2)
+    assert not Bn(2) == None
     assert Bn(2) <= Bn(3)
     assert Bn(2) < Bn(3)
 

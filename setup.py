@@ -12,7 +12,7 @@ setup(name='petlib',
       url=r'https://pypi.python.org/pypi/petlib/',
       packages=['petlib'],
       license="2-clause BSD",
-      long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technoloies (PETs)""",
+      long_description="""A library wrapping Open SSL low-level cryptographic libraries to build Privacy Enhancing Technologies (PETs)""",
 
       setup_requires=["cffi>=1.0.0",
                       "pytest >= 2.6.4"],
