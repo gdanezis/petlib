@@ -113,9 +113,9 @@ def do_ecdsa_verify(G, pub, sig, data):
 
     Args:
         G (EcGroup): the group in which math is done.
-        pub (EcPt): the secret key
-        sig (Bn, Bn): the (r,s) signature
-        data (str): the string to sign
+        pub (EcPt): the verification key.
+        sig (Bn, Bn): the (r,s) signature.
+        data (str): the string to sign.
 
     Returns:
         bool: A Boolean indicating whether the signature verifies.
