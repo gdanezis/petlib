@@ -171,7 +171,7 @@ def decode(packed_data, custom_decoder=None):
     structure = msgpack.unpackb(
         packed_data,
         ext_hook=decoder,
-        encoding='utf-8')
+        strict_map_key=False)
     return structure
 
 # --- TESTS ---
@@ -180,7 +180,7 @@ def decode(packed_data, custom_decoder=None):
 def test_basic():
     x = [b'spam', u'egg']
     packed = msgpack.packb(x, use_bin_type=True)
-    y = msgpack.unpackb(packed, encoding='utf-8')
+    y = msgpack.unpackb(packed)
     assert x == y
 
 
@@ -188,7 +188,7 @@ def test_bn():
     bn1, bn2 = Bn(1), Bn(2)
     test_data = [bn1, bn2, -bn1, -bn2]
     packed = msgpack.packb(test_data, default=default, use_bin_type=True)
-    x = msgpack.unpackb(packed, ext_hook=ext_hook, encoding='utf-8')
+    x = msgpack.unpackb(packed, ext_hook=ext_hook)
     assert x == test_data
 
 
@@ -196,7 +196,7 @@ def test_ecgroup():
     G = EcGroup()
     test_data = [G]
     packed = msgpack.packb(test_data, default=default, use_bin_type=True)
-    x = msgpack.unpackb(packed, ext_hook=ext_hook, encoding='utf-8')
+    x = msgpack.unpackb(packed, ext_hook=ext_hook)
     assert x == test_data
 
 
@@ -204,7 +204,7 @@ def test_ecpt():
     G = EcGroup()
     test_data = [G.generator()]
     packed = msgpack.packb(test_data, default=default, use_bin_type=True)
-    x = msgpack.unpackb(packed, ext_hook=ext_hook, encoding='utf-8')
+    x = msgpack.unpackb(packed, ext_hook=ext_hook)
     assert x == test_data
 
 
@@ -212,7 +212,7 @@ def test_mixed():
     G = EcGroup()
     test_data = [G, G.generator(), G.order()]
     packed = msgpack.packb(test_data, default=default, use_bin_type=True)
-    x = msgpack.unpackb(packed, ext_hook=ext_hook, encoding='utf-8')
+    x = msgpack.unpackb(packed, ext_hook=ext_hook)
     assert x == test_data
 
 
