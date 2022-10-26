@@ -782,10 +782,10 @@ def test_p224_const_timing():
         o = Bn(2) ** x
         tests = [o.random() for _ in range(repreats)]
 
-        t0 = time.clock()
+        t0 = time.process_time()
         for y in tests:
             dud = y * h
-        t += [time.clock() - t0]
+        t += [time.process_time() - t0]
         print(x, t[-1] / repreats)
     assert abs(t[0] - t[-1]) < 5.0 / 100
 

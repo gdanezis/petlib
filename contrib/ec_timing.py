@@ -11,10 +11,10 @@ for gid in curves:
 
     rnd = [G.order().random() for _ in range(100)]
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for r in rnd:
         dud = r * gx
-    t1 = time.clock()
+    t1 = time.process_time()
 
     repreats = 1000
     t = []
@@ -22,10 +22,10 @@ for gid in curves:
         o = Bn(2) ** x
         tests = [o.random() for _ in range(repreats)]
 
-        tx = time.clock()
+        tx = time.process_time()
         for y in tests:
             dud = y * gx
-        t += [time.clock() - tx]
+        t += [time.process_time() - tx]
         # print(x, t[-1] / repreats)
     if abs(t[0] - t[-1]) < 5.0 / 100:
         const = "CONST"
