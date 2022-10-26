@@ -18,10 +18,10 @@ if __name__ == "__main__":
             o = Bn(2) ** x
             tests = [o.random() for _ in range(repreats)]
 
-            t0 = time.clock()
+            t0 = time.process_time()
             for y in tests:
                 y * h
-            t += [time.clock() - t0]
+            t += [time.process_time() - t0]
             # print x, t[-1] / repreats
         res = abs(t[0] - t[-1]) < 1.0 / 100
         if res:

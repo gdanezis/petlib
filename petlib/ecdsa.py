@@ -224,27 +224,27 @@ def test_ecdsa_timing():
     t = []
 
     x = "Sign. plain"
-    t0 = time.clock()
+    t0 = time.process_time()
     for y in range(repreats):
         sig = do_ecdsa_sign(G, sig_key, digest)
-    t += [time.clock() - t0]
+    t += [time.process_time() - t0]
 
     print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))
 
     x = "Sign. with setup"
-    t0 = time.clock()
+    t0 = time.process_time()
     kinv_rp = do_ecdsa_setup(G, sig_key)
     for y in range(repreats):
         sig = do_ecdsa_sign(G, sig_key, digest, kinv_rp=kinv_rp)
-    t += [time.clock() - t0]
+    t += [time.process_time() - t0]
 
     print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))
 
     x = "Verification"
-    t0 = time.clock()
+    t0 = time.process_time()
     kinv_rp = do_ecdsa_setup(G, sig_key)
     for y in range(repreats):
         do_ecdsa_verify(G, ver_key, sig, digest)
-    t += [time.clock() - t0]
+    t += [time.process_time() - t0]
 
     print("%s:\t%2.2f/sec" % (x, 1.0 / (float(t[-1]) / repreats)))

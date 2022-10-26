@@ -1,5 +1,5 @@
 ## An implementation of the credential scheme based on an algebraic
-## MAC proposed by Chase, Meiklejohn and Zaverucha in Algebraic MACs and Keyed-Verification 
+## MAC proposed by Chase, Meiklejohn and Zaverucha in Algebraic MACs and Keyed-Verification
 ## Anonymous Credentials", at ACM CCS 2014. The credentials scheme
 ## is based on the GGM based aMAC. (see section 4.2, pages 8-9)
 
@@ -55,7 +55,7 @@ def secret_proof(params, n):
 
 def cred_secret_issue_user(params, keypair, attrib):
     """ Encodes a number of secret attributes to be issued. """
-    
+
     # We simply encrypt all parameters and make a proof we know
     # the decryption.
     G, g, h, o = params
@@ -74,7 +74,7 @@ def cred_secret_issue_user(params, keypair, attrib):
     zk = secret_proof(params, len(attrib))
 
     ## Run the proof
-    env = ZKEnv(zk) 
+    env = ZKEnv(zk)
     env.g, env.h = g, h
     env.pub = pub
     env.priv = priv
@@ -107,7 +107,7 @@ def cred_secret_issue_user_check(params, pub, EGenc, sig):
     zk = secret_proof(params, len(Cis))
 
     ## Run the proof
-    env = ZKEnv(zk) 
+    env = ZKEnv(zk)
     env.g, env.h = g, h
     env.pub = pub
 
@@ -146,10 +146,10 @@ def cred_secret_issue_proof(params, num_privs, num_pubs):
 
     ## Proof of correct Xi's
     for (xi, Xi, bXi, bxi) in zip(xis, Xis, bXis, bxis):
-        zk.add_proof(Xi, xi * h)        
+        zk.add_proof(Xi, xi * h)
         zk.add_proof(bXi, b * Xi)
         zk.add_proof(bXi, bxi * h)
-    
+
     # Proof of correct Credential Ciphertext
     mis = zk.get_array(ConstPub, "mi", num_pubs)
     CredA, CredB = zk.get(ConstGen, ["CredA", "CredB"])
@@ -173,7 +173,7 @@ def cred_secret_issue_proof(params, num_privs, num_pubs):
     zk.add_proof(CredB, B)
 
     return zk
-    
+
 
 def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     """ Encode a mixture of secret (EGenc) and public (messages) attributes"""
@@ -207,7 +207,7 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     assert [bsk0] + open_bsk + sec_bsk == bsk
 
     # First build a proto-credential in clear using all public attribs
-    r_prime = o.random()    
+    r_prime = o.random()
     EG_a = r_prime * g
     EG_b = r_prime * pub + bsk0 * g
 
@@ -224,7 +224,7 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     env = ZKEnv(zk)
 
     env.pub = pub
-    env.g, env.h = g, h 
+    env.g, env.h = g, h
     env.u = u
     env.b = b
 
@@ -235,7 +235,7 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
     env.bx_0_bar = b.mod_mul(x0_bar, o)
     env.Cx_0 = Cx0
     env.bCx_0 = bCx0
-    
+
     # These relate to the knowledge of Xi, xi ...
     env.xi = sk[1:]
     env.Xi = iparams
@@ -244,7 +244,7 @@ def cred_secret_issue(params, pub, EGenc, publics, secrets, messages):
 
     # These relate to the knowledge of the plaintext ...
     env.r_prime = r_prime
-    env.mi = messages   
+    env.mi = messages
     env.CredA = EG_a
     env.CredB = EG_b
     env.EGai = sKis
@@ -285,19 +285,19 @@ def cred_secret_issue_user_decrypt(params, keypair, u, EncE, publics, messages, 
 
     env = ZKEnv(zk)
 
-    env.g, env.h = g, h 
+    env.g, env.h = g, h
     env.u = u
     env.Cx_0 = Cx0
     env.pub = pub
 
-    env.Xi = iparams    
+    env.Xi = iparams
 
-    env.mi = messages   
+    env.mi = messages
     env.CredA = EG_a
     env.CredB = EG_b
     env.EGai = sKis
     env.EGbi = Cis
-    
+
     ## Extract the proof
     if not zk.verify_proof(env.get(), sig):
         raise Exception("Decryption of credential failed.")
@@ -322,7 +322,7 @@ def cred_issue_proof(params, n):
     ## Proof of correct MAC
     Prod = x0 * u
     for (xi, mi) in zip(xis, mis):
-        Prod = Prod + xi*(mi * u) 
+        Prod = Prod + xi*(mi * u)
     zk.add_proof(up, Prod)
 
     ## Proof of knowing the secret of MAC
@@ -330,7 +330,7 @@ def cred_issue_proof(params, n):
 
     ## Proof of correct Xi's
     for (xi, Xi) in zip(xis, Xis):
-        zk.add_proof(Xi, xi * h)        
+        zk.add_proof(Xi, xi * h)
 
     return zk
 
@@ -348,7 +348,7 @@ def cred_issue(params, publics, secrets, messages):
 
     env = ZKEnv(zk)
 
-    env.g, env.h = g, h 
+    env.g, env.h = g, h
     env.u, env.up = u, uprime
     env.x0 = sk[0]
     env.x0_bar = x0_bar
@@ -367,7 +367,7 @@ def cred_issue(params, publics, secrets, messages):
     return (u, uprime), sig
 
 def cred_issue_check(params, publics, mac, sig, messages):
-    
+
     # Parse public variables
     G, g, h, _ = params
     Cx0, iparams = publics
@@ -378,7 +378,7 @@ def cred_issue_check(params, publics, mac, sig, messages):
     zk = cred_issue_proof(params, n)
 
     env = ZKEnv(zk)
-    env.g, env.h = g, h 
+    env.g, env.h = g, h
     env.u, env.up = u, uprime
     env.Cx0 = Cx0
 
@@ -426,7 +426,7 @@ def cred_show(params, publics, mac, sig, messages, cred_show_proof=cred_show_pro
     u, uprime = rerandomize_sig_ggm(params, mac)
 
     n = len(messages)
-    
+
     ## Blinding variables for the proof
     r = o.random()
     zis = [o.random() for _ in range(n)]
@@ -506,18 +506,18 @@ def time_it_all(repetitions = 1000):
 
     print("Timings of operations (%s repetitions)" % repetitions)
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         i = 0
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tIdle" % (1000 * T/repetitions))
 
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         ## Setup from credential issuer.
         params = cred_setup()
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential Group Setup" % (1000 * T/repetitions))
 
     G, _, _, o = params
@@ -527,25 +527,25 @@ def time_it_all(repetitions = 1000):
     private_attr = [o.random(), o.random()]
     n = len(public_attr) + len(private_attr)
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         ipub, isec = cred_CredKeyge(params, n)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential Key generation" % (1000 * T/repetitions))
 
     ## User generates keys and encrypts some secret attributes
     #  the secret attributes are [10, 20]
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         keypair = cred_UserKeyge(params)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tUser Key generation" % (1000 * T/repetitions))
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         pub, EGenc, sig = cred_secret_issue_user(params, keypair, private_attr)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tUser Key generation (proof)" % (1000 * T/repetitions))
 
     if __debug__:
@@ -553,44 +553,44 @@ def time_it_all(repetitions = 1000):
 
     ## The issuer checks the secret attributes and encrypts a amac
     #  It also includes some public attributes, namely [30, 40].
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         if not cred_secret_issue_user_check(params, pub, EGenc, sig):
             raise Exception("User key generation invalid")
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tUser Key generation (verification)" % (1000 * T/repetitions))
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         u, EncE, sig = cred_secret_issue(params, pub, EGenc, ipub, isec, public_attr)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential issuing" % (1000 * T/repetitions))
-    
+
     if __debug__:
         _internal_ckeck(keypair, u, EncE, isec, public_attr + private_attr)
 
     ## The user decrypts the amac
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential decryption & verification" % (1000 * T/repetitions))
-    
+
     ## The show protocol using the decrypted amac
-    #  The proof just proves knowledge of the attributes, but any other 
+    #  The proof just proves knowledge of the attributes, but any other
     #  ZK statement is also possible by augmenting the proof.
-    
-    t0 = time.clock()
+
+    t0 = time.process_time()
     for _ in range(repetitions):
         (creds, sig) = cred_show(params, ipub, mac, sig, public_attr + private_attr)
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential Show (proof)" % (1000 * T/repetitions))
 
-    t0 = time.clock()
+    t0 = time.process_time()
     for _ in range(repetitions):
         if not cred_show_check(params, ipub, isec, creds, sig):
             raise Exception("Credential show failed.")
-    T = time.clock() - t0
+    T = time.process_time() - t0
     print("%.3f ms\tCredential Show (verification)" % (1000 * T/repetitions))
 
 
@@ -622,7 +622,7 @@ def test_creds_custom_show():
     assert cred_issue_check(params, ipub, mac, sig, [10, 20])
 
     ## Custom proofs require two things:
-    #   - cred_show_proof_custom: a custom "cred_show_proof" with additional statements 
+    #   - cred_show_proof_custom: a custom "cred_show_proof" with additional statements
     #     to prove on the Commitements Cmi = mi * u + zi * h
     #   - xenv: a custom function that instanciates the values of the proof, either
     #     public secret or constant.
@@ -632,13 +632,13 @@ def test_creds_custom_show():
         zk = cred_show_proof(params, n)
 
         u, g, h = zk.get(ConstGen, ["u", "g", "h"])
-    
+
         zis = zk.get_array(Sec, "zi", n)
         mis = zk.get_array(Sec, "mi", n)
-    
+
         Cmis = zk.get_array(ConstGen, "Cmi", n)
         twou = zk.get(ConstGen, "twou")
-        
+
         # Statement that proves Cmi1 = (2 * m0) * u + z1 * h
         zk.add_proof(Cmis[1], mis[0]*twou + zis[1]*h)
         return zk
@@ -668,7 +668,7 @@ def test_secret_creds():
     #  the secret attributes are [10, 20]
     keypair = cred_UserKeyge(params)
     pub, EGenc, sig = cred_secret_issue_user(params, keypair, private_attr)
-    
+
     if __debug__:
         _check_enc(params, keypair, EGenc, private_attr)
 
@@ -676,15 +676,15 @@ def test_secret_creds():
     #  It also includes some public attributes, namely [30, 40].
     assert cred_secret_issue_user_check(params, pub, EGenc, sig)
     u, EncE, sig = cred_secret_issue(params, pub, EGenc, ipub, isec, public_attr)
-    
+
     if __debug__:
         _internal_ckeck(keypair, u, EncE, isec, public_attr + private_attr)
 
     ## The user decrypts the amac
     mac = cred_secret_issue_user_decrypt(params, keypair, u, EncE, ipub, public_attr, EGenc, sig)
-    
+
     ## The show protocol using the decrypted amac
-    #  The proof just proves knowledge of the attributes, but any other 
+    #  The proof just proves knowledge of the attributes, but any other
     #  ZK statement is also possible by augmenting the proof.
     (creds, sig) = cred_show(params, ipub, mac, sig, public_attr + private_attr)
     assert cred_show_check(params, ipub, isec, creds, sig)
@@ -695,7 +695,7 @@ if __name__ == "__main__":
     time_it_all(repetitions=100)
 
     params = cred_setup()
-    
+
     print("Proof of secret attributes")
     zk1 = secret_proof(params, 2)
     print(zk1.render_proof_statement())

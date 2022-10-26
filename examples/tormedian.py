@@ -22,7 +22,7 @@ def _make_table(start=-10000, end=10000):
         i_table[ix] = i
         n_table[(o + i) % o] = ix
         ix = ix + g
-        
+
     return i_table, n_table
 
 _table, _n_table = _make_table()
@@ -40,7 +40,7 @@ class Ct:
         g = pub.group.generator()
         a = k * g
         b = k * pub + _n_table[(o + m) % o] # m * g
-        return Ct(pub, a, b, k, m) 
+        return Ct(pub, a, b, k, m)
 
     def __init__(self, pub, a, b, k=None, m=None):
         """ Produce a ciphertext, from its parts """
@@ -112,18 +112,18 @@ class Ct:
     def __rmul__(self, other):
         """ Multiples an integer with a Ciphertext """
         o = self.pub.group.order()
-        new_a = other * self.a 
+        new_a = other * self.a
         new_b = other * self.b
         new_k, new_m = None, None
         if self.k is not None:
             new_k = self.k.mod_mul( other, o)
-            new_m = self.m.mod_mul( other, o) 
+            new_m = self.m.mod_mul( other, o)
         return Ct(self.pub, new_a, new_b, new_k, new_m)
 
     def __neg__(self):
         """ Multiply the value by -1 """
         o = self.pub.group.order()
-        new_a = -self.a 
+        new_a = -self.a
         new_b = -self.b
         if self.k is not None and self.m is not None:
             new_k = (o - self.k) % o
@@ -145,7 +145,7 @@ def hashes(item, d):
     codes = []
     i = 0
     while len(codes) < d:
-        codes += list(array('I', sha512(pack("I", i) + item.encode("utf8")).digest())) 
+        codes += list(array('I', sha512(pack("I", i) + item.encode("utf8")).digest()))
         i += 1
     return codes[:d]
 
@@ -189,13 +189,13 @@ class CountSketchCt(object):
                 ba = self.store[di][wi].a.export()
                 dst.write(pack("I", len(ba)))
                 dst.write(ba)
-                
+
                 bb = self.store[di][wi].b.export()
                 dst.write(pack("I", len(bb)))
                 dst.write(bb)
 
         return dst.getvalue()
-                
+
 
 
     def insert(self, item):
@@ -204,7 +204,7 @@ class CountSketchCt(object):
         item = str(item)
         h = hashes(item, self.d)
         for di in range(self.d):
-            self.store[di][h[di] % self.w] += 1 
+            self.store[di][h[di] % self.w] += 1
 
     def estimate(self, item):
         """ Estimate the frequency of one value """
@@ -221,10 +221,10 @@ class CountSketchCt(object):
 
         elist = []
         for i, [hi, hpi] in enumerate(zip(h, h2)):
-            v1 = self.store[i][hi % self.w] 
+            v1 = self.store[i][hi % self.w]
             v2 = self.store[i][hpi % self.w]
             elist += [v1, -v2]
-        
+
         estimates = Ct.sum(elist)
         return estimates, self.d
 
@@ -237,7 +237,7 @@ class CountSketchCt(object):
             for o in others:
                 assert pub == o.pub
                 assert w == o.w and d == o.d
-        
+
         cs = CountSketchCt(w, d, pub)
 
         for di in range(d):
@@ -267,9 +267,9 @@ def get_median(cs, min_b = 0, max_b = 1000, steps = 20):
 
         EL = Ct.sum([ cs.estimate(i)[0] for i in range(bounds[0], cand_median) ])
         newl = yield EL # EL.dec(sec)
-        
+
         if total is None:
-            ER = Ct.sum([ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
+            ER = Ct.sum([ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])
             newr = yield ER # ER.dec(sec)
 
             total = newl + newr
@@ -278,7 +278,7 @@ def get_median(cs, min_b = 0, max_b = 1000, steps = 20):
         else:
             newr = total - newl
             if __debug__:
-                ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])        
+                ER = Ct.sum( [ cs.estimate(i)[0] for i in range(cand_median, bounds[1]) ])
                 newrx = yield ER # ER.dec(sec)
                 # assert newrx == newr
 
@@ -293,7 +293,7 @@ def get_median(cs, min_b = 0, max_b = 1000, steps = 20):
 
         if bounds == old_bounds:
             yield cand_median
-            return 
+            return
 
 
 #### ------------- TESTS ------------------
@@ -334,7 +334,7 @@ def test_Decrypt():
         i = random.randint(-1000, 999)
         E = Ct.enc(y, i)
         assert E.dec(x) == i
-    
+
 
 
 def analyze_series(eps, datapoints):
@@ -358,7 +358,7 @@ def test_CountSketchCt():
     G = EcGroup()
     x = G.order().random()
     y = x * G.generator()
-    
+
     cs = CountSketchCt(50, 7, y)
     cs.insert(11)
     c, d = cs.estimate(11)
@@ -380,10 +380,10 @@ def size_vs_error():
     narrow_vals = 1000
     wide_vals = 200
 
-    from numpy.random import laplace    
+    from numpy.random import laplace
     from collections import defaultdict
 
-    
+
     datapoints = defaultdict(list)
     sizes = defaultdict(list)
 
@@ -420,7 +420,7 @@ def size_vs_error():
                 plain = v.dec(sec) + noise
 
             print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
-            datapoints[epsilon] += [ 100 * float(abs(v - median)) / median ] 
+            datapoints[epsilon] += [ 100 * float(abs(v - median)) / median ]
 
     lower_err, core_err, upper_err = analyze_series(eps, datapoints)
     lower_siz, core_siz, upper_siz = analyze_series(eps, sizes)
@@ -470,10 +470,10 @@ def no_test_DP_median():
     narrow_vals = 1000
     wide_vals = 200
 
-    from numpy.random import laplace    
+    from numpy.random import laplace
     from collections import defaultdict
 
-    
+
     datapoints = defaultdict(list)
 
     eps = ["Inf", 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001]
@@ -511,7 +511,7 @@ def no_test_DP_median():
                 plain = v.dec(sec) + noise
 
             print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
-            datapoints[epsilon] += [ abs(v - median) ] 
+            datapoints[epsilon] += [ abs(v - median) ]
 
     import matplotlib.pyplot as plt
     from numpy import mean, std
@@ -563,7 +563,7 @@ def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
     G = EcGroup()
     sec = G.order().random()
     y = sec * G.generator()
-    
+
 
     xx = CountSketchCt.epsilondelta(err, err, y)
     d, w = xx.d, xx.w
@@ -571,7 +571,7 @@ def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
         print("Sketch: d=%s w=%s (Cmp. size: %s%%)" % (d, w, (float(100*d*w)/(vrange[1] - vrange[0]))))
 
     # Add each sample to the sketch
-    tic = time.clock()    
+    tic = time.process_time()
 
     all_cs = []
     for x in vals:
@@ -579,15 +579,15 @@ def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
         cs_temp.insert("%s" % x)
         all_cs += [ cs_temp ]
 
-    toc = time.clock()
+    toc = time.process_time()
     if verbose:
         print("Build Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % ((toc - tic), len(vals), (toc - tic) / len(vals)) )
 
     # Aggregate all sketches
-    tic = time.clock()
+    tic = time.process_time()
     cs = CountSketchCt.aggregate(all_cs)
 
-    toc = time.clock()
+    toc = time.process_time()
     dt = (toc - tic)
     if verbose:
         print("Aggregate Sketches: %2.4f sec (for %s)\tPer Sketch: %2.4f sec" % (dt, len(vals), dt / len(vals)) )
@@ -595,7 +595,7 @@ def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
     # Now use test the median function
     proto = get_median(cs, min_b = vrange[0], max_b = vrange[1], steps = 20)
 
-    tic = time.clock()
+    tic = time.process_time()
 
     plain = None
     no_decryptions = 0
@@ -606,14 +606,14 @@ def do_median(vals, err=0.05, vrange=[0, 1000], verbose=True):
         no_decryptions += 1
         plain = v.dec(sec)
 
-    toc = time.clock()
+    toc = time.process_time()
     if verbose:
         print( "Find Median. Pivot: % 5d\tNo. Decryptions: %s\ttime: %2.4f sec" % (v, no_decryptions, toc - tic) )
 
     # Measure the size of the sketch
     bin_cs = cs.dump()
     if verbose:
-        print("Sketch size: %s bytes" % len(bin_cs))    
+        print("Sketch size: %s bytes" % len(bin_cs))
         print("Estimated median: %s\t\tAbs. Err: %s" % (v, abs(v - median)))
     return v
 
@@ -623,7 +623,7 @@ def test_median():
     # Get some test data
     narrow_vals = 100
     wide_vals = 20
-    
+
     vals = [gauss(300, 25) for _ in range (narrow_vals)]
     vals += [gauss(500, 200) for _ in range (wide_vals)]
 
@@ -659,7 +659,7 @@ if __name__ == "__main__":
             try:
                 vals = sorted([float(f) for f in data.iloc[0:num, i]])
                 med_gt = vals[len(vals)/2]
-                
+
                 MX = 100
                 vmin = min(vals) - 10
                 vmax = max(vals) + 10
@@ -677,7 +677,7 @@ if __name__ == "__main__":
                 d += [(data.columns.values[i], [med1, err1* 100, med2, err2* 100, med_gt])]
 
             except:
-                pass 
+                pass
                 # print data.iloc[0:num, i]
 
         frame = pd.DataFrame.from_items(d, orient="index", columns=["Median (0.25)", "Error (%)", "Median (0.05)", "Error (%)", "Truth"])
@@ -688,7 +688,7 @@ if __name__ == "__main__":
 
     if args.size:
         size_vs_error()
-    
+
     if args.quality:
         no_test_DP_median()
 
@@ -696,7 +696,7 @@ if __name__ == "__main__":
     if args.cprof:
         import cProfile
         cProfile.run("test_median()", sort="tottime")
-        
+
 
     if args.lprof:
         from line_profiler import LineProfiler

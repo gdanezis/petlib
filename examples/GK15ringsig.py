@@ -9,8 +9,8 @@ import math
 
 ## ######################################################
 ## An implementation of the ring signature scheme in
-## 
-##    Jens Groth and Markulf Kohlweiss. "One-out-of-Many Proofs: 
+##
+##    Jens Groth and Markulf Kohlweiss. "One-out-of-Many Proofs:
 ##    Or How to Leak a Secret and Spend a Coin"
 ##    Cryptology ePrint Archive: Report 2014/764
 ##
@@ -38,7 +38,7 @@ def setup():
 def Com(ck, m, k):
     """ Pedersen Commitment. """
     (G, g, h, o) = ck
-    return m * g + k * h    
+    return m * g + k * h
 
 
 def ProveZeroOne(ck, c, m, r):
@@ -71,8 +71,8 @@ def VerifyZeroOne(ck, c, proof):
 
 
 def ProveOneOfN(ck, cis, el, r, message = ""):
-    """ NIZK Proof that Com(0; r) is within Cis. 
-        The fact that it is the el'th commitmtnet is not revealed. 
+    """ NIZK Proof that Com(0; r) is within Cis.
+        The fact that it is the el'th commitmtnet is not revealed.
         + Ring signature on "message". """
     n = int(math.ceil(math.log(len(cis)) / math.log(2)))
     assert Com(ck, 0, r) == cis[el]
@@ -81,7 +81,7 @@ def ProveOneOfN(ck, cis, el, r, message = ""):
     ## Commit to the bits of the index
     el = Bn(el)
     eli = [Bn(int(el.is_bit_set(i))) for i in range(n)]
-    
+
     ri  = [o.random() for i in range(n)]
     ai  = [o.random() for i in range(n)]
     si  = [o.random() for i in range(n)]
@@ -105,7 +105,7 @@ def ProveOneOfN(ck, cis, el, r, message = ""):
                 p = poly_mul(o, p, [ ai[j] , eli[j] ])
 
         p_idx_i += [p]
-        
+
     # Compute all Cdi's
     roi = []
     cdi = []
@@ -155,7 +155,7 @@ def VerifyOneOfN(ck, cis, proof, message = ""):
         assert 0 <= fi[k] < o
         assert 0 <= zai[k] < o
         assert 0 <= zbi[k] < o
-        
+
         assert G.check_point(Celi[k])
         assert G.check_point(Cai[k])
         assert G.check_point(Cbi[k])
@@ -311,35 +311,35 @@ def notest_timing(upper=101):
     ck = setup()
     (G, g, h, o) = ck
     c0 = Com(ck, 1, o.random())
-    
+
     r = o.random()
     cr = Com(ck,0, r)
 
     import time
 
-     
+
     repeats = 10
 
     all_sizes = range(10, upper, 10)
     prove_time = []
     verify_time = []
     for size in all_sizes:
-        cis = [c0] * (size + 1) + [cr]   
+        cis = [c0] * (size + 1) + [cr]
 
-        t0 = time.clock() 
+        t0 = time.process_time()
         for _ in range(repeats):
             proof = ProveOneOfN(ck, cis, len(cis)-1, r, message="Hello World!")
-        t1 = time.clock()
+        t1 = time.process_time()
 
         dt = (t1-t0) / repeats
         prove_time += [ dt ]
         print( "Proof time: %s - %2.4f" % (size, dt) )
 
-        t0 = time.clock() 
+        t0 = time.process_time()
         for _ in range(repeats):
             ret = VerifyOneOfN(ck, cis, proof, message="Hello World!")
             assert ret
-        t1 = time.clock()
+        t1 = time.process_time()
 
         dt = (t1-t0) / repeats
         verify_time += [ dt ]
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     if args.cprof:
         import cProfile
         cProfile.run("notest_timing(51)", sort="tottime")
-        
+
 
     if args.lprof:
         from line_profiler import LineProfiler
@@ -377,7 +377,7 @@ if __name__ == "__main__":
         profile.run("notest_timing(31)")
         profile.print_stats()
 
-    
+
     if args.plot:
 
         all_sizes, prove_time, verify_time = notest_timing()
@@ -396,7 +396,7 @@ if __name__ == "__main__":
             name='Verification',
         )
         data = Data([trace0, trace1])
-        
+
         layout = Layout(
             title='Timing for GK15 Proof and Verification using petlib',
             xaxis=XAxis(
